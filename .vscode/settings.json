@@ -1,0 +1,52 @@
+{
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.colorTheme": "GitHub Dark Dimmed",
+    // Terminal settings
+    "terminal.integrated.defaultProfile.windows": "WSL (Debian)",
+    "terminal.integrated.defaultProfile.linux": "pwsh",
+    "terminal.integrated.defaultProfile.osx": "pwsh",
+    "terminal.integrated.fontFamily": "Consolas, 'Courier New', monospace",
+    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.lineHeight": 1.2,
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "PowerShell 7": {
+            "path": [
+                "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+                "C:\\Program Files\\PowerShell\\7-preview\\pwsh.exe"
+            ],
+            "icon": "terminal-powershell"
+        },
+        "WSL (Debian)": {
+            "path": "C:\\Windows\\System32\\wsl.exe",
+            "args": [
+                "-d",
+                "Debian"
+            ],
+            "icon": "terminal-linux"
+        }
+    },
+    "terminal.integrated.profiles.linux": {
+        "pwsh": {
+            "path": "pwsh",
+            "icon": "terminal-powershell"
+        }
+    },
+    "terminal.integrated.profiles.osx": {
+        "pwsh": {
+            "path": "pwsh",
+            "icon": "terminal-powershell"
+        }
+    },
+    // Git
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "git.autofetch": true,
+    // GitLab
+    "gitlab.showStatusBarLinks": true,
+    "gitlab.showStatusBar": true,
+    "gitlab.enableExperimentalFeatures": true,
+}
