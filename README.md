@@ -97,7 +97,9 @@ IIQ_API_TIMEOUT=30000
 
 ### Claude Desktop Integration
 
-To use this MCP server with Claude Desktop, add it to your Claude configuration:
+To use this MCP server with Claude Desktop, see our comprehensive [Claude Desktop Setup Guide](docs/CLAUDE_DESKTOP_SETUP.md).
+
+Quick configuration example:
 
 1. Open Claude Desktop settings
 2. Navigate to Developer > MCP Settings

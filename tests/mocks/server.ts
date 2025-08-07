@@ -3,29 +3,39 @@ import { http, HttpResponse } from 'msw';
 import { mockTickets, mockUsers, mockAssets, mockLocations } from '../fixtures/api-responses';
 
 export const handlers = [
-  // Test connection endpoint
+  // Test connection endpoint - returns paginated object like production
   http.get('https://test.incidentiq.com/api/v1.0/tickets/statuses', () => {
+    const statuses = [
+      { StatusId: '1', StatusName: 'Open', IsDefault: true },
+      { StatusId: '2', StatusName: 'In Progress' },
+      { StatusId: '3', StatusName: 'Closed', IsClosed: true },
+    ];
     return HttpResponse.json({
-      Success: true,
-      Data: [
-        { StatusId: '1', StatusName: 'Open', IsDefault: true },
-        { StatusId: '2', StatusName: 'In Progress' },
-        { StatusId: '3', StatusName: 'Closed', IsClosed: true },
-      ],
+      ItemCount: statuses.length,
+      Items: statuses,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
     });
   }),
 
-  // Ticket endpoints
+  // Ticket endpoints - PowerShell module shows direct response with Items and Paging
   http.post('https://test.incidentiq.com/api/v1.0/tickets', async ({ request }) => {
     const body = await request.json() as any;
+    const filteredTickets = mockTickets.filter(t => 
+      !body?.SearchText || t.Subject?.toLowerCase().includes(body.SearchText.toLowerCase())
+    );
     return HttpResponse.json({
-      Success: true,
-      Data: {
-        Items: mockTickets.filter(t => 
-          !body?.SearchText || t.Subject?.toLowerCase().includes(body.SearchText.toLowerCase())
-        ),
-        TotalCount: mockTickets.length,
+      Items: filteredTickets,
+      ItemCount: filteredTickets.length,
+      TotalCount: mockTickets.length, // Add TotalCount for tests
+      PageIndex: body?.PageIndex || 0,
+      PageSize: body?.PageSize || 20,
+      Paging: {
         PageIndex: body?.PageIndex || 0,
+        PageCount: Math.ceil(filteredTickets.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
       },
     });
@@ -77,19 +87,37 @@ export const handlers = [
     });
   }),
 
-  // User endpoints
+  // User endpoints - PowerShell module shows direct response with Items and Paging
   http.post('https://test.incidentiq.com/api/v1.0/users', async ({ request }) => {
     const body = await request.json() as any;
+    const filteredUsers = mockUsers.filter(u => 
+      !body?.SearchText || u.FullName?.toLowerCase().includes(body.SearchText.toLowerCase())
+    );
     return HttpResponse.json({
-      Success: true,
-      Data: {
-        Items: mockUsers.filter(u => 
-          !body?.SearchText || u.FullName?.toLowerCase().includes(body.SearchText.toLowerCase())
-        ),
-        TotalCount: mockUsers.length,
+      Items: filteredUsers,
+      ItemCount: filteredUsers.length,
+      TotalCount: mockUsers.length, // Add TotalCount for tests
+      PageIndex: body?.PageIndex || 0,
+      PageSize: body?.PageSize || 20,
+      Paging: {
         PageIndex: body?.PageIndex || 0,
+        PageCount: Math.ceil(filteredUsers.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
       },
+    });
+  }),
+
+  http.get('https://test.incidentiq.com/api/v1.0/users/agents', () => {
+    // GET endpoints return paginated object with Items array
+    const agents = mockUsers.filter(u => u.Role === 'IT Agent');
+    return HttpResponse.json({
+      ItemCount: agents.length,
+      Items: agents,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
     });
   }),
 
@@ -102,35 +130,35 @@ export const handlers = [
     });
   }),
 
-  http.get('https://test.incidentiq.com/api/v1.0/users/agents', () => {
-    return HttpResponse.json({
-      Success: true,
-      Data: mockUsers.filter(u => u.Role === 'IT Agent'),
-    });
-  }),
-
-  // Asset endpoints
+  // Asset endpoints - PowerShell module shows direct response with Items and Paging
   http.post('https://test.incidentiq.com/api/v1.0/assets', async ({ request }) => {
     const body = await request.json() as any;
+    const filteredAssets = mockAssets.filter(a => 
+      !body?.SearchText || a.AssetTag.toLowerCase().includes(body.SearchText.toLowerCase())
+    );
     return HttpResponse.json({
-      Success: true,
-      Data: {
-        Items: mockAssets.filter(a => 
-          !body?.SearchText || a.AssetTag.toLowerCase().includes(body.SearchText.toLowerCase())
-        ),
-        TotalCount: mockAssets.length,
+      Items: filteredAssets,
+      ItemCount: filteredAssets.length,
+      TotalCount: mockAssets.length, // Add TotalCount for tests
+      PageIndex: body?.PageIndex || 0,
+      PageSize: body?.PageSize || 20,
+      Paging: {
         PageIndex: body?.PageIndex || 0,
+        PageCount: Math.ceil(filteredAssets.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
       },
     });
   }),
 
-  http.get('https://test.incidentiq.com/api/v1.0/assets/:assetId', ({ params }) => {
-    const asset = mockAssets.find(a => a.AssetId === params.assetId);
+  // Specific routes must come before wildcard routes
+  http.get('https://test.incidentiq.com/api/v1.0/assets/counts', () => {
+    // This endpoint doesn't exist in production (returns 404)
+    // But for testing purposes, return a mock response
     return HttpResponse.json({
-      Success: !!asset,
-      Data: asset || null,
-      ErrorMessage: asset ? undefined : 'Asset not found',
+      Chromebook: 1500,
+      iPad: 300,
+      Desktop: 200,
+      Laptop: 150,
     });
   }),
 
@@ -143,19 +171,16 @@ export const handlers = [
     });
   }),
 
-  http.get('https://test.incidentiq.com/api/v1.0/assets/counts', () => {
+  http.get('https://test.incidentiq.com/api/v1.0/assets/:assetId', ({ params }) => {
+    const asset = mockAssets.find(a => a.AssetId === params.assetId);
     return HttpResponse.json({
-      Success: true,
-      Data: {
-        Chromebook: 1500,
-        iPad: 300,
-        Desktop: 200,
-        Laptop: 150,
-      },
+      Success: !!asset,
+      Data: asset || null,
+      ErrorMessage: asset ? undefined : 'Asset not found',
     });
   }),
 
-  // Location endpoints
+  // Location endpoints - PowerShell module shows direct response with Items and Paging
   http.post('https://test.incidentiq.com/api/v1.0/locations', async ({ request }) => {
     const body = await request.json() as any;
     let filtered = mockLocations;
@@ -175,20 +200,21 @@ export const handlers = [
     }
     
     return HttpResponse.json({
-      Success: true,
-      Data: {
-        Items: filtered,
-        TotalCount: filtered.length,
+      Items: filtered,
+      ItemCount: filtered.length,
+      Paging: {
         PageIndex: body?.PageIndex || 0,
+        PageCount: Math.ceil(filtered.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
       },
     });
   }),
 
   http.get('https://test.incidentiq.com/api/v1.0/locations/all', () => {
+    // GET endpoints return paginated object with Items array
     return HttpResponse.json({
-      Success: true,
-      Data: mockLocations,
+      ItemCount: mockLocations.length,
+      Items: mockLocations,
     });
   }),
 
@@ -201,26 +227,38 @@ export const handlers = [
     });
   }),
 
-  // Categories and Priorities
+  // Categories and Priorities - Return paginated objects like production
   http.get('https://test.incidentiq.com/api/v1.0/tickets/categories', () => {
+    const categories = [
+      { CategoryId: '1', CategoryName: 'Hardware' },
+      { CategoryId: '2', CategoryName: 'Software' },
+      { CategoryId: '3', CategoryName: 'Network' },
+    ];
     return HttpResponse.json({
-      Success: true,
-      Data: [
-        { CategoryId: '1', CategoryName: 'Hardware' },
-        { CategoryId: '2', CategoryName: 'Software' },
-        { CategoryId: '3', CategoryName: 'Network' },
-      ],
+      ItemCount: categories.length,
+      Items: categories,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
     });
   }),
 
   http.get('https://test.incidentiq.com/api/v1.0/tickets/priorities', () => {
+    const priorities = [
+      { PriorityId: '1', PriorityName: 'Low', PriorityLevel: 3 },
+      { PriorityId: '2', PriorityName: 'Medium', PriorityLevel: 2 },
+      { PriorityId: '3', PriorityName: 'High', PriorityLevel: 1 },
+    ];
     return HttpResponse.json({
-      Success: true,
-      Data: [
-        { PriorityId: '1', PriorityName: 'Low' },
-        { PriorityId: '2', PriorityName: 'Medium' },
-        { PriorityId: '3', PriorityName: 'High' },
-      ],
+      ItemCount: priorities.length,
+      Items: priorities,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
     });
   }),
 ];
