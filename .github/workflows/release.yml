@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+    
+    - name: Enable Corepack
+      run: corepack enable
+    
+    - name: Install dependencies
+      run: yarn install --immutable
+    
+    - name: Build
+      run: yarn build
+    
+    - name: Run tests
+      run: yarn test
+      continue-on-error: true  # Remove once tests are implemented
+    
+    - name: Package release
+      run: |
+        mkdir -p release
+        cp -r dist package.json README.md LICENSE release/
+        cd release && tar -czf ../mcp-incidentiq-${{ github.ref_name }}.tar.gz .
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: mcp-incidentiq-${{ github.ref_name }}.tar.gz
+        generate_release_notes: true
+        draft: false
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}

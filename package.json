@@ -1,0 +1,78 @@
+{
+  "name": "mcp-incidentiq",
+  "version": "0.1.0",
+  "description": "MCP server for IncidentIQ - The #1 K-12 service management platform. Enables AI assistants to manage IT tickets, assets, facilities, and more for educational institutions.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": "./dist/index.js",
+  "packageManager": "yarn@4.9.2",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "inspect": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "jest --config jest.config.unit.js --forceExit",
+    "test:watch": "jest --config jest.config.unit.js --watch",
+    "test:coverage": "jest --config jest.config.unit.js --coverage --forceExit",
+    "test:unit": "jest --config jest.config.unit.js --forceExit",
+    "test:e2e": "yarn build && SKIP_E2E=false jest tests/e2e --runInBand",
+    "test:all": "yarn test:unit && yarn test:e2e",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "mcp",
+    "incidentiq",
+    "iiq",
+    "api",
+    "server",
+    "k12",
+    "education",
+    "school-district",
+    "helpdesk",
+    "ticketing",
+    "asset-management",
+    "chromebook",
+    "facilities",
+    "it-support"
+  ],
+  "author": "IIQ Community Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IIQ-Community/mcp-incidentiq.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IIQ-Community/mcp-incidentiq/issues"
+  },
+  "homepage": "https://github.com/IIQ-Community/mcp-incidentiq#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.4",
+    "@types/axios": "^0.14.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.10.0",
+    "jest": "^30.0.5",
+    "jest-util": "^30.0.5",
+    "msw": "^2.10.4",
+    "nodemon": "^3.0.2",
+    "ts-jest": "^29.4.1",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
+}
