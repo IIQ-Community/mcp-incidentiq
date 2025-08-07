@@ -101,12 +101,22 @@ export class IncidentIQClient {
 
   // IT Help Desk - Ticket operations
   async searchTickets(params: IIQSearchParams): Promise<IIQPagedResult<IIQTicket>> {
-    const response = await this.request<IIQApiResponse<IIQPagedResult<IIQTicket>>>({
+    // Use the simple /tickets endpoint which we know works
+    // This matches the PowerShell module pattern
+    const payload = {
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false,
+      ...params
+    };
+    
+    const response = await this.request<IIQPagedResult<IIQTicket>>({
       method: 'POST',
       url: '/tickets',
-      data: params
+      data: payload
     });
-    return response.Data || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+    
+    // API returns paginated data directly, not wrapped in Data property
+    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
   }
 
   async getTicket(ticketId: string): Promise<IIQTicket | null> {
@@ -145,37 +155,49 @@ export class IncidentIQClient {
   }
 
   async getTicketStatuses(): Promise<IIQTicketStatus[]> {
-    const response = await this.request<IIQApiResponse<IIQTicketStatus[]>>({
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
       method: 'GET',
       url: '/tickets/statuses'
     });
-    return response.Data || [];
+    return response?.Items || [];
   }
 
   async getTicketCategories(): Promise<IIQTicketCategory[]> {
-    const response = await this.request<IIQApiResponse<IIQTicketCategory[]>>({
+    // This endpoint doesn't exist (404 in production)
+    const response = await this.request<any>({
       method: 'GET',
       url: '/tickets/categories'
     });
-    return response.Data || [];
+    return response?.Items || [];
   }
 
   async getTicketPriorities(): Promise<IIQTicketPriority[]> {
-    const response = await this.request<IIQApiResponse<IIQTicketPriority[]>>({
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
       method: 'GET',
       url: '/tickets/priorities'
     });
-    return response.Data || [];
+    return response?.Items || [];
   }
 
   // User operations (Students, Staff, Parents)
   async searchUsers(params: IIQSearchParams): Promise<IIQPagedResult<IIQUser>> {
-    const response = await this.request<IIQApiResponse<IIQPagedResult<IIQUser>>>({
+    // PowerShell module shows users endpoint uses POST with specific payload format
+    const payload = {
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false,
+      ...params
+    };
+    
+    const response = await this.request<IIQPagedResult<IIQUser>>({
       method: 'POST',
       url: '/users',
-      data: params
+      data: payload
     });
-    return response.Data || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+    
+    // API returns paginated data directly, not wrapped in Data property
+    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
   }
 
   async getUser(userId: string): Promise<IIQUser | null> {
@@ -187,21 +209,31 @@ export class IncidentIQClient {
   }
 
   async getAgents(): Promise<IIQUser[]> {
-    const response = await this.request<IIQApiResponse<IIQUser[]>>({
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
       method: 'GET',
       url: '/users/agents'
     });
-    return response.Data || [];
+    return response?.Items || [];
   }
 
   // IT Asset Management operations (Chromebooks, iPads, etc.)
   async searchAssets(params: IIQSearchParams): Promise<IIQPagedResult<IIQAsset>> {
-    const response = await this.request<IIQApiResponse<IIQPagedResult<IIQAsset>>>({
+    // PowerShell module shows assets endpoint uses POST with specific payload format
+    const payload = {
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false,
+      ...params
+    };
+    
+    const response = await this.request<IIQPagedResult<IIQAsset>>({
       method: 'POST',
       url: '/assets',
-      data: params
+      data: payload
     });
-    return response.Data || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+    
+    // API returns paginated data directly, not wrapped in Data property
+    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
   }
 
   async getAsset(assetId: string): Promise<IIQAsset | null> {
@@ -213,28 +245,41 @@ export class IncidentIQClient {
   }
 
   async searchAssetByTag(assetTag: string): Promise<IIQAsset | null> {
-    const response = await this.request<IIQApiResponse<IIQAsset>>({
-      method: 'GET',
-      url: `/assets/search/${assetTag}`
+    // Based on validation report, this endpoint may not exist
+    // Use the search endpoint with asset tag filter instead
+    const searchParams = {
+      SearchText: assetTag,
+      PageSize: 1,
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false
+    };
+    
+    const response = await this.request<IIQPagedResult<IIQAsset>>({
+      method: 'POST',
+      url: '/assets',
+      data: searchParams
     });
-    return response.Data || null;
+    
+    return (response && response.Items && response.Items.length > 0) ? response.Items[0] : null;
   }
 
   async getAssetCounts(): Promise<Record<string, number>> {
-    const response = await this.request<IIQApiResponse<Record<string, number>>>({
+    // This endpoint doesn't exist (404 in production)
+    const response = await this.request<Record<string, number>>({
       method: 'GET',
       url: '/assets/counts'
     });
-    return response.Data || {};
+    return response || {};
   }
 
   // Location operations (Buildings, Rooms)
   async getAllLocations(): Promise<IIQLocation[]> {
-    const response = await this.request<IIQApiResponse<IIQLocation[]>>({
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
       method: 'GET',
       url: '/locations/all'
     });
-    return response.Data || [];
+    return response?.Items || [];
   }
 
   async getLocation(locationId: string): Promise<IIQLocation | null> {
@@ -246,22 +291,36 @@ export class IncidentIQClient {
   }
 
   async searchLocations(params: IIQSearchParams): Promise<IIQPagedResult<IIQLocation>> {
-    const response = await this.request<IIQApiResponse<IIQPagedResult<IIQLocation>>>({
+    // PowerShell module pattern for location search
+    const payload = {
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false,
+      ...params
+    };
+    
+    const response = await this.request<IIQPagedResult<IIQLocation>>({
       method: 'POST',
       url: '/locations',
-      data: params
+      data: payload
     });
-    return response.Data || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+    
+    // API returns paginated data directly, not wrapped in Data property
+    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
   }
 
   // Parts inventory for repairs
-  async searchParts(params: IIQSearchParams): Promise<IIQPagedResult<IIQPart>> {
-    const response = await this.request<IIQApiResponse<IIQPagedResult<IIQPart>>>({
-      method: 'POST',
-      url: '/parts',
-      data: params
+  async getParts(): Promise<IIQPart[]> {
+    // PowerShell module shows this uses GET with pagination
+    const response = await this.request<IIQPagedResult<IIQPart> | IIQPart[]>({
+      method: 'GET',
+      url: '/parts'
     });
-    return response.Data || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+    
+    // Handle both paginated and array responses
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return response?.Items || [];
   }
 
   async getPart(partId: string): Promise<IIQPart | null> {
@@ -270,6 +329,119 @@ export class IncidentIQClient {
       url: `/parts/${partId}`
     });
     return response.Data || null;
+  }
+  
+  async getPartsSuppliers(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/parts/suppliers'
+    });
+    return response?.Items || [];
+  }
+
+  // Teams (IT support teams)
+  async getAllTeams(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/teams/all'
+    });
+    return response?.Items || [];
+  }
+
+  // Categories (Asset categories)
+  async searchCategories(params?: IIQSearchParams): Promise<IIQPagedResult<any>> {
+    // PowerShell module: POST /categories
+    const payload = {
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false,
+      ...params
+    };
+    
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'POST',
+      url: '/categories',
+      data: payload
+    });
+    
+    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
+  }
+
+  // Custom Fields
+  async searchCustomFields(entityType: 'User' | 'Asset' | 'Ticket' | 'Room'): Promise<any[]> {
+    // PowerShell module: POST /custom-fields with EntityType filter
+    const payload = {
+      EntityType: entityType,
+      OnlyShowDeleted: false,
+      FilterByViewPermission: false
+    };
+    
+    const response = await this.request<IIQPagedResult<any> | any[]>({
+      method: 'POST',
+      url: '/custom-fields',
+      data: payload
+    });
+    
+    // Handle both paginated and array responses
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return response?.Items || [];
+  }
+
+  async getCustomFieldTypes(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/custom-fields/types'
+    });
+    return response?.Items || [];
+  }
+
+  // Rooms
+  async getLocationRooms(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/locations/rooms'
+    });
+    return response?.Items || [];
+  }
+
+  // Purchase Orders
+  async getPurchaseOrders(): Promise<any[]> {
+    // PowerShell module: GET /purchaseorders with pagination
+    const response = await this.request<IIQPagedResult<any> | any[]>({
+      method: 'GET',
+      url: '/purchaseorders'
+    });
+    
+    // Handle both paginated and array responses
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return response?.Items || [];
+  }
+
+  // Manufacturers
+  async getGlobalManufacturers(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/assets/manufacturers/global'
+    });
+    return response?.Items || [];
+  }
+
+  // Issue Types (for tickets)
+  async getIssueTypes(): Promise<any[]> {
+    // GET endpoints return paginated object with Items array
+    const response = await this.request<any>({
+      method: 'GET',
+      url: '/issues/types'
+    });
+    return response?.Items || [];
   }
 
   // Analytics for district reporting
