@@ -8,7 +8,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 
 ## Current State
 
-The project has a fully functional MCP server implementation with comprehensive testing framework in place. Key features completed:
+**🚀 Initial Release Published**: The project has been successfully pushed to GitHub (IIQ-Community/mcp-incidentiq) with a fully functional MCP server implementation and comprehensive testing framework. Key features completed:
 
 ### Core Implementation
 - **20+ MCP Tools**: Fully implemented tools across tickets, assets, users, and locations domains
@@ -19,10 +19,11 @@ The project has a fully functional MCP server implementation with comprehensive 
 
 ### Testing Framework (Jest + MSW)
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
-- **E2E Tests**: MCP test client for end-to-end testing
+- **E2E Tests**: MCP test client for end-to-end testing (currently disabled due to ES module issues)
 - **Mock Service Worker**: Realistic API mocking with K-12 specific test data
-- **Test Coverage**: 87% test pass rate (47/54 tests passing)
+- **Test Coverage**: 82% test pass rate (67/82 tests passing)
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
+- **Node Modules**: Switched from Yarn PnP to node_modules for better compatibility
 
 ### API Documentation
 The `context/iiq-api/` directory contains 13 Swagger/OpenAPI 2.0 specification files documenting the complete IncidentIQ API surface, covering all six core modules:
