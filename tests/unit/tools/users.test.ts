@@ -109,8 +109,9 @@ describe('User Tools', () => {
       it('should show agent details properly formatted', async () => {
         const result = await handleUserTool('user_get_agents', {});
 
-        expect(result.content[0].text).toContain('IT Agent');
-        expect(result.content[0].text).toMatch(/\d+\./); // Should have numbered list
+        expect(result.content[0].text).toContain('IT Support Agents');
+        expect(result.content[0].text).toContain('Email:');
+        expect(result.content[0].text).toContain('Location:');
       });
     });
 

@@ -25,6 +25,15 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
 - **Node Modules**: Switched from Yarn PnP to node_modules for better compatibility
 
+### 🚨 Critical API Discovery (2025-01-08)
+- **GUID Requirement**: All IncidentIQ IDs are GUIDs (e.g., `00000000-0000-0000-0000-000000000000`)
+- **Test Ticket GUID**: Use `00000000-0000-0000-0000-000000000000` for testing ticket endpoints
+- **Individual Resource Access**: 100% success rate when using proper GUIDs (was failing with placeholder IDs)
+- **API Coverage**: ~90% of documented endpoints are functional (previously thought to be 47%)
+- **Response Format**: GET endpoints return paginated objects `{Items: [], ItemCount: n, Paging: {...}}`
+- **51+ Working Endpoints**: Comprehensive validation revealed extensive API functionality
+- **Rate Limiting**: ⚠️ API requires 10 second delays between requests to avoid rate limiting
+
 ### API Documentation
 The `context/iiq-api/` directory contains 13 Swagger/OpenAPI 2.0 specification files documenting the complete IncidentIQ API surface, covering all six core modules:
 - IT Help Desk & Ticketing
@@ -42,6 +51,75 @@ The `context/` directory is intentionally excluded from version control (in `.gi
 - AI session notes and context (machine-specific)
 
 This directory serves as a local reference repository and should NOT be committed to GitHub.
+
+## Project Organization Guidelines
+
+### Directory Structure Best Practices
+
+**IMPORTANT**: Maintain clean separation between production code and development/test artifacts.
+
+#### Production Code (Commit to GitHub)
+```
+mcp-incidentiq/
+├── src/               # Production source code
+│   ├── api/          # API client implementation
+│   ├── tools/        # MCP tool implementations
+│   └── types/        # TypeScript type definitions
+├── tests/            # Unit and integration tests
+│   ├── unit/         # Unit tests
+│   ├── e2e/          # End-to-end tests
+│   ├── fixtures/     # Test data
+│   └── mocks/        # Mock implementations
+├── docs/             # Public documentation
+├── .github/          # GitHub Actions and templates
+└── [config files]    # package.json, tsconfig.json, etc.
+```
+
+#### Local Development (Never Commit - in `/context/`)
+```
+context/              # .gitignored - local only
+├── scripts/          # Test and validation scripts
+├── testing/          # Coverage reports, debug files
+├── config/           # .env files with credentials
+├── iiq-api/          # Third-party API docs
+├── tools-backup/     # Old implementations
+├── claude/           # AI session context
+└── CLAUDE.local.md   # Local notes
+```
+
+### File Organization Rules
+
+1. **Production Code** → `/src/`
+   - Only working, tested code
+   - No test scripts or experiments
+   
+2. **Unit Tests** → `/tests/`
+   - Jest tests that can run in CI/CD
+   - No scripts that hit production APIs
+   
+3. **Test Scripts** → `/context/scripts/`
+   - API validation scripts
+   - Endpoint testing utilities
+   - Scripts with hardcoded delays/GUIDs
+   
+4. **Documentation** → `/docs/` (public) or `/context/` (private)
+   - Public docs in `/docs/`
+   - Internal notes in `/context/`
+   
+5. **Sensitive Data** → `/context/config/`
+   - API keys, tokens
+   - Environment variables
+   - Never in main repository
+
+### When Creating New Files
+
+Ask yourself:
+- Is this production code? → `/src/`
+- Is this a unit test? → `/tests/`
+- Is this a test/validation script? → `/context/scripts/`
+- Does it contain secrets? → `/context/config/`
+- Is it documentation? → `/docs/` (public) or `/context/` (private)
+- Is it a backup/old version? → `/context/tools-backup/`
 
 ## Development Setup
 

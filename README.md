@@ -24,14 +24,10 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 ### Available MCP Tools
 
 #### 🎫 Ticket Management
-- `ticket_create` - Create new support tickets
-- `ticket_search` - Search tickets with filters
-- `ticket_get` - Get ticket details
-- `ticket_update` - Update ticket information
-- `ticket_close` - Close resolved tickets
-- `ticket_get_statuses` - List available statuses
-- `ticket_get_categories` - List ticket categories
-- `ticket_get_priorities` - List priority levels
+- `ticket_get_wizards` - Get available ticket creation wizards/forms
+- `ticket_get_wizards_by_site` - Get wizards for a specific site
+
+> ⚠️ **Note**: Other ticket operations (create, search, update, close) require additional API permissions. Contact your IncidentIQ administrator if you need these functions.
 
 #### 💻 Asset Management
 - `asset_search` - Search IT assets with filters

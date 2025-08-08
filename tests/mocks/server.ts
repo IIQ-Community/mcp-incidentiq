@@ -21,6 +21,68 @@ export const handlers = [
     });
   }),
 
+  // Ticket wizard endpoints
+  http.get('https://test.incidentiq.com/api/v1.0/tickets/wizards', () => {
+    const wizards = [
+      { 
+        TicketWizardCategoryId: 'wiz-1', 
+        Name: 'General Support Request', 
+        Description: 'General IT support',
+        ProductName: 'General',
+        Icon: '📋'
+      },
+      { 
+        TicketWizardCategoryId: 'wiz-2', 
+        Name: 'Device Issue', 
+        Description: 'Report device problems',
+        ProductName: 'Hardware',
+        Icon: '💻'
+      },
+      { 
+        TicketWizardCategoryId: 'wiz-3', 
+        Name: 'Password Reset', 
+        Description: 'Reset your password',
+        ProductName: 'Account',
+        Icon: '🔐'
+      },
+    ];
+    return HttpResponse.json({
+      ItemCount: wizards.length,
+      Items: wizards,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
+    });
+  }),
+
+  http.get('https://test.incidentiq.com/api/v1.0/tickets/wizards/site/:siteId', ({ params }) => {
+    const wizards = [
+      { 
+        TicketWizardCategoryId: 'wiz-1', 
+        Name: 'General Support Request', 
+        Description: 'General IT support', 
+        SiteId: params.siteId 
+      },
+      { 
+        TicketWizardCategoryId: 'wiz-2', 
+        Name: 'Device Issue', 
+        Description: 'Report device problems', 
+        SiteId: params.siteId 
+      },
+    ];
+    return HttpResponse.json({
+      ItemCount: wizards.length,
+      Items: wizards,
+      Paging: {
+        PageIndex: 0,
+        PageCount: 1,
+        PageSize: 20
+      }
+    });
+  }),
+
   // Ticket endpoints - PowerShell module shows direct response with Items and Paging
   http.post('https://test.incidentiq.com/api/v1.0/tickets', async ({ request }) => {
     const body = await request.json() as any;
