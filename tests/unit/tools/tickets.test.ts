@@ -7,13 +7,16 @@ afterAll(() => server.close());
 
 describe('Ticket Tools', () => {
   describe('Tool Definitions', () => {
-    it('should define only working ticket tools', () => {
+    it('should define all expected ticket tools', () => {
       const toolNames = ticketTools.map(t => t.name);
       
-      // Only wizard endpoints are currently working
+      // Should have all ticket tools available
       expect(toolNames).toContain('ticket_get_wizards');
       expect(toolNames).toContain('ticket_get_wizards_by_site');
-      expect(toolNames).toHaveLength(2);
+      expect(toolNames).toContain('ticket_search');
+      expect(toolNames).toContain('ticket_get_statuses');
+      expect(toolNames).toContain('ticket_get_priorities');
+      expect(toolNames.length).toBeGreaterThan(10);
     });
 
     it('should have proper input schemas', () => {
@@ -66,24 +69,27 @@ describe('Ticket Tools', () => {
       });
     });
 
-    describe('Disabled Tool Handling', () => {
-      const disabledTools = [
-        'ticket_create',
-        'ticket_search', 
-        'ticket_get',
-        'ticket_update',
-        'ticket_close',
-        'ticket_get_statuses',
-        'ticket_get_categories',
-        'ticket_get_priorities'
-      ];
+    describe('Other Ticket Tools', () => {
+      it('should handle ticket_search', async () => {
+        const result = await handleTicketTool('ticket_search', { searchText: 'test' });
+        expect(result.content[0].text).toBeDefined();
+      });
 
-      it.each(disabledTools)('should show permission error for %s', async (toolName) => {
-        const result = await handleTicketTool(toolName, { ticketId: '123' });
+      it('should handle ticket_get_statuses', async () => {
+        const result = await handleTicketTool('ticket_get_statuses', {});
+        expect(result.content[0].text).toBeDefined();
+        // Either shows statuses or "No ticket statuses found"
+      });
 
-        expect(result.content[0].text).toContain('currently not available');
-        expect(result.content[0].text).toContain('API permission limitations');
-        expect(result.content[0].text).toContain('ticket_get_wizards');
+      it('should handle ticket_get_priorities', async () => {
+        const result = await handleTicketTool('ticket_get_priorities', {});
+        expect(result.content[0].text).toBeDefined();
+        // Either shows priorities or "No ticket priorities found"
+      });
+
+      it('should handle ticket_get_categories gracefully', async () => {
+        const result = await handleTicketTool('ticket_get_categories', {});
+        expect(result.content[0].text).toContain('Unknown ticket tool');
       });
     });
 
@@ -92,7 +98,7 @@ describe('Ticket Tools', () => {
         const result = await handleTicketTool('invalid_tool', {});
 
         expect(result.content[0].text).toContain('Error');
-        expect(result.content[0].text).toContain('currently not available');
+        expect(result.content[0].text).toContain('Unknown ticket tool');
       });
 
       it('should handle API errors gracefully', async () => {

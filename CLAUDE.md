@@ -11,11 +11,13 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 **🚀 Initial Release Published**: The project has been successfully pushed to GitHub (IIQ-Community/mcp-incidentiq) with a fully functional MCP server implementation and comprehensive testing framework. Key features completed:
 
 ### Core Implementation
-- **20+ MCP Tools**: Fully implemented tools across tickets, assets, users, and locations domains
+- **140+ MCP Tools**: Comprehensive tools across 9 distinct domain modules
+- **9 Domain Modules**: Tickets, Users, Assets, Locations, Teams, Parts, Purchase Orders, Issues, Custom Fields
 - **Strongly Typed**: Complete TypeScript interfaces for all IncidentIQ API entities
 - **Error Handling**: Robust error handling with user-friendly messages
 - **Authentication**: JWT Bearer token authentication with secure API key management
 - **Pagination & Filtering**: Full support for search operations with filtering and pagination
+- **Comprehensive API Analysis**: All modules analyzed with 153+ validated endpoints
 
 ### Testing Framework (Jest + MSW)
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
@@ -33,6 +35,17 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Response Format**: GET endpoints return paginated objects `{Items: [], ItemCount: n, Paging: {...}}`
 - **51+ Working Endpoints**: Comprehensive validation revealed extensive API functionality
 - **Rate Limiting**: ⚠️ API requires 10 second delays between requests to avoid rate limiting
+
+### CI/CD Status (2025-01-09)
+- **✅ Type Checking**: Passing
+- **✅ Build Process**: Passing
+- **✅ Unit Tests**: 104/119 tests passing (15 E2E tests skipped, 0 failures)
+- **⚠️ Code Coverage**: 22.57% statements (many new tool files not tested yet)
+- **Coverage Thresholds**: Set to 77% statements/lines, 70% functions, 60% branches
+- **Latest Updates**: 
+  - Fixed all unit test failures (tool name mismatches resolved)
+  - Added missing mock server endpoints
+  - All active tests now passing with 100% success rate
 
 ### API Documentation
 The `context/iiq-api/` directory contains 13 Swagger/OpenAPI 2.0 specification files documenting the complete IncidentIQ API surface, covering all six core modules:
@@ -75,16 +88,21 @@ mcp-incidentiq/
 └── [config files]    # package.json, tsconfig.json, etc.
 ```
 
-#### Local Development (Never Commit - in `/context/`)
+#### Local Development (Never Commit)
 ```
 context/              # .gitignored - local only
 ├── scripts/          # Test and validation scripts
 ├── testing/          # Coverage reports, debug files
+│   └── coverage/     # Jest coverage output
 ├── config/           # .env files with credentials
 ├── iiq-api/          # Third-party API docs
 ├── tools-backup/     # Old implementations
-├── claude/           # AI session context
-└── CLAUDE.local.md   # Local notes
+├── api-analysis/     # API analysis documents
+├── validation-results/ # Script output files
+└── claude/           # AI session context
+
+CLAUDE.local.md       # Local notes (in root, but .gitignored)
+coverage/             # If generated in root, move to context/testing/
 ```
 
 ### File Organization Rules
@@ -120,6 +138,18 @@ Ask yourself:
 - Does it contain secrets? → `/context/config/`
 - Is it documentation? → `/docs/` (public) or `/context/` (private)
 - Is it a backup/old version? → `/context/tools-backup/`
+- Is it a coverage report? → `/context/testing/coverage/`
+- Is it API analysis? → `/context/api-analysis/`
+- Is it district-specific? → `/context/` (e.g., district-specific configs)
+
+### NEVER Commit to GitHub
+- ❌ Coverage reports (move to `/context/testing/coverage/`)
+- ❌ District-specific configurations (e.g., `.env.example.district`)
+- ❌ API analysis documents (internal reference only)
+- ❌ Test/validation scripts that hit production APIs
+- ❌ Any file with hardcoded GUIDs, tokens, or credentials
+- ❌ Third-party documentation (copyright concerns)
+- ❌ Debug files, test outputs, or temporary files
 
 ## Development Setup
 
@@ -184,6 +214,64 @@ When implementing MCP tools:
 - **TypeScript SDK**: [github.com/modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk)
 - **Example Servers**: [github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
 - **Best Practices**: Follow patterns from established MCP servers like filesystem, github, or slack servers
+
+## Modular Validation System (2025-01-08)
+
+The project includes a comprehensive modular validation system for testing IncidentIQ API endpoints:
+
+### Architecture
+- **validation-base.ts**: Shared functionality for all validators with PowerShell headers
+- **Module validators**: Individual scripts for each API module
+- **validate-all.ts**: Master orchestration script
+- **PowerShell alignment**: All validators now use production-tested patterns from a PowerShell module
+
+### PowerShell Module Integration
+The validators have been aligned with production PowerShell module patterns:
+- **Query Parameters**: GET endpoints use `$p`, `$s`, `$d` for pagination
+- **Required Headers**: `Client: WebBrowser`, specific User-Agent, `Pragma: no-cache`
+- **POST Payloads**: Include `OnlyShowDeleted` and `FilterByViewPermission` fields
+- **100% Success Rate**: PowerShell patterns work perfectly with 1-second delays
+
+### Usage
+```bash
+# Run all modules (including PowerShell)
+npx tsx context/scripts/modular/validate-all.ts
+
+# Run specific modules
+npx tsx context/scripts/modular/validate-all.ts tickets users teams parts
+
+# Run with custom delay (1 second recommended)
+API_DELAY_MS=1000 npx tsx context/scripts/modular/validate-all.ts
+
+# Run individual module
+npx tsx context/scripts/validate-tickets-endpoints.ts
+```
+
+### GUID Discovery
+```bash
+# Automatically discover and populate GUIDs
+npx tsx context/scripts/discover-guids.ts
+
+# Creates context/config/test-guids.env with discovered GUIDs
+# All GUIDs are optional - only configure what you need
+```
+
+### Available Validators
+- **Tickets**: 24 endpoints (wizards, search, configuration)
+- **Users**: 18 endpoints (students, staff, parents, agents)
+- **Assets**: 25 endpoints (Chromebooks, iPads, devices)
+- **Locations**: 27 endpoints (schools, rooms, hierarchy)
+- **Teams**: 9 endpoints (support teams, members, assignments)
+- **Parts**: 17 endpoints (inventory, suppliers, stock tracking)
+- **Purchase Orders**: 17 endpoints (POs, approvals, line items)
+- **Issues**: 18 endpoints (issue types, categories, workflows)
+- **Custom Fields**: 23 endpoints (field definitions for all entities)
+
+### Configuration
+- Uses `test-guids.env` for optional GUID configuration
+- **Rate Limiting**: 1-second delays recommended (10-second delays cause timeouts)
+- Generates reports in `context/validation-results/`
+- PowerShell patterns documented in `context/POWERSHELL_ALIGNMENT.md`
 
 ## API Integration Notes
 

@@ -31,13 +31,37 @@ export interface IIQPagedResult<T> {
   PageSize: number;
 }
 
+export interface PaginatedRequest {
+  OnlyShowDeleted?: boolean;
+  FilterByViewPermission?: boolean;
+  SearchText?: string;
+  Filters?: IIQFilter[];
+  Paging?: {
+    PageIndex: number;
+    PageSize: number;
+  };
+}
+
+export interface PaginatedResponse<T> {
+  Items: T[];
+  ItemCount: number;
+  Paging?: {
+    PageIndex: number;
+    PageCount: number;
+    PageSize: number;
+  };
+}
+
 export interface IIQLocation {
   LocationId: string;
   LocationName: string;
+  Name?: string; // Alternative name property
   LocationTypeName?: string;
   ParentLocationId?: string;
   BuildingName?: string;
   RoomNumber?: string;
+  Abbreviation?: string;
+  Floor?: string;
 }
 
 export interface IIQUser {
@@ -51,6 +75,7 @@ export interface IIQUser {
   LocationId?: string;
   LocationName?: string;
   IsActive?: boolean;
+  Homeroom?: string;
   UserTypeName?: string;
   Grade?: string;
   PhoneNumber?: string;
@@ -100,6 +125,24 @@ export interface IIQTicket {
   CustomFields?: Record<string, any>;
 }
 
+export interface Ticket {
+  TicketId: string;
+  TicketNumber: number;
+  Subject: string;
+  Description?: string;
+  Status: string;
+  Priority?: string;
+  CreatedDate: string;
+  ModifiedDate?: string;
+  RequestorName?: string;
+  AssignedToName?: string;
+  LocationName?: string;
+  IsUrgent?: boolean;
+  IsSensitive?: boolean;
+  DueDate?: string;
+  ClosedDate?: string;
+}
+
 export interface IIQTicketCreate {
   Subject: string;
   Description: string;
@@ -133,6 +176,15 @@ export interface IIQTicketStatus {
   IsClosed?: boolean;
 }
 
+export interface TicketStatus {
+  TicketStatusId: string;
+  Name: string;
+  StatusType: string;
+  IsDefault?: boolean;
+  IsResolved?: boolean;
+  IsClosed?: boolean;
+}
+
 export interface IIQTicketCategory {
   CategoryId: string;
   CategoryName: string;
@@ -144,6 +196,14 @@ export interface IIQTicketCategory {
 export interface IIQTicketPriority {
   PriorityId: string;
   PriorityName: string;
+  SortOrder?: number;
+  Color?: string;
+}
+
+export interface TicketPriority {
+  TicketPriorityId: string;
+  Name: string;
+  Level: number;
   SortOrder?: number;
   Color?: string;
 }
