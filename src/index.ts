@@ -16,6 +16,14 @@ import { ticketTools, handleTicketTool } from './tools/tickets.js';
 import { userTools, handleUserTool } from './tools/users.js';
 import { assetTools, handleAssetTool } from './tools/assets.js';
 import { locationTools, handleLocationTool } from './tools/locations.js';
+import { teamTools, handleTeamTool } from './tools/teams.js';
+import { PartsTools } from './tools/parts.js';
+import { purchaseOrderTools, handlePurchaseOrderTool } from './tools/purchaseorders.js';
+import { IssueTools } from './tools/issues.js';
+import { CustomFieldTools } from './tools/customfields.js';
+import { SLATools } from './tools/slas.js';
+import { ViewTools } from './tools/views.js';
+import { NotificationTools } from './tools/notifications.js';
 import { IncidentIQClient } from './api/client.js';
 
 // Create server instance for IncidentIQ K-12 service management platform
@@ -31,6 +39,15 @@ const server = new Server(
     },
   }
 );
+
+// Initialize tool handlers
+const client = new IncidentIQClient();
+const partsTools = new PartsTools(client);
+const issueTools = new IssueTools(client);
+const customFieldTools = new CustomFieldTools(client);
+const slaTools = new SLATools(client);
+const viewTools = new ViewTools(client);
+const notificationTools = new NotificationTools(client);
 
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -53,6 +70,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       ...assetTools,
       // Location Management (Buildings, Rooms)
       ...locationTools,
+      // Teams Management
+      ...teamTools,
+      // Parts & Inventory Management
+      ...partsTools.getTools(),
+      // Purchase Orders
+      ...purchaseOrderTools,
+      // Issues & Categories
+      ...issueTools.getTools(),
+      // Custom Fields
+      ...customFieldTools.getTools(),
+      // SLA Management
+      ...slaTools.getTools(),
+      // View Management
+      ...viewTools.getTools(),
+      // Notifications & Emails
+      ...notificationTools.getTools(),
     ],
   };
 });
@@ -106,6 +139,160 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   // Location tools
   if (name.startsWith('location_')) {
     return await handleLocationTool(name, args);
+  }
+
+  // Team tools
+  if (name.startsWith('team_')) {
+    return await handleTeamTool(name, args);
+  }
+
+  // Parts tools
+  if (name.startsWith('part_')) {
+    try {
+      const result = await partsTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  // Purchase Order tools
+  if (name.startsWith('purchaseorder_')) {
+    return await handlePurchaseOrderTool(name, args);
+  }
+
+  // Issue tools
+  if (name.startsWith('issue_')) {
+    try {
+      const result = await issueTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  // Custom Field tools
+  if (name.startsWith('customfield_')) {
+    try {
+      const result = await customFieldTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  // SLA tools
+  if (name.startsWith('sla_')) {
+    try {
+      const result = await slaTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  // View tools
+  if (name.startsWith('view_')) {
+    try {
+      const result = await viewTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+
+  // Notification tools
+  if (name.startsWith('notification_')) {
+    try {
+      const result = await notificationTools.handleToolCall(name, args);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: ${error.message}`,
+          },
+        ],
+      };
+    }
   }
 
   throw new Error(`Unknown tool: ${name}`);

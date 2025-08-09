@@ -32,13 +32,26 @@ export class IncidentIQClient {
       throw new Error('IncidentIQ API key is required. Please configure your district\'s API key.');
     }
 
+    // Build headers with Site ID and Product ID if available
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    
+    // Add Site ID header if configured
+    if (process.env.IIQ_SITE_ID) {
+      headers['SiteId'] = process.env.IIQ_SITE_ID;
+    }
+    
+    // Add Product ID for ticketing if configured (may be required for some endpoints)
+    if (process.env.IIQ_PRODUCT_ID_TICKETS) {
+      headers['ProductId'] = process.env.IIQ_PRODUCT_ID_TICKETS;
+    }
+
     this.client = axios.create({
       baseURL,
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers,
       timeout: parseInt(process.env.IIQ_API_TIMEOUT || '30000'),
     });
 
@@ -453,4 +466,149 @@ export class IncidentIQClient {
     });
     return response.Data || null;
   }
+
+  // ========== SLA Management (NEW) ==========
+  
+  // Get all SLAs
+  async getSLAs(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/slas'
+    });
+    return response.Items || [];
+  }
+
+  // Get SLA metrics
+  async getSLAMetrics(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/metrics'
+    });
+    return response.Items || [];
+  }
+
+  // Get SLA metric types
+  async getSLAMetricTypes(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/metrics/types'
+    });
+    return response.Items || [];
+  }
+
+  // Get ticket SLA status
+  async getTicketSLA(ticketId: string): Promise<any | null> {
+    const response = await this.request<any>({
+      method: 'GET',
+      url: `/tickets/${ticketId}/sla`
+    });
+    return response.Item || response || null;
+  }
+
+  // ========== View Management (NEW) ==========
+  
+  // Get user views
+  async getUserViews(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/users/views'
+    });
+    return response.Items || [];
+  }
+
+  // Get all views
+  async getViews(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/views'
+    });
+    return response.Items || [];
+  }
+
+  // Get ticket views
+  async getTicketViews(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/views/tickets'
+    });
+    return response.Items || [];
+  }
+
+  // Get asset views  
+  async getAssetViews(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/views/assets'
+    });
+    return response.Items || [];
+  }
+
+  // Get user-specific views
+  async getUserSpecificViews(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/views/users'
+    });
+    return response.Items || [];
+  }
+
+  // ========== Notifications & Emails (NEW) ==========
+  
+  // Get emails for a ticket
+  async getTicketEmails(ticketId: string): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: `/notifications/emails/for/ticket/${ticketId}`
+    });
+    return response.Items || [];
+  }
+
+  // Query notifications
+  async queryNotifications(params?: { IncludeRead?: boolean; IncludeArchived?: boolean; IncludeUnarchived?: boolean }): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'POST',
+      url: '/notifications',
+      data: params || { IncludeRead: true, IncludeArchived: false, IncludeUnarchived: true }
+    });
+    return response.Items || [];
+  }
+
+  // Get unarchived notifications
+  async getUnarchivedNotifications(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/notifications/unarchived'
+    });
+    return response.Items || [];
+  }
+
+  // Get unread notifications
+  async getUnreadNotifications(): Promise<any[]> {
+    const response = await this.request<IIQPagedResult<any>>({
+      method: 'GET',
+      url: '/notifications/unread'
+    });
+    return response.Items || [];
+  }
+
+  // Mark all notifications as read
+  async markAllNotificationsRead(): Promise<boolean> {
+    const response = await this.request<any>({
+      method: 'POST',
+      url: '/notifications/all-read'
+    });
+    return response.StatusCode === 200;
+  }
+
+  // Mark specific notification as read
+  async markNotificationRead(notificationId: string): Promise<boolean> {
+    const response = await this.request<any>({
+      method: 'POST',
+      url: `/notifications/${notificationId}/read`
+    });
+    return response.StatusCode === 200;
+  }
 }
+
+// Export alias for tools
+export { IncidentIQClient as ApiClient };

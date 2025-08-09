@@ -239,5 +239,197 @@ describe('IncidentIQClient', () => {
         expect(location).toBeNull();
       });
     });
+
+    describe('searchLocations', () => {
+      it('should search locations with filters', async () => {
+        const result = await client.searchLocations({
+          SearchText: 'building',
+          PageSize: 5
+        });
+
+        expect(result).toBeDefined();
+        expect(result.Items).toBeDefined();
+        expect(Array.isArray(result.Items)).toBe(true);
+      });
+    });
+  });
+
+  describe('Additional API Methods', () => {
+    describe('Teams', () => {
+      it('should get all teams', async () => {
+        const teams = await client.getAllTeams();
+        expect(Array.isArray(teams)).toBe(true);
+      });
+    });
+
+    describe('Parts Management', () => {
+      it('should get all parts', async () => {
+        const parts = await client.getParts();
+        expect(Array.isArray(parts)).toBe(true);
+      });
+
+      it('should get individual part', async () => {
+        const part = await client.getPart('part-123');
+        expect(part).toBeDefined();
+      });
+
+      it('should get parts suppliers', async () => {
+        const suppliers = await client.getPartsSuppliers();
+        expect(Array.isArray(suppliers)).toBe(true);
+      });
+    });
+
+    describe('Categories and Custom Fields', () => {
+      it('should search categories', async () => {
+        const result = await client.searchCategories({ SearchText: 'hardware' });
+        expect(result).toBeDefined();
+        expect(result.Items).toBeDefined();
+      });
+
+      it('should search custom fields for tickets', async () => {
+        const fields = await client.searchCustomFields('Ticket');
+        expect(Array.isArray(fields)).toBe(true);
+      });
+
+      it('should get custom field types', async () => {
+        const types = await client.getCustomFieldTypes();
+        expect(Array.isArray(types)).toBe(true);
+      });
+    });
+
+    describe('Location Extensions', () => {
+      it('should get location rooms', async () => {
+        const rooms = await client.getLocationRooms();
+        expect(Array.isArray(rooms)).toBe(true);
+      });
+    });
+
+    describe('Purchase Orders', () => {
+      it('should get purchase orders', async () => {
+        const pos = await client.getPurchaseOrders();
+        expect(Array.isArray(pos)).toBe(true);
+      });
+    });
+
+    describe('Manufacturers and Issues', () => {
+      it('should get global manufacturers', async () => {
+        const manufacturers = await client.getGlobalManufacturers();
+        expect(Array.isArray(manufacturers)).toBe(true);
+      });
+
+      it('should get issue types', async () => {
+        const types = await client.getIssueTypes();
+        expect(Array.isArray(types)).toBe(true);
+      });
+    });
+
+    describe('Analytics', () => {
+      it('should get analytics report', async () => {
+        const report = await client.getAnalyticsReport('TicketSummary');
+        expect(report).toBeDefined();
+      });
+    });
+
+    describe('SLA Management', () => {
+      it('should get SLAs', async () => {
+        const slas = await client.getSLAs();
+        expect(Array.isArray(slas)).toBe(true);
+      });
+
+      it('should get SLA metrics', async () => {
+        const metrics = await client.getSLAMetrics();
+        expect(Array.isArray(metrics)).toBe(true);
+      });
+
+      it('should get SLA metric types', async () => {
+        const types = await client.getSLAMetricTypes();
+        expect(Array.isArray(types)).toBe(true);
+      });
+
+      it('should get ticket SLA', async () => {
+        const sla = await client.getTicketSLA('ticket-123');
+        expect(sla).toBeDefined();
+      });
+    });
+
+    describe('View Management', () => {
+      it('should get user views', async () => {
+        const views = await client.getUserViews();
+        expect(Array.isArray(views)).toBe(true);
+      });
+
+      it('should get views', async () => {
+        const views = await client.getViews();
+        expect(Array.isArray(views)).toBe(true);
+      });
+
+      it('should get ticket views', async () => {
+        const views = await client.getTicketViews();
+        expect(Array.isArray(views)).toBe(true);
+      });
+
+      it('should get asset views', async () => {
+        const views = await client.getAssetViews();
+        expect(Array.isArray(views)).toBe(true);
+      });
+    });
+
+    describe('Notifications', () => {
+      it('should get ticket emails', async () => {
+        const emails = await client.getTicketEmails('ticket-123');
+        expect(Array.isArray(emails)).toBe(true);
+      });
+
+      it('should query notifications', async () => {
+        const notifications = await client.queryNotifications();
+        expect(Array.isArray(notifications)).toBe(true);
+      });
+
+      it('should get unarchived notifications', async () => {
+        const notifications = await client.getUnarchivedNotifications();
+        expect(Array.isArray(notifications)).toBe(true);
+      });
+
+      it('should mark all notifications read', async () => {
+        const result = await client.markAllNotificationsRead();
+        expect(typeof result).toBe('boolean');
+      });
+    });
+  });
+
+  describe('Error Handling and Edge Cases', () => {
+    describe('Input Validation', () => {
+      it('should handle empty parameters', async () => {
+        const result = await client.searchTickets({});
+        expect(result).toBeDefined();
+      });
+
+      it('should handle null IDs', async () => {
+        // Empty ID should result in an API error (405 Method Not Allowed)
+        await expect(client.getTicket('')).rejects.toThrow();
+      });
+    });
+
+    describe('Network Errors', () => {
+      it('should handle API errors gracefully', async () => {
+        const result = await client.getTicket('error-trigger');
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('Configuration', () => {
+      it('should handle missing parameters in constructor', () => {
+        const client1 = new IncidentIQClient();
+        expect(client1).toBeDefined();
+
+        const client2 = new IncidentIQClient('https://test.com');
+        expect(client2).toBeDefined();
+      });
+
+      it('should handle configuration options', () => {
+        const client = new IncidentIQClient('https://test.com', 'key');
+        expect(client).toBeDefined();
+      });
+    });
   });
 });
