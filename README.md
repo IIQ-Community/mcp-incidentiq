@@ -70,8 +70,6 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `ticket_get_wizards` - Get available ticket creation wizards
 - `ticket_get_wizards_by_site` - Get wizards for a specific site
 
-> ✅ **Major Update (2025-01-08)**: Discovered that 21 out of 29 ticket endpoints are fully functional! The API key has sufficient permissions for most ticket operations including search, status updates, and priority management.
-
 #### 💻 Asset Management
 - `asset_search` - Search IT assets with filters
 - `asset_get_by_tag` - Look up asset by tag number
@@ -155,7 +153,19 @@ IIQ_API_TIMEOUT=30000
 3. Generate or copy your API key (JWT token)
 4. Note your district's base URL (format: `https://[district].incidentiq.com`)
 
-### Claude Desktop Integration
+### Integration with AI Assistants
+
+#### Claude Code Integration
+
+To add this MCP server to Claude Code, run the following command:
+
+```bash
+npx @anthropic/claude-code mcp add /path/to/mcp-incidentiq
+```
+
+This will automatically configure Claude Code to use the IncidentIQ MCP server.
+
+#### Claude Desktop Integration
 
 To use this MCP server with Claude Desktop, see our comprehensive [Claude Desktop Setup Guide](docs/CLAUDE_DESKTOP_SETUP.md).
 
