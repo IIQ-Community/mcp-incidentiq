@@ -132,20 +132,20 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `customfield_get_asset_values` / `customfield_get_ticket_values` / `customfield_get_user_values` / `customfield_get_location_values` - Field values
 - `customfield_validate_value` / `customfield_get_required` / `customfield_get_options` - Validation
 
-#### 📈 SLA Management (NEW!)
+#### 📈 SLA Management (4 tools)
 - `sla_list` - Get all configured SLAs
 - `sla_get_metrics` - Get SLA performance metrics
 - `sla_get_metric_types` - Get metric types (Response/Resolution/Custom)
 - `sla_get_ticket_status` - Check SLA compliance for a ticket
 
-#### 👁️ View Management (NEW!)
+#### 👁️ View Management (5 tools)
 - `view_list_all` - Get all available views
 - `view_list_user` - Get user-specific views
 - `view_list_tickets` - Get ticket views
 - `view_list_assets` - Get asset views
 - `view_list_users` - Get user directory views
 
-#### 🔔 Notifications & Emails (NEW!)
+#### 🔔 Notifications & Emails (6 tools)
 - `notification_get_ticket_emails` - Get emails for a ticket
 - `notification_query` - Search notifications with filters
 - `notification_get_unread` - Get unread notifications
@@ -433,6 +433,10 @@ We welcome contributions from the K-12 IT community! Please see our [Contributin
 - **Discussions**: [GitHub Discussions](https://github.com/IIQ-Community/mcp-incidentiq/discussions)
 - **Security**: See [SECURITY.md](SECURITY.md) for reporting vulnerabilities
 - **IncidentIQ Support**: Contact your district's IncidentIQ administrator
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes and version history.
 
 ## License
 
