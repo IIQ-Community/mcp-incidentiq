@@ -1,5 +1,12 @@
-# Dependencies
-node_modules/
+# mcp-incidentiq .gitignore
+# Stack: Node.js / TypeScript (Yarn 4)
+# Last updated: 2026-06-13
+# Ignores dependencies, build artifacts, IDE/OS files, secrets, and local tooling state.
+
+# ============================================================================
+# Dependencies (Node.js / Yarn 4)
+# ============================================================================
+.pnp.*
 .yarn/*
 !.yarn/cache
 !.yarn/patches
@@ -7,43 +14,74 @@ node_modules/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-.pnp.*
+node_modules/
 
+# ============================================================================
+# Foreign lock files (this is a Yarn project - never commit other managers')
+# ============================================================================
+bun.lockb
+package-lock.json
+pnpm-lock.yaml
+
+# ============================================================================
 # Build output
-dist/
-build/
+# ============================================================================
 *.tsbuildinfo
+build/
+dist/
 
-# Environment variables
+# ============================================================================
+# Testing
+# ============================================================================
+.nyc_output/
+coverage/
+
+# ============================================================================
+# Environment variables (allow the committed example template)
+# ============================================================================
 .env
-.env.local
 .env.*.local
+.env.local
+!.env.example
 
-# IDE
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
+# ============================================================================
 # Logs
-logs/
+# ============================================================================
 *.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Testing
-coverage/
-.nyc_output/
-
+# ============================================================================
 # Temporary files
-tmp/
-temp/
+# ============================================================================
 *.tmp
+temp/
+tmp/
 
-# AI Agent (Claude) Items
+# ============================================================================
+# OS-Specific
+# ============================================================================
+.DS_Store
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ============================================================================
+# IDE (.vscode/ is intentionally committed for shared settings)
+# ============================================================================
+*.swo
+*.swp
+*~
+.idea/
+
+# ============================================================================
+# AI agents & local tooling state
+# ============================================================================
 .claude/
-context/
+.codegraph/
 CLAUDE.local.md
+context/
