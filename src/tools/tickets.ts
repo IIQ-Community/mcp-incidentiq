@@ -11,13 +11,20 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { 
-  Ticket, 
-  TicketStatus, 
+import {
+  Ticket,
+  TicketStatus,
   TicketPriority,
   PaginatedRequest,
-  PaginatedResponse 
+  PaginatedResponse,
+  TicketSearchArgs,
 } from '../types/common.js';
+import {
+  buildTicketFilters,
+  filterByStatusId,
+  isValidEmail,
+  resolveMaxPages,
+} from './ticket-search.js';
 
 // Initialize client lazily to ensure environment variables are loaded
 let client: IncidentIQClient | null = null;
@@ -33,7 +40,7 @@ export const ticketTools = [
   // Search and List Operations
   {
     name: 'ticket_search',
-    description: 'Search for tickets with optional filters and pagination',
+    description: 'Search for tickets with optional facet filters (status/agent/team/location) and pagination. Within a facet multiple values are OR; across facets they are AND.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -44,6 +51,31 @@ export const ticketTools = [
         onlyShowDeleted: {
           type: 'boolean',
           description: 'Show only deleted tickets (default: false)',
+        },
+        statusIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by ticket status GUIDs (from ticket_get_statuses). Multiple values match ANY (OR).',
+        },
+        agentIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by assigned agent user GUIDs. Multiple values match ANY (OR).',
+        },
+        agentEmails: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by assigned agent email address (any domain); each is resolved to a user GUID.',
+        },
+        teamIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by team GUIDs. Multiple values match ANY (OR).',
+        },
+        locationIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by location GUIDs. Multiple values match ANY (OR).',
         },
         pageSize: {
           type: 'number',
@@ -284,47 +316,128 @@ export async function handleTicketTool(name: string, args: any) {
     switch (name) {
       // Search and List Operations
       case 'ticket_search': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: args.onlyShowDeleted || false,
-          FilterByViewPermission: false,
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 20,
-          },
-        };
-        
-        if (args.searchText) {
-          payload.SearchText = args.searchText;
-        }
-        
-        const response = await client.request<PaginatedResponse<Ticket>>({
-          method: 'POST',
-          url: '/tickets',
-          data: payload,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [
-              {
+        const searchArgs = args as TicketSearchArgs;
+
+        // Resolve agent emails -> UserIds (any valid email/domain; never silently drop).
+        const resolvedAgentIds: string[] = [...(searchArgs.agentIds ?? [])];
+        if (searchArgs.agentEmails && searchArgs.agentEmails.length > 0) {
+          const malformed = searchArgs.agentEmails.filter((email) => !isValidEmail(email));
+          if (malformed.length > 0) {
+            return {
+              content: [{
                 type: 'text',
-                text: 'No tickets found matching your search criteria.',
-              },
-            ],
+                text: `Invalid email address(es): ${malformed.join(', ')}. Provide well-formed email addresses.`,
+              }],
+            };
+          }
+          const unresolved: string[] = [];
+          for (const email of searchArgs.agentEmails) {
+            const userResult = await client.searchUsers({ SearchText: email, PageSize: 100 });
+            const match = userResult.Items.find(
+              (user) => (user.Email ?? '').toLowerCase() === email.toLowerCase()
+            );
+            if (match?.UserId) {
+              resolvedAgentIds.push(match.UserId);
+            } else {
+              unresolved.push(email);
+            }
+          }
+          if (unresolved.length > 0) {
+            return {
+              content: [{
+                type: 'text',
+                text: `No user found for: ${unresolved.join(', ')}. Verify the email address(es).`,
+              }],
+            };
+          }
+        }
+
+        const filters = buildTicketFilters({
+          agentIds: resolvedAgentIds,
+          teamIds: searchArgs.teamIds,
+          locationIds: searchArgs.locationIds,
+        });
+
+        const basePayload: PaginatedRequest = {
+          OnlyShowDeleted: searchArgs.onlyShowDeleted ?? false,
+          FilterByViewPermission: false,
+        };
+        if (filters.length > 0) basePayload.Filters = filters;
+        if (searchArgs.searchText) basePayload.SearchText = searchArgs.searchText;
+
+        const pageSize = searchArgs.pageSize ?? 20;
+        const pageIndex = searchArgs.pageIndex ?? 0;
+        const statusFilter = searchArgs.statusIds ?? [];
+
+        let pageItems: Ticket[];
+        let totalCount: number;
+        let totalPages: number;
+        let truncationNote = '';
+
+        if (statusFilter.length > 0) {
+          // Status facet is unreliable server-side, so filter client-side by StatusId over a
+          // bounded sequential page scan (no per-ticket detail fetch, no unbounded concurrency).
+          const wantedStatusIds = new Set(statusFilter);
+          const maxPages = resolveMaxPages(process.env.IIQ_TICKET_FILTER_MAX_PAGES);
+          const scanPageSize = 100;
+
+          const firstPage = await client.request<PaginatedResponse<Ticket>>({
+            method: 'POST',
+            url: '/tickets',
+            data: { ...basePayload, Paging: { PageIndex: 0, PageSize: scanPageSize } },
+          });
+          const accumulated: Ticket[] = [...(firstPage?.Items ?? [])];
+          const serverPageCount = firstPage?.Paging?.PageCount ?? 1;
+          const pagesToScan = Math.min(serverPageCount, maxPages);
+          for (let page = 1; page < pagesToScan; page++) {
+            const next = await client.request<PaginatedResponse<Ticket>>({
+              method: 'POST',
+              url: '/tickets',
+              data: { ...basePayload, Paging: { PageIndex: page, PageSize: scanPageSize } },
+            });
+            accumulated.push(...(next?.Items ?? []));
+          }
+
+          const filtered = filterByStatusId(accumulated, wantedStatusIds);
+          totalCount = filtered.length;
+          totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+          const start = pageIndex * pageSize;
+          pageItems = filtered.slice(start, start + pageSize);
+
+          if (serverPageCount > maxPages) {
+            truncationNote = `\n\nNote: results may be incomplete - scanned ${maxPages} of ${serverPageCount} pages; add filters to narrow.`;
+          }
+        } else {
+          // No status filter: server-side facet filtering + pagination.
+          const response = await client.request<PaginatedResponse<Ticket>>({
+            method: 'POST',
+            url: '/tickets',
+            data: { ...basePayload, Paging: { PageIndex: pageIndex, PageSize: pageSize } },
+          });
+          pageItems = response?.Items ?? [];
+          totalCount = response?.ItemCount ?? pageItems.length;
+          totalPages = response?.Paging?.PageCount ?? 1;
+        }
+
+        if (pageItems.length === 0) {
+          // When a status scan was truncated, an empty result is NOT definitive - say so.
+          const emptyText = truncationNote
+            ? `No tickets matched in the scanned pages.${truncationNote}`
+            : 'No tickets found matching your search criteria.';
+          return {
+            content: [{ type: 'text', text: emptyText }],
           };
         }
-        
-        const ticketList = response.Items.map((t: Ticket) => 
-          `- #${t.TicketNumber}: ${t.Subject}\n  Status: ${t.Status}\n  Created: ${t.CreatedDate}\n  ID: ${t.TicketId}`
+
+        const ticketList = pageItems.map((ticket) =>
+          `- #${ticket.TicketNumber}: ${ticket.Subject}\n  Status: ${ticket.StatusName ?? ticket.Status ?? 'Unknown'}\n  Created: ${ticket.CreatedDate}\n  ID: ${ticket.TicketId}`
         ).join('\n\n');
-        
+
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Found ${response.ItemCount} tickets (showing ${response.Items.length}):\n\n${ticketList}\n\nPage ${args.pageIndex || 0 + 1} of ${response.Paging?.PageCount || 1}`,
-            },
-          ],
+          content: [{
+            type: 'text',
+            text: `Found ${totalCount} tickets (showing ${pageItems.length}):\n\n${ticketList}\n\nPage ${pageIndex + 1} of ${totalPages}${truncationNote}`,
+          }],
         };
       }
       

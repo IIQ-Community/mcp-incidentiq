@@ -52,6 +52,18 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface TicketSearchArgs {
+  searchText?: string;
+  onlyShowDeleted?: boolean;
+  pageSize?: number;
+  pageIndex?: number;
+  statusIds?: string[];
+  agentIds?: string[];
+  agentEmails?: string[];
+  teamIds?: string[];
+  locationIds?: string[];
+}
+
 export interface IIQLocation {
   LocationId: string;
   LocationName: string;
@@ -131,6 +143,8 @@ export interface Ticket {
   Subject: string;
   Description?: string;
   Status: string;
+  StatusId?: string;
+  StatusName?: string;
   Priority?: string;
   CreatedDate: string;
   ModifiedDate?: string;
