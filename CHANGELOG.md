@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Nothing yet
+- `ticket_search` facet filters: `statusIds`, `agentIds`, `agentEmails` (any domain), `teamIds`, `locationIds` (OR within a facet, AND across facets). Status is filtered client-side over a bounded page scan configured by the new `IIQ_TICKET_FILTER_MAX_PAGES` environment variable (default 5, range 1-50), with an explicit truncation notice when the cap is reached.
 
 ### Changed
 - Nothing yet

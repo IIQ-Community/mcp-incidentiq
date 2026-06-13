@@ -48,7 +48,7 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 #### 🎫 Ticket Management (15 tools)
 
 **Search & List Operations**
-- `ticket_search` - Search tickets with filters and pagination
+- `ticket_search` - Search tickets with text, pagination, and facet filters: `statusIds`, `agentIds`, `agentEmails` (any domain), `teamIds`, `locationIds`. Multiple values within a facet match ANY (OR); different facets are combined with AND. Status filtering scans a bounded number of pages (set `IIQ_TICKET_FILTER_MAX_PAGES`, default 5, range 1-50; results past the cap are flagged as truncated).
 - `ticket_get` - Get detailed ticket information by ID
 - `ticket_get_statuses` - Get all available ticket statuses
 - `ticket_get_priorities` - Get all available ticket priorities
