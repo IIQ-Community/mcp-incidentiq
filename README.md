@@ -2,6 +2,8 @@
 
 > Model Context Protocol server for IncidentIQ - The #1 K-12 service management platform
 
+[![CI](https://github.com/IIQ-Community/mcp-incidentiq/actions/workflows/ci.yml/badge.svg)](https://github.com/IIQ-Community/mcp-incidentiq/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/IIQ-Community/mcp-incidentiq)](https://github.com/IIQ-Community/mcp-incidentiq/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org)
 [![MCP SDK](https://img.shields.io/badge/MCP-v0.5.0-blue)](https://github.com/modelcontextprotocol)
@@ -12,38 +14,38 @@ The IncidentIQ MCP Server enables AI assistants like Claude to interact with K-1
 
 IncidentIQ is the #1 K-12 service management platform, used by over 2000 school districts across the United States. This MCP server provides seamless integration with IncidentIQ's comprehensive API, allowing AI assistants to:
 
-- 🎫 **Manage IT help desk tickets** - Search, view, update status, set priority, manage assignments (21 working endpoints!)
+- 🎫 **Manage IT help desk tickets** - Search, view, update status, set urgency/sensitivity, manage assignments
 - 💻 **Track technology assets** - Search and manage Chromebooks, iPads, and other devices
 - 👥 **Look up users** - Find students, staff, and parents in the district system
 - 🏫 **Navigate locations** - Access building and room information
-- 📊 **Generate reports** - Access analytics and operational metrics
-- 🔧 **Manage repairs** - Track parts inventory and device repair workflows
+- 👪 **Coordinate teams** - View IT support teams, members, and workloads
+- 🔧 **Manage repairs** - Track parts inventory, purchase orders, and device repair workflows
 
 ## Features
 
 ### 📊 Comprehensive API Coverage
 
-**✅ All 13 API modules analyzed and validated** with **83% overall success rate** across **122 working endpoints!**
+**158 MCP tools across 12 registered domain modules**, all wired into the server and validated against a production K-12 district instance.
 
-| Module | Status | Success Rate | Endpoints |
-|--------|--------|-------------|-----------|
-| Tickets | ✅ Working | 72% | 21/29 |
-| Assets | ✅ Working | 100% | 20/20 |
-| Users | ✅ Working | 100% | 10/10 |
-| Locations | ✅ Working | 100% | 8/8 |
-| Manufacturers | ✅ Working | 100% | 4/4 |
-| **SLAs** | ✅ NEW | 57% | 4/7 |
-| **Views** | ✅ NEW | 89% | 8/9 |
-| **Notifications** | ✅ NEW | 44% | 4/9 |
-| Analytics | ✅ Working | 80% | 8/10 |
-| Custom Fields | ✅ Working | 100% | 10/10 |
-| Issues | ✅ Working | 100% | 15/15 |
-| Parts | ✅ Working | 100% | 10/10 |
-| Forms | ❌ Limited | 0% | 0/6 |
+| Module | Status | Tools |
+|--------|--------|-------|
+| Tickets | ✅ Registered | 15 |
+| Assets | ✅ Registered | 15 |
+| Users | ✅ Registered | 15 |
+| Locations | ✅ Registered | 17 |
+| Teams | ✅ Registered | 9 |
+| Parts | ✅ Registered | 20 |
+| Purchase Orders | ✅ Registered | 14 |
+| Issues | ✅ Registered | 20 |
+| Custom Fields | ✅ Registered | 18 |
+| SLAs | ✅ Registered | 4 |
+| Views | ✅ Registered | 5 |
+| Notifications | ✅ Registered | 6 |
+| Analytics | 🚧 Implemented, not yet registered | 11 |
 
 ### Available MCP Tools
 
-#### 🎫 Ticket Management (21 endpoints working!)
+#### 🎫 Ticket Management (15 tools)
 
 **Search & List Operations**
 - `ticket_search` - Search tickets with filters and pagination
@@ -70,21 +72,65 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `ticket_get_wizards` - Get available ticket creation wizards
 - `ticket_get_wizards_by_site` - Get wizards for a specific site
 
-#### 💻 Asset Management
-- `asset_search` - Search IT assets with filters
-- `asset_get_by_tag` - Look up asset by tag number
-- `asset_get` - Get detailed asset information
-- `asset_get_counts` - Get inventory summary
+#### 💻 Asset Management (15 tools)
+- `asset_search_advanced` - Search IT assets with filters and pagination
+- `asset_find_by_tag` / `asset_search_by_tag` - Look up asset(s) by tag number
+- `asset_find_by_serial` / `asset_search_by_serial` - Look up asset(s) by serial number
+- `asset_get_history` - Get an asset's activity history
+- `asset_get_user_devices` - List devices assigned to a user
+- `asset_get_inventory_counts` - Get inventory summary counts
+- `asset_get_status_types` / `asset_get_funding_types` - Reference data
+- ...and more (spares, favorites, by-room, by-storage)
 
-#### 👥 User Management
-- `user_search` - Search for users (students/staff/parents)
-- `user_get` - Get user details
-- `user_get_agents` - List IT support agents
+#### 👥 User Management (15 tools)
+- `user_search_advanced` / `user_quick_search` - Search for users (students/staff/parents)
+- `user_get_details` - Get user details by ID
+- `user_get_students` / `user_get_staff` / `user_get_parents` - Filtered directory lookups
+- `user_get_all_agents` / `user_search_agents` - List IT support agents
+- `user_get_by_location` - Users at a location
+- `user_statistics_grades` / `user_statistics_locations` - Population statistics
+- ...and more (groups, permissions, current user)
 
-#### 🏫 Location Management
-- `location_list_all` - List all district locations
-- `location_search` - Search for specific locations
-- `location_get` - Get location details
+#### 🏫 Location Management (17 tools)
+- `location_get_all` - List all district locations
+- `location_search_advanced` - Search for specific locations
+- `location_get_details` - Get location details by ID
+- `location_get_buildings` / `location_get_campuses` - Building hierarchy
+- `location_get_building_rooms` / `location_find_special_rooms` - Room lookups
+- `location_get_assets` / `location_get_users` / `location_get_tickets` - Cross-references
+- ...and more (hierarchy, children, available rooms)
+
+#### 👪 Team Management (9 tools)
+- `team_get_all` / `team_search` - List or search IT support teams
+- `team_get` / `team_get_members` / `team_get_agents` - Team detail and roster
+- `team_get_tickets` / `team_get_locations` / `team_get_categories` / `team_get_stats` - Team context
+
+#### 🔧 Parts & Repair (20 tools)
+- `parts_get_all` / `parts_search` / `parts_find_by_number` - Inventory lookup
+- `parts_check_stock` / `parts_get_low_stock` / `parts_get_by_location` - Stock tracking
+- `parts_get_chromebook_parts` / `parts_get_ipad_parts` / `parts_get_compatible` - Device parts
+- `parts_get_suppliers` / `parts_get_supplier_details` - Suppliers
+- `parts_record_usage` / `parts_transfer` / `parts_get_repair_costs` - Repair workflows
+- ...and more (orders, common repairs, ticket parts)
+
+#### 🧾 Purchase Orders (14 tools)
+- `purchaseorder_get_all` / `purchaseorder_search` / `purchaseorder_get` - PO lookup
+- `purchaseorder_get_pending` / `purchaseorder_get_approved` / `purchaseorder_get_completed` - By status
+- `purchaseorder_get_items` / `purchaseorder_get_parts` / `purchaseorder_get_attachments` - PO contents
+- `purchaseorder_get_history` / `purchaseorder_get_summary` / `purchaseorder_get_supplier` - PO context
+
+#### 🐞 Issue Types (20 tools)
+- `issues_get_types` / `issues_search_types` / `issues_get_type_details` - Issue type catalog
+- `issues_get_categories` / `issues_get_category_hierarchy` - Category structure
+- `issues_get_chromebook_issues` / `issues_get_network_issues` / `issues_get_classroom_tech` - Common K-12 issues
+- `issues_get_priorities` / `issues_get_priority_sla` - Priority and SLA mapping
+- ...and more (templates, recurring, seasonal, parent portal)
+
+#### 🏷️ Custom Fields (18 tools)
+- `customfield_get_all` / `customfield_search` / `customfield_find_by_name` - Field catalog
+- `customfield_get_by_entity` / `customfield_get_types` / `customfield_get_type_details` - Field definitions
+- `customfield_get_asset_values` / `customfield_get_ticket_values` / `customfield_get_user_values` / `customfield_get_location_values` - Field values
+- `customfield_validate_value` / `customfield_get_required` / `customfield_get_options` - Validation
 
 #### 📈 SLA Management (NEW!)
 - `sla_list` - Get all configured SLAs
@@ -157,13 +203,16 @@ IIQ_API_TIMEOUT=30000
 
 #### Claude Code Integration
 
-To add this MCP server to Claude Code, run the following command:
+First build the server (`yarn build`), then register it with the Claude Code CLI:
 
 ```bash
-npx @anthropic/claude-code mcp add /path/to/mcp-incidentiq
+claude mcp add incidentiq \
+  -e IIQ_API_BASE_URL=https://your-district.incidentiq.com/api/v1.0 \
+  -e IIQ_API_KEY=your-api-key-here \
+  -- node /path/to/mcp-incidentiq/dist/index.js
 ```
 
-This will automatically configure Claude Code to use the IncidentIQ MCP server.
+Replace `/path/to/mcp-incidentiq` with the actual path to this project. Verify it was added with `claude mcp list`.
 
 #### Claude Desktop Integration
 
@@ -279,17 +328,26 @@ This tool is designed with student privacy in mind:
 ```
 mcp-incidentiq/
 ├── src/
-│   ├── index.ts          # Main MCP server entry point
+│   ├── index.ts             # Main MCP server entry point (registers all tool modules)
 │   ├── api/
-│   │   └── client.ts     # IncidentIQ API client
-│   ├── tools/            # MCP tool implementations
-│   │   ├── tickets.ts    # Ticket management tools
-│   │   ├── assets.ts     # Asset management tools
-│   │   ├── users.ts      # User management tools
-│   │   └── locations.ts  # Location management tools
-│   └── types/            # TypeScript type definitions
-│       └── common.ts     # Shared type definitions
-└── dist/                 # Compiled JavaScript output
+│   │   └── client.ts        # IncidentIQ API client
+│   ├── tools/               # MCP tool implementations (one module per domain)
+│   │   ├── tickets.ts       # Ticket management tools
+│   │   ├── assets.ts        # Asset management tools
+│   │   ├── users.ts         # User management tools
+│   │   ├── locations.ts     # Location management tools
+│   │   ├── teams.ts         # Team management tools
+│   │   ├── parts.ts         # Parts & repair tools
+│   │   ├── purchaseorders.ts# Purchase order tools
+│   │   ├── issues.ts        # Issue type tools
+│   │   ├── customfields.ts  # Custom field tools
+│   │   ├── slas.ts          # SLA tools
+│   │   ├── views.ts         # View tools
+│   │   ├── notifications.ts # Notification & email tools
+│   │   └── analytics.ts     # Analytics tools (defined, not yet registered)
+│   └── types/               # TypeScript type definitions
+│       └── common.ts        # Shared type definitions
+└── dist/                    # Compiled JavaScript output
 ```
 
 ### Available Scripts
@@ -299,6 +357,9 @@ mcp-incidentiq/
 - `yarn start` - Run production server
 - `yarn type-check` - Type check without building
 - `yarn clean` - Clean build directory
+- `yarn test` / `yarn test:unit` - Run the unit test suite
+- `yarn test:coverage` - Run unit tests with a coverage report
+- `yarn test:e2e` - Build, then run end-to-end tests
 
 ## API Integration
 
@@ -310,9 +371,13 @@ This MCP server integrates with IncidentIQ's core modules:
 - ✅ **Asset Management** - Device tracking and inventory
 - ✅ **User Directory** - Student, staff, and parent lookup
 - ✅ **Locations** - Building and room management
-- 🚧 **Analytics** - Basic reporting (coming soon)
-- 🚧 **Parts Inventory** - Repair parts tracking (coming soon)
-- 🚧 **Custom Fields** - District-specific data (coming soon)
+- ✅ **Teams** - IT support team rosters and workloads
+- ✅ **Parts Inventory** - Repair parts tracking and supplier management
+- ✅ **Purchase Orders** - PO tracking by status, items, and history
+- ✅ **Issue Types** - Issue/category catalog and K-12 issue templates
+- ✅ **Custom Fields** - District-specific data across all entities
+- ✅ **SLAs / Views / Notifications** - Compliance metrics, saved views, and email/notification access
+- 🚧 **Analytics** - Reporting tools implemented but not yet registered in the server
 
 ### API Rate Limiting
 
