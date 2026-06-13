@@ -1,0 +1,143 @@
+{
+  "name": "${localWorkspaceFolderBasename}",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+    "--name",
+    "${localWorkspaceFolderBasename}",
+    "--env-file",
+    "${localWorkspaceFolder}/.env"
+  ],
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "dotenv.dotenv-vscode",
+        "esbenp.prettier-vscode",
+        "github.github-vscode-theme",
+        "lumirelle.shell-format-rev",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "detachhead.basedpyright",
+        "pkief.material-icon-theme",
+        "redhat.vscode-xml",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "kaleidoscope-app.vscode-ksdiff"
+      ]
+    }
+  },
+  "forwardPorts": [
+    41777 // pilot-console
+  ],
+  "portsAttributes": {
+    "41777": {
+      "label": "Pilot Console"
+    }
+  },
+  /* GET FROM: https://containers.dev/features */
+  "features": {
+    /* https://github.com/devcontainers/features/tree/main/src/common-utils */
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
+      "upgradePackages": true,
+      "configureZshAsDefaultShell": true
+    },
+    /* https://github.com/devcontainers/features/tree/main/src/python */
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": false
+    },
+    /* https://github.com/devcontainers/features/tree/main/src/node */
+    /* 24 (not upstream's 22): ansible-dev-tools MCP requires node >=24 (engines) */
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24",
+      "nvm": "latest",
+      "pnpm": "latest"
+    },
+    /* https://github.com/devcontainers/features/tree/main/src/go */
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest",
+      "golangciLintVersion": "latest"
+    },
+    /* https://github.com/devcontainers/features/blob/main/src/docker-outside-of-docker/ */
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": "false"
+    },
+    /* https://github.com/va-h/devcontainers-features/tree/main/src/uv */
+    "ghcr.io/va-h/devcontainers-features/uv:1": {
+      "version": "latest",
+      "shellautocompletion": true
+    },
+    /* https://github.com/devcontainers/features/tree/main/src/git */
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    /* https://github.com/devcontainers/features/tree/main/src/github-cli */
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    /* https://github.com/michidk/devcontainers-features/tree/main/src/bun */
+    "ghcr.io/michidk/devcontainers-features/bun:1": {},
+    /* https://github.com/braun-daniel/devcontainer-features/blob/main/src/spaceship */
+    "ghcr.io/braun-daniel/devcontainer-features/spaceship:1": {},
+    /* https://github.com/braun-daniel/devcontainer-features/blob/main/src/fzf */
+    "ghcr.io/braun-daniel/devcontainer-features/fzf:1": {},
+    /* https://github.com/jungaretti/features/tree/main/src/ripgrep */
+    "ghcr.io/jungaretti/features/ripgrep:1": {},
+    /* https://github.com/eitsupi/devcontainer-features/tree/main/src/jq-likes */
+    "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {},
+    /* https://github.com/skriptfabrik/devcontainer-features/tree/main/src/gitlab-cli */
+    "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli:1": {},
+    /* https://github.com/gvatsal60/dev-container-features/tree/HEAD/src/pre-commit */
+    "ghcr.io/gvatsal60/dev-container-features/pre-commit:1": {},
+    /* https://github.com/stu-bell/devcontainer-features/tree/main/src/claude-code */
+    "ghcr.io/stu-bell/devcontainer-features/claude-code:0": {},
+    /* NO codex feature here: ghcr.io/dirien/devcontainer-feature-codex broke the
+       2026-06-12 image build ("npm is not installed" - it installs before the node
+       feature and declares no dependency on it). Codex CLI is installed by
+       ~/.claude/scripts/post-rebuild-setup.sh (npm i -g @openai/codex) instead,
+       which runs in postCreateCommand when node/npm already exist. */
+    /* https://github.com/meaningful-ooo/devcontainer-features/tree/main/src/fish */
+    "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
+    /* https://github.com/meaningful-ooo/devcontainer-features/tree/main/src/homebrew */
+    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {}
+  },
+  // Pilot install first (fallback when the shared script isn't synced yet), then the
+  // sx-vault-managed per-rebuild provisioner as the guarded LAST step per its contract
+  // (~/.claude/scripts/post-rebuild-setup.sh: Codex/Claude/Pilot installs + updates,
+  // license activation, skillshare vault, codex sandbox_mode re-assert).
+  "postCreateCommand": "[ -f \"$HOME/.claude/scripts/post-rebuild-setup.sh\" ] && bash \"$HOME/.claude/scripts/post-rebuild-setup.sh\" || true",
+  // Bootstrap container-local state that rebuilds wipe: SSH MCP key restore,
+  // Codex auth.json restore/backup, haproxy-mcp-server rebuild, and the pilot
+  // uv-overlay pre-warm (cold cache caused blank status bar footers - see
+  // docs/plans/2026-06-12-pilot-shell-drift-remediation.md Task 1).
+  // Re-enabled after the 2026-06-12 rebuild failure: the captured log
+  // (context/debug/remoteContainers-2026-06-12T23-54-03.525Z.log) shows the build
+  // died at the codex FEATURE during image build - lifecycle scripts never ran,
+  // so this script was not involved in that failure.
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "remoteUser": "root",
+  "containerUser": "root",
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude,target=/root/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.pilot,target=/root/.pilot,type=bind,consistency=cached",
+    // Per-container runtime state: a shared .pilot bind lets one container's
+    // shutdown delete another's live session FIFO, triggering Pilot's no-backoff
+    // pipe-reader loop and runaway logs that fill the disk. Keep sessions+logs
+    // container-local (license/config still shared via the .pilot bind above).
+    "source=pilot-sessions-${devcontainerId},target=/root/.pilot/sessions,type=volume",
+    "source=pilot-logs-${devcontainerId},target=/root/.pilot/logs,type=volume",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude.json,target=/root/.claude.json,type=bind,consistency=cached"
+  ],
+  "initializeCommand": [
+    "node",
+    "-e",
+    "const fs=require('fs'),path=require('path'),os=require('os');const home=os.homedir();fs.mkdirSync(path.join(home,'.claude'),{recursive:true});fs.mkdirSync(path.join(home,'.pilot'),{recursive:true});const j=path.join(home,'.claude.json');if(!fs.existsSync(j))fs.writeFileSync(j,'{}\\n');const wsf=process.argv[1];if(wsf){const e=path.join(wsf,'.env');if(!fs.existsSync(e))fs.writeFileSync(e,'');}",
+    "${localWorkspaceFolder}"
+  ]
+}
