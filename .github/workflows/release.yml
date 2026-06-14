@@ -33,7 +33,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          token: ${{ secrets.RELEASE_TOKEN }}
+          # Falls back to GITHUB_TOKEN when RELEASE_TOKEN is unset so non-release pushes still run;
+          # only an actual release's commit-back needs the admin PAT (else it is blocked by the ruleset).
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
       - name: Use Node.js 24
         uses: actions/setup-node@v4
@@ -56,4 +58,6 @@ jobs:
         run: npx semantic-release
         env:
           # Admin PAT so the @semantic-release/git commit-back bypasses the main-branch ruleset.
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          # Falls back to GITHUB_TOKEN (no-release pushes no-op fine; a real release without the PAT
+          # fails informatively at the ruleset-blocked commit-back).
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
