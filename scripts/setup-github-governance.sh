@@ -78,13 +78,18 @@ gh api -X PATCH "repos/$REPO" \
   -f 'security_and_analysis[secret_scanning][status]=enabled' \
   -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled' >/dev/null \
   && ok "secret scanning + push protection on"
-# CodeQL default setup (guarded: a 422 must not abort under set -e).
-if ! gh api "repos/$REPO/code-scanning/default-setup" --jq '.state' 2>/dev/null | grep -q configured; then
-  gh api -X PUT "repos/$REPO/code-scanning/default-setup" -f state=configured >/dev/null \
-    && ok "CodeQL default setup configured" \
-    || echo "  WARN: CodeQL default-setup PUT failed (may need languages or already enabled)"
+# CodeQL default setup. States: not-configured | configuring | configured.
+# (EXACT compare - "grep -q configured" false-matches the substring in "not-configured".)
+CQ=$(gh api "repos/$REPO/code-scanning/default-setup" --jq '.state' 2>/dev/null || echo not-configured)
+if [ "$CQ" = "not-configured" ]; then
+  if gh api -X PUT "repos/$REPO/code-scanning/default-setup" -f state=configured >/dev/null 2>&1; then
+    ok "CodeQL default setup triggered"
+  else
+    # The default-setup PUT 404s for this repo/token (needs UI enablement). NON-FATAL: manual step.
+    echo "  NOTE: CodeQL default setup must be enabled manually (Settings > Code security > CodeQL > Default - the API PUT returns 404 here)."
+  fi
 else
-  ok "CodeQL default setup already configured"
+  ok "CodeQL default setup present ($CQ)"
 fi
 # Default workflow token = read-only (release workflow elevates locally).
 gh api -X PUT "repos/$REPO/actions/permissions/workflow" \
@@ -131,12 +136,27 @@ MAIN_ID=$(gh api "repos/$REPO/rulesets" --jq '.[] | select(.name=="main-protecti
 gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.bypass_actors[].actor_id' | grep -qx "5" \
   && ok "Repository-admin bypass present (admin-PAT release keeps working)" \
   || fail "Repository-admin bypass MISSING"
-[ "$(gh api "repos/$REPO/vulnerability-alerts" -i 2>/dev/null | head -1 | grep -o '204')" = "204" ] \
-  && ok "Dependabot alerts enabled" || ok "Dependabot alerts (checked)"
+# Security suite - FAIL-CLOSED: assert every promised setting reads back as enabled.
+gh api "repos/$REPO/vulnerability-alerts" 2>/dev/null >/dev/null \
+  && ok "Dependabot alerts enabled" || fail "Dependabot alerts NOT enabled"
+gh api "repos/$REPO/automated-security-fixes" --jq '.enabled' 2>/dev/null | grep -qx true \
+  && ok "Dependabot security fixes enabled" || fail "Dependabot security fixes NOT enabled"
+SA=$(gh api "repos/$REPO" --jq '.security_and_analysis')
+[ "$(jq -r '.secret_scanning.status' <<<"$SA")" = "enabled" ] \
+  && ok "secret scanning enabled" || fail "secret scanning NOT enabled"
+[ "$(jq -r '.secret_scanning_push_protection.status' <<<"$SA")" = "enabled" ] \
+  && ok "push protection enabled" || fail "push protection NOT enabled"
+CQ2=$(gh api "repos/$REPO/code-scanning/default-setup" --jq '.state' 2>/dev/null)
+{ [ "$CQ2" = "configured" ] || [ "$CQ2" = "configuring" ]; } \
+  && ok "CodeQL default setup enabled ($CQ2)" \
+  || echo "  NOTE: CodeQL default setup is $CQ2 - enable manually in Settings > Code security (API PUT 404s here); NON-FATAL."
 [ "$(gh api "repos/$REPO/private-vulnerability-reporting" --jq '.enabled')" = "true" ] \
   && ok "private vuln reporting on" || fail "private vuln reporting off"
 [ "$(gh api "repos/$REPO/actions/permissions/workflow" --jq '.default_workflow_permissions')" = "read" ] \
   && ok "workflow perms read" || fail "workflow perms not read"
+SEL=$(gh api "repos/$REPO/actions/permissions/selected-actions" 2>/dev/null)
+[ "$(jq -r '.github_owned_allowed' <<<"$SEL")" = "true" ] && [ "$(jq -r '.verified_allowed' <<<"$SEL")" = "true" ] \
+  && ok "Actions allowlist (github-owned + verified)" || fail "Actions allowlist not set"
 [ "$(gh api "repos/$REPO/pages" --jq '.build_type' 2>/dev/null)" = "workflow" ] \
   && ok "Pages build_type=workflow" || fail "Pages not workflow-sourced"
 
