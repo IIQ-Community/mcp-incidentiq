@@ -3,8 +3,8 @@ name: Release
 # semantic-release on every push to main: computes the next 0.x version from
 # Conventional Commits, publishes a GitHub Release, and commits the CHANGELOG /
 # CITATION.cff / package.json bump back with [skip ci] to avoid a re-trigger loop.
-# Node 20 is intentional (semantic-release v25 needs >=20.8.1; 20 is the active LTS)
-# even though the devcontainer runs Node 24 - no build behavior diverges here.
+# Node 24 matches the devcontainer AND satisfies semantic-release 25's engines.node
+# (^22.14.0 || >=24.10.0); its CLI hard-exits on older Node, so 20 would fail every run.
 # NOTE: the [skip ci] release commit pushes to main; the future branch-protection
 # governance ruleset must allow GITHUB_TOKEN / the release bot to bypass the PR rule.
 on:
@@ -30,10 +30,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Enable Corepack
         run: corepack enable

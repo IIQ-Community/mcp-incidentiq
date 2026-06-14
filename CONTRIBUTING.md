@@ -188,8 +188,9 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
 
 - **0.x line:** the project is pre-1.0, so a `BREAKING CHANGE` (or `!`) commit produces a **minor**
   bump (e.g. `0.2.0 → 0.3.0`), **not** `1.0.0`. The jump to 1.0 is a deliberate future decision.
-- **Node:** local dev runs Node 24 (devcontainer); CI/release runs Node 20 (semantic-release LTS
-  target). No build behavior differs between them.
+- **Node:** the release workflow runs Node 24 (matching the devcontainer); semantic-release 25
+  requires Node `>=24.10.0`. The `ci.yml` test matrix still covers Node 18 and 20 for the server
+  itself (`engines.node >=18`).
 - **npm publishing** is intentionally deferred (GitHub Releases only). To enable it later:
   `yarn add -D @semantic-release/npm` and insert `"@semantic-release/npm"` into `.releaserc.json`
   `plugins` before `@semantic-release/git` (and drop `package.json` from the exec version bump, since
