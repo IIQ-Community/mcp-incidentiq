@@ -123,7 +123,7 @@ describe('IncidentIQClient', () => {
     describe('searchUsers', () => {
       it('should search users with filters', async () => {
         const result = await client.searchUsers({
-          SearchText: 'jane',
+          SearchText: 'staff',
           PageIndex: 0,
           PageSize: 10,
         });
