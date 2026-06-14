@@ -24,4 +24,14 @@ else
     echo "codex: no auth and no backup - run 'codex login' once"
 fi
 
+# 2. commitlint commit-msg hook (pre-commit tool provided by the devcontainer feature).
+#    Fail VISIBLY (logged WARNING), not open: verify the hook actually landed.
+if [ -f .pre-commit-config.yaml ] && command -v pre-commit >/dev/null 2>&1; then
+    if pre-commit install --hook-type commit-msg --install-hooks && [ -x .git/hooks/commit-msg ] && grep -q pre-commit .git/hooks/commit-msg; then
+        echo "pre-commit: commit-msg hook installed"
+    else
+        echo "WARNING: pre-commit commit-msg hook FAILED to install - run 'pre-commit install --hook-type commit-msg' manually" >&2
+    fi
+fi
+
 echo "=== post-start sync steps done ==="
