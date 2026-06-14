@@ -6,8 +6,8 @@ authors:
   - name: "IIQ Community Contributors"
   - family-names: "Birge"
     given-names: "Zach"
-version: 0.1.0
-date-released: "2025-01-09"
+version: 0.2.0
+date-released: "2026-06-14"
 license: MIT
 repository-code: "https://github.com/IIQ-Community/mcp-incidentiq"
 url: "https://github.com/IIQ-Community/mcp-incidentiq"

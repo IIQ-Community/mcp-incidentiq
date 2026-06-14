@@ -5,6 +5,18 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.2.0](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.1.0...v0.2.0) (2026-06-14)
+
+
+### Bug Fixes
+
+* **deps:** pin msw to 2.10.4 to restore Jest ESM compatibility ([db6b471](https://github.com/IIQ-Community/mcp-incidentiq/commit/db6b471537e3d26da5ef5d6f37c92535ef1000aa))
+
+
+### Features
+
+* **tickets:** add facet filters to ticket_search ([b13dac6](https://github.com/IIQ-Community/mcp-incidentiq/commit/b13dac62dd2c08784534bbd0347903c90143e2e1))
+
 ## [0.1.0] - 2025-01-09
 
 ### 🎉 Initial Release - Production Ready
