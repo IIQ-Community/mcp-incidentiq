@@ -5,26 +5,6 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-- `ticket_search` facet filters: `statusIds`, `agentIds`, `agentEmails` (any domain), `teamIds`, `locationIds` (OR within a facet, AND across facets). Status is filtered client-side over a bounded page scan configured by the new `IIQ_TICKET_FILTER_MAX_PAGES` environment variable (default 5, range 1-50), with an explicit truncation notice when the cap is reached.
-
-### Changed
-- Nothing yet
-
-### Deprecated
-- Nothing yet
-
-### Removed
-- Nothing yet
-
-### Fixed
-- Nothing yet
-
-### Security
-- Nothing yet
-
 ## [0.1.0] - 2025-01-09
 
 ### 🎉 Initial Release - Production Ready
@@ -91,16 +71,3 @@ Successfully tested against a large production K-12 district instance:
 - Location advanced search has parameter validation issues
 - Test coverage at 22.57% (functional but needs improvement)
 - E2E tests disabled due to ES module compatibility
-
----
-
-## Notes for Contributors
-
-When updating this file:
-1. Add new entries under "Unreleased"
-2. Follow the categories: Added, Changed, Deprecated, Removed, Fixed, Security
-3. Include issue/PR numbers where applicable
-4. Move entries to a versioned section when releasing
-
-[Unreleased]: https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/IIQ-Community/mcp-incidentiq/releases/tag/v0.1.0

@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/IIQ-Community/mcp-incidentiq/actions/workflows/ci.yml/badge.svg)](https://github.com/IIQ-Community/mcp-incidentiq/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/package-json/v/IIQ-Community/mcp-incidentiq)](https://github.com/IIQ-Community/mcp-incidentiq/releases)
+[![Release](https://img.shields.io/github/v/release/IIQ-Community/mcp-incidentiq?sort=semver)](https://github.com/IIQ-Community/mcp-incidentiq/releases/latest)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org)
 [![MCP SDK](https://img.shields.io/badge/MCP-v0.5.0-blue)](https://github.com/modelcontextprotocol)
@@ -394,9 +396,9 @@ We welcome contributions from the K-12 IT community! Please see our [Contributin
 ### How to Contribute
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — e.g. `git commit -m 'feat: add amazing feature'`. A commitlint `commit-msg` hook (enforced via the pre-commit framework) rejects non-conforming messages locally; see [CONTRIBUTING.md](CONTRIBUTING.md#enforcement).
+4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
 
 ### Contribution Ideas
@@ -434,9 +436,15 @@ We welcome contributions from the K-12 IT community! Please see our [Contributin
 - **Security**: See [SECURITY.md](SECURITY.md) for reporting vulnerabilities
 - **IncidentIQ Support**: Contact your district's IncidentIQ administrator
 
-## Changelog
+## Versioning & Releases
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes and version history.
+This project follows [Semantic Versioning](https://semver.org/) and uses
+[semantic-release](https://semantic-release.gitbook.io/) for fully automated releases. Every push to
+`main` analyzes the [Conventional Commit](https://www.conventionalcommits.org/) history, computes the
+next version, publishes a GitHub Release with generated notes, and updates `CHANGELOG.md` /
+`CITATION.cff` / `package.json` — no manual version bumps. The project is in the **0.x** line, so a
+breaking change yields a minor bump (not `1.0.0`). See [CONTRIBUTING.md](CONTRIBUTING.md#automated-releases)
+for details and [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## License
 

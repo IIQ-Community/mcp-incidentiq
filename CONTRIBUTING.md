@@ -166,6 +166,35 @@ using the status parameter in the IncidentIQ API.
 Closes #45
 ```
 
+#### Enforcement
+
+Conventional Commits are **enforced** by a [commitlint](https://commitlint.js.org/) `commit-msg`
+hook wired through the [pre-commit](https://pre-commit.com/) framework (not husky). In the
+devcontainer the hook is installed automatically on start; if you work outside it, install it once:
+
+```bash
+pre-commit install --hook-type commit-msg
+```
+
+A commit whose message is not a valid Conventional Commit is rejected locally. Because `main` is
+**merge-commit-only**, every commit lands on `main`, so every commit must conform.
+
+## Automated Releases
+
+Releases are fully automated with [semantic-release](https://semantic-release.gitbook.io/). On every
+push to `main`, CI computes the next version from the Conventional Commit history, publishes a GitHub
+Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.cff`, and
+`package.json` version. You never bump versions or edit the changelog by hand.
+
+- **0.x line:** the project is pre-1.0, so a `BREAKING CHANGE` (or `!`) commit produces a **minor**
+  bump (e.g. `0.2.0 → 0.3.0`), **not** `1.0.0`. The jump to 1.0 is a deliberate future decision.
+- **Node:** local dev runs Node 24 (devcontainer); CI/release runs Node 20 (semantic-release LTS
+  target). No build behavior differs between them.
+- **npm publishing** is intentionally deferred (GitHub Releases only). To enable it later:
+  `yarn add -D @semantic-release/npm` and insert `"@semantic-release/npm"` into `.releaserc.json`
+  `plugins` before `@semantic-release/git` (and drop `package.json` from the exec version bump, since
+  the npm plugin then owns it).
+
 ## Testing
 
 ### Writing Tests
