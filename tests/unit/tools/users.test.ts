@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, mock } from 'bun:test';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { handleUserTool, userTools } from '../../../src/tools/users';
 import { server } from '../../mocks/server';
 

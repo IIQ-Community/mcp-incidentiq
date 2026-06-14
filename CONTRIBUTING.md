@@ -28,30 +28,30 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a wel
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) >= 1.2 (this project is bun-only)
+- [Node.js](https://nodejs.org) >= 22 (LTS)
 - IncidentIQ API access for testing
 
 ### Installation
 
 ```bash
 # Install dependencies
-bun install
+npm install
 
 # Copy environment variables
 cp .env.example .env
 # Edit .env with your IncidentIQ API credentials
 
 # Run development server
-bun run dev
+npm run dev
 ```
 
 ### Available Scripts
 
-- `bun run dev` - Start development server with hot reload
-- `bun run build` - Build TypeScript to JavaScript
-- `bun run type-check` - Type check without building
-- `bun run test` - Run tests (when implemented)
-- `bun run clean` - Clean build directory
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm run type-check` - Type check without building
+- `npm run test` - Run tests (when implemented)
+- `npm run clean` - Clean build directory
 
 ## How to Contribute
 
@@ -89,7 +89,7 @@ bun run dev
    - Ensure your code follows our coding standards
    - Add/update tests as needed
    - Update documentation
-   - Run `bun run type-check` to ensure no TypeScript errors
+   - Run `npm run type-check` to ensure no TypeScript errors
    - Test your changes locally
 
 2. **PR Guidelines**:
@@ -187,10 +187,10 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
 
 - **0.x line:** the project is pre-1.0, so a `BREAKING CHANGE` (or `!`) commit produces a **minor**
   bump (e.g. `0.2.0 → 0.3.0`), **not** `1.0.0`. The jump to 1.0 is a deliberate future decision.
-- **Node:** the project is bun-only (`engines.bun`), but `semantic-release` is a Node-native CLI,
-  so the release workflow runs it under a pinned Node 24 step. CI itself runs entirely on bun.
+- **Node:** the project runs on Node.js (`engines.node >= 22`); CI and the release workflow both
+  run on Node 24 (current LTS) with npm.
 - **npm publishing** is intentionally deferred (GitHub Releases only). To enable it later:
-  `bun add -d @semantic-release/npm` and insert `"@semantic-release/npm"` into `.releaserc.json`
+  `npm install -D @semantic-release/npm` and insert `"@semantic-release/npm"` into `.releaserc.json`
   `plugins` before `@semantic-release/git` (and drop `package.json` from the exec version bump, since
   the npm plugin then owns it).
 
@@ -239,13 +239,13 @@ These settings are applied as config-as-code by
 
 ```bash
 # Run all tests
-bun run test
+npm run test
 
 # Run tests in watch mode
-bun run test:watch
+npm run test:watch
 
 # Generate coverage report
-bun run test:coverage
+npm run test:coverage
 ```
 
 ## Documentation

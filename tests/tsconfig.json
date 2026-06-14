@@ -5,7 +5,7 @@
     "rootDir": "..",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["bun"]
+    "types": ["node"]
   },
   "include": ["**/*.ts", "../src/**/*.ts"],
   "exclude": ["e2e"]

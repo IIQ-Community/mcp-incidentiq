@@ -7,7 +7,7 @@
 [![Release](https://img.shields.io/github/v/release/IIQ-Community/mcp-incidentiq?sort=semver)](https://github.com/IIQ-Community/mcp-incidentiq/releases/latest)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Bun Version](https://img.shields.io/badge/bun-%3E%3D1.2-brightgreen)](https://bun.sh)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![MCP SDK](https://img.shields.io/badge/MCP-v0.5.0-blue)](https://github.com/modelcontextprotocol)
 
 ## Overview
@@ -158,13 +158,11 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 ## Installation
 
 ### Prerequisites
-- [Bun](https://bun.sh) >= 1.2 (this project is bun-only)
+- [Node.js](https://nodejs.org) >= 22 (LTS)
 - IncidentIQ API credentials from your district
 
-> **Breaking change (v0.3.0):** This project migrated to **bun-only**. It is no longer run
-> under Node.js / `npx` - install [bun](https://bun.sh) and launch the server with `bun` (or
-> `bunx`). The MCP-client launch command changes from `node` to `bun` (see the integration
-> examples below).
+> **Note:** This server runs on Node.js and is launched by MCP clients via `node` (or `npx`),
+> matching the standard MCP-server convention. The development toolchain uses npm + Vitest.
 
 ### Quick Start
 
@@ -176,7 +174,7 @@ cd mcp-incidentiq
 
 2. Install dependencies:
 ```bash
-bun install
+npm install
 ```
 
 3. Configure your environment:
@@ -209,13 +207,13 @@ IIQ_API_TIMEOUT=30000
 
 #### Claude Code Integration
 
-First build the server (`bun run build`), then register it with the Claude Code CLI:
+First build the server (`npm run build`), then register it with the Claude Code CLI:
 
 ```bash
 claude mcp add incidentiq \
   -e IIQ_API_BASE_URL=https://your-district.incidentiq.com/api/v1.0 \
   -e IIQ_API_KEY=your-api-key-here \
-  -- bun /path/to/mcp-incidentiq/dist/index.js
+  -- node /path/to/mcp-incidentiq/dist/index.js
 ```
 
 Replace `/path/to/mcp-incidentiq` with the actual path to this project. Verify it was added with `claude mcp list`.
@@ -234,7 +232,7 @@ Quick configuration example:
 {
   "mcpServers": {
     "incidentiq": {
-      "command": "bun",
+      "command": "node",
       "args": ["/path/to/mcp-incidentiq/dist/index.js"],
       "env": {
         "IIQ_API_BASE_URL": "https://your-district.incidentiq.com/api/v1.0",
@@ -252,7 +250,7 @@ Replace `/path/to/mcp-incidentiq` with the actual path to this project.
 ### Development Mode
 
 ```bash
-bun run dev
+npm run dev
 ```
 
 This starts the server with hot-reload enabled for development.
@@ -260,8 +258,8 @@ This starts the server with hot-reload enabled for development.
 ### Production Mode
 
 ```bash
-bun run build
-bun run start
+npm run build
+npm run start
 ```
 
 ### Testing Connection
@@ -358,13 +356,13 @@ mcp-incidentiq/
 
 ### Available Scripts
 
-- `bun run dev` - Start development server with hot reload
-- `bun run build` - Build TypeScript to JavaScript
-- `bun run start` - Run production server
-- `bun run type-check` - Type check without building
-- `bun run clean` - Clean build directory
-- `bun run test` / `bun run test:unit` - Run the unit test suite
-- `bun run test:coverage` - Run unit tests with a coverage report
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm run start` - Run production server
+- `npm run type-check` - Type check without building
+- `npm run clean` - Clean build directory
+- `npm run test` / `npm run test:unit` - Run the unit test suite
+- `npm run test:coverage` - Run unit tests with a coverage report
 
 ## API Integration
 
@@ -425,7 +423,7 @@ We welcome contributions from the K-12 IT community! Please see our [Contributin
 - Verify API access is enabled for your account
 
 **Tool Not Found**
-- Run `bun run build` to compile the TypeScript code
+- Run `npm run build` to compile the TypeScript code
 - Restart Claude Desktop after configuration changes
 - Check the MCP server logs for errors
 

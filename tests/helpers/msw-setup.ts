@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, mock } from 'bun:test';
+import { beforeAll, afterEach, afterAll } from 'vitest';
 import { server } from '../mocks/server';
 
 export function setupMSW() {

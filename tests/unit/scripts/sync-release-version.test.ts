@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -48,5 +48,18 @@ describe('syncReleaseVersion', () => {
     syncReleaseVersion('2.0.0', { cwd: tmp });
     const cff = fs.readFileSync(path.join(tmp, 'CITATION.cff'), 'utf8');
     expect(cff).toMatch(/^date-released: "\d{4}-\d{2}-\d{2}"$/m);
+  });
+
+  it('bumps the hardcoded Server version literal in src/index.ts', () => {
+    fs.mkdirSync(path.join(tmp, 'src'));
+    fs.writeFileSync(
+      path.join(tmp, 'src', 'index.ts'),
+      "const server = new Server(\n  {\n    name: 'demo',\n    version: '0.0.0',\n  },\n);\n"
+    );
+    syncReleaseVersion('1.2.3', { date: '2030-05-01', cwd: tmp });
+    const idx = fs.readFileSync(path.join(tmp, 'src', 'index.ts'), 'utf8');
+    expect(idx).toMatch(/version: '1\.2\.3'/);
+    expect(idx).not.toContain("'0.0.0'");
+    expect(idx).toContain("name: 'demo'"); // unrelated line untouched
   });
 });

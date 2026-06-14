@@ -2,12 +2,8 @@ name: Release
 
 # semantic-release on every push to main: computes the next 0.x version from
 # Conventional Commits, publishes a GitHub Release, and commits the CHANGELOG /
-# CITATION.cff / package.json bump back with [skip ci] to avoid a re-trigger loop.
-#
-# bun runs install/build/test (the project is bun-only). semantic-release itself is a
-# Node-native CLI with a heavy plugin chain, so it runs under a pinned Node 24 step
-# (the one residual node-tooling pin the PRD sanctions) rather than the unproven
-# `bunx semantic-release` path. This does NOT make node a supported runtime.
+# CITATION.cff / package.json / src/index.ts version bump back with [skip ci] to avoid a
+# re-trigger loop. The whole job runs on Node 24 (current LTS) + npm.
 on:
   push:
     branches: [main]
@@ -38,25 +34,23 @@ jobs:
           # only an actual release's commit-back needs the admin PAT (else it is blocked by the ruleset).
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-
-      - name: Test (release gate)
-        run: bun run test
-
-      # semantic-release is Node-native; run it under the latest LTS. Its @semantic-release/exec
-      # prepareCmd (`node scripts/sync-release-version.js`) also runs here, where node is present.
-      - name: Use Node.js 24
+      - name: Setup Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: npm
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (release gate)
+        run: npm test
+
+      # semantic-release's @semantic-release/exec prepareCmd runs
+      # `node scripts/sync-release-version.js` here to sync package.json / CITATION.cff / src/index.ts.
       - name: Semantic Release
         run: npx semantic-release
         env:
