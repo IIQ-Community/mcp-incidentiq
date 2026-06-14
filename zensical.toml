@@ -1,0 +1,28 @@
+[project]
+name = "IncidentIQ MCP Server"
+docs_dir = "docs"
+site_dir = "site"
+nav = [
+  "index.md",
+  "API_PERMISSIONS.md",
+  "CLAUDE_DESKTOP_SETUP.md",
+  "COMMUNITY_IMPLEMENTATION_GUIDE.md",
+]
+
+# Light scheme (default) - follows the OS "light" preference.
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "amber"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+# Dark scheme (slate) - follows the OS "dark" preference.
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "amber"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"

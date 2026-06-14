@@ -196,6 +196,29 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
   `plugins` before `@semantic-release/git` (and drop `package.json` from the exec version bump, since
   the npm plugin then owns it).
 
+## Repository Governance
+
+`main` is protected by a GitHub ruleset. The contributor workflow is:
+
+- **Pull requests only** — no direct pushes to `main` (repository admins and the release bot bypass for
+  maintenance/automation; everyone else opens a PR).
+- **1 approval + Code Owner review** — every PR needs one approving review, including a review from a
+  [Code Owner](.github/CODEOWNERS); stale approvals are dismissed when new commits are pushed.
+- **All CI checks must pass** and the branch must be up to date — `lint-and-type-check`, `test`, and
+  `build-and-package` are required status checks (strict mode).
+- **Conversation resolution required** before merging.
+- **Merge commits only** — squash and rebase merging are disabled; the head branch is auto-deleted on merge.
+- **Protected tags** — `v*` release tags can only be created/deleted by admins or CI.
+
+**Security:** the repo runs Dependabot alerts + updates, secret scanning + push protection, CodeQL default
+code scanning, and private vulnerability reporting; the default workflow token is read-only.
+
+**Naming note:** GitHub usernames and email addresses are exempt from the project's neutral-naming rule, so
+district staff can be code owners and contribute under their own accounts.
+
+These settings are applied as config-as-code by
+[`scripts/setup-github-governance.sh`](scripts/setup-github-governance.sh) (idempotent; safe to re-run).
+
 ## Testing
 
 ### Writing Tests

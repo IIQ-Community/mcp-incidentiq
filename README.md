@@ -393,6 +393,8 @@ The server implements responsible API usage:
 
 We welcome contributions from the K-12 IT community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+**Governance:** `main` is protected — contributions land via pull requests with 1 approval + Code Owner review, all CI checks passing, conversation resolution, and merge-commit-only. See [Repository Governance](CONTRIBUTING.md#repository-governance) for the full workflow and security settings.
+
 ### How to Contribute
 
 1. Fork the repository
