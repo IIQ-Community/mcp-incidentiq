@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
-// Scope discovery to the unit suite (mirrors the old bunfig `root` + Jest `roots`), so the
-// disabled tests/e2e/* are never loaded. tests/setup.ts replaces the old bunfig preload.
+// Scope discovery to the unit suite so the disabled tests/e2e/* are never loaded.
+// tests/setup.ts provides the global test setup (env vars + console.error stub).
 //
 // Coverage thresholds are calibrated to Vitest's v8 measurement of the UNCHANGED ported
 // suite (124 tests, identical behavior coverage to the bun era). Vitest v8 and bun count
