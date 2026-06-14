@@ -1,16 +1,33 @@
 {
-  "branches": ["main"],
+  "branches": [
+    "main"
+  ],
   "plugins": [
     [
       "@semantic-release/commit-analyzer",
       {
         "preset": "angular",
         "releaseRules": [
-          { "breaking": true, "release": "minor" },
-          { "revert": true, "release": "patch" },
-          { "type": "feat", "release": "minor" },
-          { "type": "fix", "release": "patch" },
-          { "type": "perf", "release": "patch" }
+          {
+            "breaking": true,
+            "release": "minor"
+          },
+          {
+            "revert": true,
+            "release": "patch"
+          },
+          {
+            "type": "feat",
+            "release": "minor"
+          },
+          {
+            "type": "fix",
+            "release": "patch"
+          },
+          {
+            "type": "perf",
+            "release": "patch"
+          }
         ]
       }
     ],
@@ -31,7 +48,13 @@
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md", "CITATION.cff", "package.json", "src/index.ts"],
+        "assets": [
+          "CHANGELOG.md",
+          "CITATION.cff",
+          "package.json",
+          "src/index.ts",
+          "package-lock.json"
+        ],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],

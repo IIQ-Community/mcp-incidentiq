@@ -1,4 +1,4 @@
-// Sync the release version into package.json, CITATION.cff, and the src/index.ts Server literal.
+// Sync the release version into package.json, package-lock.json, CITATION.cff, and src/index.ts.
 // Invoked by @semantic-release/exec during the `prepare` step:
 //   node scripts/sync-release-version.js ${nextRelease.version}
 // CommonJS (package.json has no "type": "module") so the test runner can require it directly.
@@ -25,6 +25,19 @@ function syncReleaseVersion(version, opts = {}) {
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
   pkg.version = version;
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+
+  // package-lock.json - keep the npm lockfile's recorded version in sync (root + the root
+  // package entry `packages[""]`). Without this, every release commit leaves the lockfile a
+  // version behind. Skipped if the file is absent so the script stays safe.
+  const lockPath = path.join(cwd, 'package-lock.json');
+  if (fs.existsSync(lockPath)) {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    lock.version = version;
+    if (lock.packages && lock.packages['']) {
+      lock.packages[''].version = version;
+    }
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+  }
 
   // CITATION.cff - line-anchored text edits (no YAML dependency). `^version:` does not
   // match `cff-version:`, so cff-version is left intact.

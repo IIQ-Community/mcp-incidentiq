@@ -5,7 +5,7 @@ This guide walks you through setting up the IncidentIQ MCP server with Claude De
 ## Prerequisites
 
 - **Claude Desktop** installed on your system
-- **Node.js** version 18 or higher
+- **Node.js** version 22 (LTS) or higher
 - **IncidentIQ API credentials** from your district administrator
 - Administrator access to modify Claude Desktop configuration
 
