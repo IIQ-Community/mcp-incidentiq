@@ -1,0 +1,52 @@
+name: Dependabot bun lockfile sync
+
+# Dependabot bumps package.json but does NOT update bun.lock, so CI's
+# `bun install --frozen-lockfile` fails on every npm Dependabot PR. This workflow
+# regenerates bun.lock to match the bumped package.json and commits it back to the PR
+# branch, pushed with RELEASE_TOKEN so the push re-triggers the `ci` workflow.
+#
+# RELEASE_TOKEN MUST be added to the repo's DEPENDABOT secrets (Settings > Secrets and
+# variables > Dependabot) - GitHub does NOT pass Actions secrets to Dependabot-triggered
+# workflows. There is intentionally NO github.token fallback: a github.token push cannot
+# re-trigger CI, so a missing secret must fail loudly at checkout rather than silently
+# leaving the PR stuck.
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    # Gate on the PR AUTHOR, not github.actor: the lockfile-sync push below changes the
+    # event actor to the PAT owner, so an actor-based guard would skip on the second run.
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Regenerate bun.lock
+        run: bun install
+
+      - name: Commit bun.lock if it changed
+        run: |
+          # LOOP GUARD - do not remove. This workflow re-fires on the `synchronize` event
+          # from its own push (package.json stays in the PR diff), but the second run is a
+          # no-op because `git diff --quiet bun.lock` is true once the lockfile is in sync.
+          if ! git diff --quiet bun.lock; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add bun.lock
+            git commit -m "chore(deps): sync bun.lock with package.json [dependabot]"
+            git push
+          else
+            echo "bun.lock already in sync - nothing to commit"
+          fi
