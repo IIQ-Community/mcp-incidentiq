@@ -1,0 +1,4 @@
+# Code owners for IIQ-Community/mcp-incidentiq.
+# Listed handles are required reviewers for pull requests (enforced by the main branch ruleset).
+# GitHub usernames are operational identifiers and are exempt from the project's neutral-naming rule.
+* @zbirge @zbirgeHPS

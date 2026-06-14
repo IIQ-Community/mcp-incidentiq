@@ -62,8 +62,7 @@ jobs:
     
     - name: Run tests
       run: yarn test
-      continue-on-error: true  # Remove once tests are implemented
-    
+
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
       if: matrix.node-version == '20.x'
