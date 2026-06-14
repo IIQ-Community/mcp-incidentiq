@@ -1,27 +1,19 @@
 # mcp-incidentiq .gitignore
-# Stack: Node.js / TypeScript (Yarn 4)
-# Last updated: 2026-06-13
+# Stack: Bun / TypeScript
+# Last updated: 2026-06-14
 # Ignores dependencies, build artifacts, IDE/OS files, secrets, and local tooling state.
 
 # ============================================================================
-# Dependencies (Node.js / Yarn 4)
+# Dependencies (Bun)
 # ============================================================================
-.pnp.*
-.yarn/*
-!.yarn/cache
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
 node_modules/
 
 # ============================================================================
-# Foreign lock files (this is a Yarn project - never commit other managers')
+# Foreign lock files (this is a Bun project - never commit other managers')
 # ============================================================================
-bun.lockb
 package-lock.json
 pnpm-lock.yaml
+yarn.lock
 
 # ============================================================================
 # Build output
@@ -50,8 +42,6 @@ coverage/
 *.log
 logs/
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # ============================================================================
 # Temporary files
