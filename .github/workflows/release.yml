@@ -3,10 +3,11 @@ name: Release
 # semantic-release on every push to main: computes the next 0.x version from
 # Conventional Commits, publishes a GitHub Release, and commits the CHANGELOG /
 # CITATION.cff / package.json bump back with [skip ci] to avoid a re-trigger loop.
-# Node 24 matches the devcontainer AND satisfies semantic-release 25's engines.node
-# (^22.14.0 || >=24.10.0); its CLI hard-exits on older Node, so 20 would fail every run.
-# NOTE: the [skip ci] release commit pushes to main; the future branch-protection
-# governance ruleset must allow GITHUB_TOKEN / the release bot to bypass the PR rule.
+#
+# bun runs install/build/test (the project is bun-only). semantic-release itself is a
+# Node-native CLI with a heavy plugin chain, so it runs under a pinned Node 24 step
+# (the one residual node-tooling pin the PRD sanctions) rather than the unproven
+# `bunx semantic-release` path. This does NOT make node a supported runtime.
 on:
   push:
     branches: [main]
@@ -37,22 +38,24 @@ jobs:
           # only an actual release's commit-back needs the admin PAT (else it is blocked by the ruleset).
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Test (release gate)
+        run: bun run test
+
+      # semantic-release is Node-native; run it under the latest LTS. Its @semantic-release/exec
+      # prepareCmd (`node scripts/sync-release-version.js`) also runs here, where node is present.
       - name: Use Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Build
-        run: yarn build
-
-      - name: Test (release gate)
-        run: yarn test
 
       - name: Semantic Release
         run: npx semantic-release
