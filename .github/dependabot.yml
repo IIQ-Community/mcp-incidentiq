@@ -7,6 +7,19 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
+    # Group minor + patch bumps into two PRs (dev / prod) to cut review toil.
+    # Major bumps are excluded from groups, so each lands as its own PR for manual review.
+    groups:
+      npm-development:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -14,3 +27,9 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
+    # All GitHub Actions bumps share one PR; Actions majors are low-risk and CI proves them,
+    # so a single grouped PR is fine to review at once.
+    groups:
+      github-actions:
+        patterns:
+          - "*"

@@ -205,13 +205,19 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
   PAT stored as the `RELEASE_TOKEN` repository secret (contents + issues + pull-requests write) so
   semantic-release's `chore(release)` commit-back is allowed — the default `GITHUB_TOKEN` cannot bypass a
   repo ruleset. Maintainers must create/rotate that secret.
-- **1 approval + Code Owner review** — every PR needs one approving review, including a review from a
-  [Code Owner](.github/CODEOWNERS); stale approvals are dismissed when new commits are pushed.
+- **Review policy is a `SOLO_MODE` ratchet** — while the project has a single maintainer, the governance
+  script sets required approvals to **0** (a solo maintainer cannot approve their own PR, so requiring one
+  would force an admin bypass on every self-authored PR). PRs and strict CI still gate every merge. When a
+  second maintainer joins, set `SOLO_MODE=false` in [`scripts/setup-github-governance.sh`](scripts/setup-github-governance.sh)
+  and re-run it to require **1 approval + Code Owner review** (stale approvals dismissed on new commits).
 - **All CI checks must pass** and the branch must be up to date — `lint-and-type-check`, `test`, and
   `build-and-package` are required status checks (strict mode).
 - **Conversation resolution required** before merging.
 - **Merge commits only** — squash and rebase merging are disabled; the head branch is auto-deleted on merge.
 - **Protected tags** — `v*` release tags can only be created/deleted by admins or CI.
+- **Dependabot updates** — minor and patch bumps are grouped (dev / prod / actions) and auto-merged once CI
+  passes via [`.github/workflows/dependabot-auto-merge.yml`](.github/workflows/dependabot-auto-merge.yml);
+  major bumps open individual PRs for manual review.
 
 **Security:** the repo runs Dependabot alerts + updates, secret scanning + push protection, CodeQL default
 code scanning, and private vulnerability reporting; the default workflow token is read-only.
