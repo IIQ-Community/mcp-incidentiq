@@ -63,7 +63,7 @@ Use the test script to verify which endpoints work with your API key:
 npx tsx scripts/test-specific-ticket.ts
 ```
 
-Note: Use the ticket ID `00000000-0000-0000-0000-000000000000` for testing.
+Note: Use a valid ticket ID from your own instance (a GUID, e.g. `00000000-0000-0000-0000-000000000000`) for testing.
 
 ## Rate Limiting
 

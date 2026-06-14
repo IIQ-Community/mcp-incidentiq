@@ -8,7 +8,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 
 ## Current State
 
-**🎉 PRODUCTION READY**: UAT successfully completed (early 2025) with a partner K-12 school district. The project has been validated in production and is approved for deployment. Successfully pushed to GitHub (IIQ-Community/mcp-incidentiq).
+**🎉 PRODUCTION READY**: UAT successfully completed against a production K-12 school district instance. The project has been validated in production and is approved for deployment. Successfully pushed to GitHub (IIQ-Community/mcp-incidentiq).
 
 ### Core Implementation
 - **140+ MCP Tools**: Comprehensive tools across 9 distinct domain modules
@@ -27,13 +27,13 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
 - **Node Modules**: Switched from Yarn PnP to node_modules for better compatibility
 
-### ✅ UAT Results (early 2025)
-- **Production Testing**: Successfully tested with numerous tickets and thousands of users
+### ✅ UAT Results
+- **Production Testing**: Successfully tested against a large production K-12 district instance
 - **Authentication**: ✅ All authentication issues resolved
 - **Data Access**: ✅ Successfully retrieving real production data
-- **Performance**: Handles many tickets without issues
-- **Teams**: numerous support teams with IT agents accessible
-- **Locations**: district locations including all schools
+- **Performance**: Handles large production datasets without issues
+- **Teams**: Multiple support teams with full IT agent rosters accessible
+- **Locations**: All district locations including schools accessible
 - **Minor Issues**: Some fields return undefined (cosmetic)
 - **Missing Tools**: parts_* and issues_* not yet implemented (low priority)
 
