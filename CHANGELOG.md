@@ -5,6 +5,13 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.4.0...v0.4.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* **release:** sync package-lock version + correct Node version in setup guide ([edf0917](https://github.com/IIQ-Community/mcp-incidentiq/commit/edf091714df863a5361db4315d7ee7310ab20784))
+
 # [0.4.0](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.3.0...v0.4.0) (2026-06-14)
 
 
