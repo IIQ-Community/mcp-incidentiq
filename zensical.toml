@@ -1,5 +1,5 @@
 [project]
-name = "IncidentIQ MCP Server"
+site_name = "IncidentIQ MCP Server"
 docs_dir = "docs"
 site_dir = "site"
 nav = [
