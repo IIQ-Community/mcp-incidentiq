@@ -72,7 +72,8 @@ apply_ruleset "tag-protection" "$TAG_BODY"
 echo "== Merge settings (merge-commit only + auto-delete head) =="
 gh api -X PATCH "repos/$REPO" \
   -F allow_merge_commit=true -F allow_squash_merge=false \
-  -F allow_rebase_merge=false -F delete_branch_on_merge=true >/dev/null
+  -F allow_rebase_merge=false -F delete_branch_on_merge=true \
+  -F allow_auto_merge=true >/dev/null
 ok "merge settings applied"
 
 echo "== Security suite =="
@@ -131,6 +132,7 @@ RB=$(gh api "repos/$REPO")
 [ "$(jq -r '.allow_rebase_merge'      <<<"$RB")" = "false" ] && ok "rebase disabled"        || fail "rebase not disabled"
 [ "$(jq -r '.allow_merge_commit'      <<<"$RB")" = "true"  ] && ok "merge commit enabled"   || fail "merge commit not enabled"
 [ "$(jq -r '.delete_branch_on_merge'  <<<"$RB")" = "true"  ] && ok "auto-delete head"       || fail "auto-delete not set"
+[ "$(jq -r '.allow_auto_merge'        <<<"$RB")" = "true"  ] && ok "auto-merge enabled"     || fail "auto-merge not enabled"
 [ "$(jq -r '.has_discussions'         <<<"$RB")" = "true"  ] && ok "discussions on"         || fail "discussions off"
 [ "$(jq -r '.has_wiki'                <<<"$RB")" = "false" ] && ok "wiki off"               || fail "wiki on"
 [ "$(jq -r '.has_projects'            <<<"$RB")" = "false" ] && ok "projects off"           || fail "projects on"
