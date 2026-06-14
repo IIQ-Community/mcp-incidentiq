@@ -13,13 +13,10 @@ ok()   { printf '  \033[0;32mOK\033[0m   %s\n' "$1"; }
 fail() { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; FAILED=1; }
 FAILED=0
 
-# Resolve the GitHub Actions integration id dynamically (validated value: 15368).
-GH_ACTIONS_ID=$(gh api /apps/github-actions --jq '.id')
-[ -n "$GH_ACTIONS_ID" ] || { echo "ERROR: cannot resolve github-actions app id"; exit 1; }
-echo "GitHub Actions integration id: $GH_ACTIONS_ID"
-
-# Bypass actors shared by both rulesets: Repository admin (role id 5) + GitHub Actions.
-BYPASS='[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"},{"actor_id":'"$GH_ACTIONS_ID"',"actor_type":"Integration","bypass_mode":"always"}]'
+# Bypass actors shared by both rulesets: Repository admin only (role id 5).
+# (GitHub rejects the GitHub Actions integration as a repo-ruleset bypass actor; semantic-release's
+# commit-back instead authenticates with an admin PAT - secrets.RELEASE_TOKEN - so it bypasses as admin.)
+BYPASS='[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}]'
 
 # --- create-or-update a ruleset by name (idempotent) ---
 apply_ruleset() {
@@ -129,11 +126,11 @@ RB=$(gh api "repos/$REPO")
 RULES=$(gh api "repos/$REPO/rulesets" --jq '[.[].name]')
 grep -q main-protection <<<"$RULES" && ok "main ruleset present" || fail "main ruleset missing"
 grep -q tag-protection  <<<"$RULES" && ok "tag ruleset present"  || fail "tag ruleset missing"
-# Confirm the GitHub Actions bypass actor landed (else releases would break) - FAIL LOUD.
+# Confirm the Repository-admin bypass landed (the admin PAT-based release relies on it) - FAIL LOUD.
 MAIN_ID=$(gh api "repos/$REPO/rulesets" --jq '.[] | select(.name=="main-protection") | .id')
-gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.bypass_actors[].actor_id' | grep -qx "$GH_ACTIONS_ID" \
-  && ok "GitHub Actions bypass present (releases keep working)" \
-  || fail "GitHub Actions bypass MISSING - semantic-release would be blocked"
+gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.bypass_actors[].actor_id' | grep -qx "5" \
+  && ok "Repository-admin bypass present (admin-PAT release keeps working)" \
+  || fail "Repository-admin bypass MISSING"
 [ "$(gh api "repos/$REPO/vulnerability-alerts" -i 2>/dev/null | head -1 | grep -o '204')" = "204" ] \
   && ok "Dependabot alerts enabled" || ok "Dependabot alerts (checked)"
 [ "$(gh api "repos/$REPO/private-vulnerability-reporting" --jq '.enabled')" = "true" ] \

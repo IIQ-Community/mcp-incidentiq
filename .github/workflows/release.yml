@@ -25,10 +25,15 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # RELEASE_TOKEN is a fine-grained admin PAT (contents+issues+pull-requests write). The default
+      # GITHUB_TOKEN (github-actions[bot]) cannot bypass the main-branch ruleset, so semantic-release's
+      # commit-back to main would be blocked; the admin PAT bypasses as Repository admin. Create it at
+      # Settings > Secrets > Actions > RELEASE_TOKEN (see CONTRIBUTING > Repository Governance).
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Use Node.js 24
         uses: actions/setup-node@v4
@@ -50,4 +55,5 @@ jobs:
       - name: Semantic Release
         run: npx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Admin PAT so the @semantic-release/git commit-back bypasses the main-branch ruleset.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

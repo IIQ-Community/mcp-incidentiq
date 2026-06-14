@@ -200,8 +200,11 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
 
 `main` is protected by a GitHub ruleset. The contributor workflow is:
 
-- **Pull requests only** — no direct pushes to `main` (repository admins and the release bot bypass for
-  maintenance/automation; everyone else opens a PR).
+- **Pull requests only** — no direct pushes to `main` (repository admins bypass for maintenance; everyone
+  else opens a PR). Releases also bypass: the release workflow authenticates with an admin fine-grained
+  PAT stored as the `RELEASE_TOKEN` repository secret (contents + issues + pull-requests write) so
+  semantic-release's `chore(release)` commit-back is allowed — the default `GITHUB_TOKEN` cannot bypass a
+  repo ruleset. Maintainers must create/rotate that secret.
 - **1 approval + Code Owner review** — every PR needs one approving review, including a review from a
   [Code Owner](.github/CODEOWNERS); stale approvals are dismissed when new commits are pushed.
 - **All CI checks must pass** and the branch must be up to date — `lint-and-type-check`, `test`, and
