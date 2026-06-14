@@ -81,8 +81,6 @@
     },
     /* https://github.com/devcontainers/features/tree/main/src/github-cli */
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    /* https://github.com/michidk/devcontainers-features/tree/main/src/bun */
-    "ghcr.io/michidk/devcontainers-features/bun:1": {},
     /* https://github.com/braun-daniel/devcontainer-features/blob/main/src/spaceship */
     "ghcr.io/braun-daniel/devcontainer-features/spaceship:1": {},
     /* https://github.com/braun-daniel/devcontainer-features/blob/main/src/fzf */

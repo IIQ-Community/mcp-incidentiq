@@ -1,17 +1,17 @@
 # mcp-incidentiq .gitignore
-# Stack: Bun / TypeScript
+# Stack: Node / TypeScript
 # Last updated: 2026-06-14
 # Ignores dependencies, build artifacts, IDE/OS files, secrets, and local tooling state.
 
 # ============================================================================
-# Dependencies (Bun)
+# Dependencies (npm)
 # ============================================================================
 node_modules/
 
 # ============================================================================
-# Foreign lock files (this is a Bun project - never commit other managers')
+# Foreign lock files (this is an npm project - never commit other managers')
 # ============================================================================
-package-lock.json
+bun.lock
 pnpm-lock.yaml
 yarn.lock
 

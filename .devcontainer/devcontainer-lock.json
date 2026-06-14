@@ -78,11 +78,6 @@
       "resolved": "ghcr.io/meaningful-ooo/devcontainer-features/homebrew@sha256:c49ba0f6275bdd0474f4c7fcf37fc84b5739838b110c7da9c16d6a409ae48a86",
       "integrity": "sha256:c49ba0f6275bdd0474f4c7fcf37fc84b5739838b110c7da9c16d6a409ae48a86"
     },
-    "ghcr.io/michidk/devcontainers-features/bun:1": {
-      "version": "1.0.1",
-      "resolved": "ghcr.io/michidk/devcontainers-features/bun@sha256:568cc553062d184932ba993db954d4ace2bda3907d129477ce174777ac686dbd",
-      "integrity": "sha256:568cc553062d184932ba993db954d4ace2bda3907d129477ce174777ac686dbd"
-    },
     "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli:1": {
       "version": "1.1.1",
       "resolved": "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli@sha256:f87aea79d9299116e06df9f5bf607de00dfcbb26a1783e92ce69e4a07ceb450a",

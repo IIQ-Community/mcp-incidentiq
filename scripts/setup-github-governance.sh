@@ -100,13 +100,13 @@ fi
 gh api -X PUT "repos/$REPO/actions/permissions/workflow" \
   -F default_workflow_permissions=read -F can_approve_pull_request_reviews=false >/dev/null \
   && ok "workflow token read-only"
-# Harden Actions: allow only github-owned + verified-creator actions, plus codecov/* (ci.yml),
-# dependabot/* (the Dependabot auto-merge workflow), and oven-sh/* (setup-bun in the bun CI/release).
+# Harden Actions: allow only github-owned + verified-creator actions, plus codecov/* (ci.yml)
+# and dependabot/* (the Dependabot auto-merge workflow).
 gh api -X PUT "repos/$REPO/actions/permissions" -F enabled=true -f allowed_actions=selected >/dev/null
 gh api -X PUT "repos/$REPO/actions/permissions/selected-actions" \
   -F github_owned_allowed=true -F verified_allowed=true \
-  -f 'patterns_allowed[]=codecov/*' -f 'patterns_allowed[]=dependabot/*' -f 'patterns_allowed[]=oven-sh/*' >/dev/null \
-  && ok "Actions restricted to github-owned + verified + codecov/* + dependabot/* + oven-sh/*"
+  -f 'patterns_allowed[]=codecov/*' -f 'patterns_allowed[]=dependabot/*' >/dev/null \
+  && ok "Actions restricted to github-owned + verified + codecov/* + dependabot/*"
 
 echo "== Repo metadata =="
 gh api -X PATCH "repos/$REPO" -F has_discussions=true -F has_wiki=false -F has_projects=false >/dev/null \
@@ -148,11 +148,11 @@ RC_ACTUAL=$(gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.rules[] | select(.type
 [ "$RC_ACTUAL" = "$REVIEW_COUNT" ] \
   && ok "required approvals = $REVIEW_COUNT (SOLO_MODE=$SOLO_MODE)" \
   || fail "required approvals mismatch (want $REVIEW_COUNT, got $RC_ACTUAL)"
-# Confirm the single bun 'ci' job is THE required status check - the chicken-and-egg fix depends
+# Confirm the single Node 'ci' job is THE required status check - the chicken-and-egg fix depends
 # on this retarget actually landing, so fail loud if it silently did not (e.g. stale old contexts).
 RSC_ACTUAL=$(gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context] | sort | join(",")')
 [ "$RSC_ACTUAL" = "ci" ] \
-  && ok "required status check = 'ci' (single bun job)" \
+  && ok "required status check = 'ci' (single Node job)" \
   || fail "required status checks mismatch (want 'ci', got '$RSC_ACTUAL')"
 # Security suite - FAIL-CLOSED: assert every promised setting reads back as enabled.
 gh api "repos/$REPO/vulnerability-alerts" 2>/dev/null >/dev/null \
@@ -175,8 +175,6 @@ CQ2=$(gh api "repos/$REPO/code-scanning/default-setup" --jq '.state' 2>/dev/null
 SEL=$(gh api "repos/$REPO/actions/permissions/selected-actions" 2>/dev/null)
 [ "$(jq -r '.github_owned_allowed' <<<"$SEL")" = "true" ] && [ "$(jq -r '.verified_allowed' <<<"$SEL")" = "true" ] \
   && ok "Actions allowlist (github-owned + verified)" || fail "Actions allowlist not set"
-jq -r '.patterns_allowed[]?' <<<"$SEL" | grep -qxF 'oven-sh/*' \
-  && ok "Actions allowlist includes oven-sh/* (setup-bun)" || fail "Actions allowlist missing oven-sh/*"
 [ "$(gh api "repos/$REPO/pages" --jq '.build_type' 2>/dev/null)" = "workflow" ] \
   && ok "Pages build_type=workflow" || fail "Pages not workflow-sourced"
 

@@ -7,27 +7,31 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  # Single bun job. Its check context is "ci" - the main-branch ruleset's
+  # Single Node job. Its check context is "ci" - the main-branch ruleset's
   # required_status_checks references exactly this (see scripts/setup-github-governance.sh).
+  # Do NOT rename this job: a different check name makes main unmergeable.
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci
 
       - name: Type check
-        run: bun run type-check
+        run: npm run type-check
 
       - name: Build
-        run: bun run build
+        run: npm run build
 
       - name: Test (with coverage)
-        run: bun test tests/unit --coverage --coverage-reporter=lcov --coverage-reporter=text
+        run: npm test -- --coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v7

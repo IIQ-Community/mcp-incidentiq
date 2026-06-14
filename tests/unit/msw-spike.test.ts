@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios from 'axios';
 import { server } from '../mocks/server';
 
-// Regression guard: msw/node does NOT intercept axios's default node:http adapter under
-// `bun test`, but DOES intercept its fetch adapter. tests/setup.ts sets axios.defaults.adapter
-// = 'fetch' globally; this asserts that path keeps working (no explicit adapter here, so it
-// proves the global setup). A silent bypass would hit the network and FAIL, not pass.
-describe('MSW-under-bun (fetch adapter) regression guard', () => {
+// Regression guard: msw/node intercepts axios's default node:http adapter under Vitest's Node
+// environment with no adapter override needed. This asserts interception keeps working; a silent
+// bypass would hit the real network and FAIL (onUnhandledRequest: 'error'), not pass.
+describe('MSW axios-interception regression guard', () => {
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
   afterAll(() => server.close());
 

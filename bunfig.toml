@@ -1,8 +1,0 @@
-[test]
-# Scope test discovery to the unit suite (mirrors the old Jest `roots`), so the disabled
-# tests/e2e/* are never loaded by a bare `bun test`. Scripts also pass `tests/unit` explicitly.
-root = "tests/unit"
-preload = ["./tests/setup.ts"]
-# Jest's branches:60 AND statements:77 coverage gates have no bun equivalent and are BOTH
-# dropped; bun coverage is line+function only, which preserves the closest meaningful signal.
-coverageThreshold = { line = 0.77, function = 0.70 }
