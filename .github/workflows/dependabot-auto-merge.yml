@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   auto-merge:
-    if: ${{ github.actor == 'dependabot[bot]' }}
+    # PR author, not github.actor: the lockfile-sync workflow's PAT push changes github.actor,
+    # which would otherwise make this auto-merge job skip on the post-sync run.
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Fetch Dependabot metadata
