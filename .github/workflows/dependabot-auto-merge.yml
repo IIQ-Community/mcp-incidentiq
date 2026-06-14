@@ -6,6 +6,9 @@ name: Dependabot auto-merge
 # need no human review. Grouped dev/prod minor+patch PRs (see dependabot.yml) merge as a unit.
 on: pull_request
 
+# Explicit job-level permissions are REQUIRED: the repo's default workflow token is read-only
+# (set by scripts/setup-github-governance.sh). These override the default for this workflow only,
+# so `gh pr merge --auto` can act. Removing them would silently re-break auto-merge.
 permissions:
   contents: write
   pull-requests: write
