@@ -18,6 +18,15 @@ FAILED=0
 # commit-back instead authenticates with an admin PAT - secrets.RELEASE_TOKEN - so it bypasses as admin.)
 BYPASS='[{"actor_id":5,"actor_type":"RepositoryRole","bypass_mode":"always"}]'
 
+# SOLO_MODE controls the PR review requirement. A single maintainer cannot approve their own PR, so
+# requiring an approval would force an admin bypass on every self-authored PR. While solo, relax reviews
+# to 0 - PRs, strict CI status checks, and conversation resolution still gate every merge. Set
+# SOLO_MODE=false once a second maintainer exists to require 1 approval + Code Owner review; flip and
+# re-run this idempotent script to ratchet the policy up.
+SOLO_MODE="${SOLO_MODE:-true}"
+if [ "$SOLO_MODE" = "true" ]; then REVIEW_COUNT=0; CODEOWNER_REVIEW=false; else REVIEW_COUNT=1; CODEOWNER_REVIEW=true; fi
+echo "SOLO_MODE=$SOLO_MODE -> required approvals=$REVIEW_COUNT, code-owner review=$CODEOWNER_REVIEW"
+
 # --- create-or-update a ruleset by name (idempotent) ---
 apply_ruleset() {
   local name="$1" body="$2" id
@@ -32,14 +41,14 @@ apply_ruleset() {
 }
 
 echo "== Main branch ruleset =="
-MAIN_BODY=$(jq -n --argjson bypass "$BYPASS" '{
+MAIN_BODY=$(jq -n --argjson bypass "$BYPASS" --argjson rc "$REVIEW_COUNT" --argjson cor "$CODEOWNER_REVIEW" '{
   name: "main-protection", target: "branch", enforcement: "active",
   bypass_actors: $bypass,
   conditions: { ref_name: { include: ["~DEFAULT_BRANCH"], exclude: [] } },
   rules: [
     { type: "pull_request", parameters: {
-        required_approving_review_count: 1,
-        require_code_owner_review: true,
+        required_approving_review_count: $rc,
+        require_code_owner_review: $cor,
         dismiss_stale_reviews_on_push: true,
         require_last_push_approval: false,
         required_review_thread_resolution: true } },
@@ -95,11 +104,13 @@ fi
 gh api -X PUT "repos/$REPO/actions/permissions/workflow" \
   -F default_workflow_permissions=read -F can_approve_pull_request_reviews=false >/dev/null \
   && ok "workflow token read-only"
-# Harden Actions: allow only github-owned + verified-creator actions, plus codecov/* (used by ci.yml).
+# Harden Actions: allow only github-owned + verified-creator actions, plus codecov/* (ci.yml) and
+# dependabot/* (the Dependabot auto-merge workflow's fetch-metadata action).
 gh api -X PUT "repos/$REPO/actions/permissions" -F enabled=true -f allowed_actions=selected >/dev/null
 gh api -X PUT "repos/$REPO/actions/permissions/selected-actions" \
-  -F github_owned_allowed=true -F verified_allowed=true -f 'patterns_allowed[]=codecov/*' >/dev/null \
-  && ok "Actions restricted to github-owned + verified + codecov/*"
+  -F github_owned_allowed=true -F verified_allowed=true \
+  -f 'patterns_allowed[]=codecov/*' -f 'patterns_allowed[]=dependabot/*' >/dev/null \
+  && ok "Actions restricted to github-owned + verified + codecov/* + dependabot/*"
 
 echo "== Repo metadata =="
 gh api -X PATCH "repos/$REPO" -F has_discussions=true -F has_wiki=false -F has_projects=false >/dev/null \
@@ -136,6 +147,11 @@ MAIN_ID=$(gh api "repos/$REPO/rulesets" --jq '.[] | select(.name=="main-protecti
 gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.bypass_actors[].actor_id' | grep -qx "5" \
   && ok "Repository-admin bypass present (admin-PAT release keeps working)" \
   || fail "Repository-admin bypass MISSING"
+# Confirm the review requirement matches SOLO_MODE (0 while solo, 1 with a second maintainer).
+RC_ACTUAL=$(gh api "repos/$REPO/rulesets/$MAIN_ID" --jq '.rules[] | select(.type=="pull_request") | .parameters.required_approving_review_count')
+[ "$RC_ACTUAL" = "$REVIEW_COUNT" ] \
+  && ok "required approvals = $REVIEW_COUNT (SOLO_MODE=$SOLO_MODE)" \
+  || fail "required approvals mismatch (want $REVIEW_COUNT, got $RC_ACTUAL)"
 # Security suite - FAIL-CLOSED: assert every promised setting reads back as enabled.
 gh api "repos/$REPO/vulnerability-alerts" 2>/dev/null >/dev/null \
   && ok "Dependabot alerts enabled" || fail "Dependabot alerts NOT enabled"
