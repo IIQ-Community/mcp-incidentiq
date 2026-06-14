@@ -7,9 +7,13 @@ name: Dependabot bun lockfile sync
 #
 # RELEASE_TOKEN MUST be added to the repo's DEPENDABOT secrets (Settings > Secrets and
 # variables > Dependabot) - GitHub does NOT pass Actions secrets to Dependabot-triggered
-# workflows. There is intentionally NO github.token fallback: a github.token push cannot
-# re-trigger CI, so a missing secret must fail loudly at checkout rather than silently
-# leaving the PR stuck.
+# workflows. The token is injected ONLY at the final push step (never during lockfile
+# generation), and there is intentionally NO github.token fallback: a github.token push
+# cannot re-trigger CI, so a missing secret must fail loudly rather than leave the PR stuck.
+#
+# Trust boundary: checkout uses persist-credentials:false and lockfile generation runs
+# `bun install --lockfile-only` (resolves + writes bun.lock with NO dependency install and
+# NO script execution), so a bumped package never sees a write credential or runs code.
 on:
   pull_request:
     paths:
@@ -28,25 +32,37 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
-          token: ${{ secrets.RELEASE_TOKEN }}
+          # No PAT persisted in git config: the repo is public so the same-repo Dependabot
+          # branch checks out without a token, and the write credential is kept out of the
+          # workspace until the push step. This closes the supply-chain trust boundary.
+          persist-credentials: false
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Regenerate bun.lock
-        run: bun install
+      - name: Regenerate bun.lock (no install, no scripts)
+        run: bun install --lockfile-only
 
       - name: Commit bun.lock if it changed
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           # LOOP GUARD - do not remove. This workflow re-fires on the `synchronize` event
           # from its own push (package.json stays in the PR diff), but the second run is a
           # no-op because `git diff --quiet bun.lock` is true once the lockfile is in sync.
           if ! git diff --quiet bun.lock; then
+            if [ -z "$RELEASE_TOKEN" ]; then
+              echo "::error::RELEASE_TOKEN is not set in the repo's Dependabot secrets; cannot push the synced bun.lock to re-trigger CI."
+              exit 1
+            fi
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add bun.lock
             git commit -m "chore(deps): sync bun.lock with package.json [dependabot]"
-            git push
+            # Push with the admin PAT identity (not GITHUB_TOKEN) so the push re-triggers the
+            # `ci` workflow. Identity is what matters for re-triggering - a URL-embedded PAT
+            # works the same as a persisted one, while keeping the credential out of install.
+            git push "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_HEAD_REF}"
           else
             echo "bun.lock already in sync - nothing to commit"
           fi
