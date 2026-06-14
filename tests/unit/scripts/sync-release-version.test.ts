@@ -62,4 +62,19 @@ describe('syncReleaseVersion', () => {
     expect(idx).not.toContain("'0.0.0'");
     expect(idx).toContain("name: 'demo'"); // unrelated line untouched
   });
+
+  it('bumps package-lock.json root and packages[""] version', () => {
+    fs.writeFileSync(
+      path.join(tmp, 'package-lock.json'),
+      JSON.stringify(
+        { name: 'demo', version: '0.0.0', lockfileVersion: 3, packages: { '': { name: 'demo', version: '0.0.0' } } },
+        null,
+        2
+      ) + '\n'
+    );
+    syncReleaseVersion('1.2.3', { date: '2030-05-01', cwd: tmp });
+    const lock = JSON.parse(fs.readFileSync(path.join(tmp, 'package-lock.json'), 'utf8'));
+    expect(lock.version).toBe('1.2.3');
+    expect(lock.packages[''].version).toBe('1.2.3');
+  });
 });
