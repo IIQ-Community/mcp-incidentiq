@@ -8,8 +8,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables. quiet:true keeps dotenv's startup log off stdout: this
+// process speaks MCP JSON-RPC over stdout (StdioServerTransport below), so any stray stdout
+// write would corrupt the protocol stream. dotenv v17 changed the default to quiet:false, so
+// set it explicitly (the option is a no-op on the currently pinned 16.x, protective on 17.x).
+dotenv.config({ quiet: true });
 
 // Import tool handlers
 import { ticketTools, handleTicketTool } from './tools/tickets.js';
