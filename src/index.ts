@@ -33,7 +33,7 @@ import { IncidentIQClient } from './api/client.js';
 const server = new Server(
   {
     name: 'mcp-incidentiq',
-    version: '0.4.1',
+    version: '0.5.0',
     description: 'MCP server for IncidentIQ - The #1 K-12 service management platform',
   },
   {
