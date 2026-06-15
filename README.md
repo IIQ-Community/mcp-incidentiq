@@ -470,8 +470,9 @@ We welcome contributions from the K-12 IT community! Please see our [Contributin
 This project follows [Semantic Versioning](https://semver.org/) and uses
 [semantic-release](https://semantic-release.gitbook.io/) for fully automated releases. Every push to
 `main` analyzes the [Conventional Commit](https://www.conventionalcommits.org/) history, computes the
-next version, publishes a GitHub Release with generated notes, and updates `CHANGELOG.md` /
-`CITATION.cff` / `package.json` — no manual version bumps. The project is in the **0.x** line, so a
+next version, publishes the package to [GitHub Packages](https://github.com/orgs/IIQ-Community/packages)
+and a GitHub Release (with the `npm pack` tarball attached for token-free install), and updates
+`CHANGELOG.md` / `CITATION.cff` / `package.json` — no manual version bumps. The project is in the **0.x** line, so a
 breaking change yields a minor bump (not `1.0.0`). See [CONTRIBUTING.md](CONTRIBUTING.md#automated-releases)
 for details and [CHANGELOG.md](CHANGELOG.md) for version history.
 
