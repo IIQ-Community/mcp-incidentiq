@@ -170,6 +170,8 @@ Released versions are published to **GitHub Packages** as `@iiq-community/mcp-in
 
 **A — GitHub Packages registry (requires a token).** GitHub Packages requires authentication even for *public* packages, so create an `.npmrc` with a GitHub token that has the `read:packages` scope:
 
+> **Visibility note:** GitHub Packages serves this registry path to non-members only when the package's visibility is **Public**. Until the maintainer sets it public (Org → Packages → `mcp-incidentiq` → Package settings → Change visibility → Public), only IIQ-Community members can install via the registry — everyone else should use **path B** below, which is public and needs no token.
+
 ```ini
 # .npmrc
 @iiq-community:registry=https://npm.pkg.github.com
