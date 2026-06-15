@@ -1,6 +1,6 @@
 {
   "name": "@iiq-community/mcp-incidentiq",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "MCP server for IncidentIQ - The #1 K-12 service management platform. Enables AI assistants to manage IT tickets, assets, facilities, and more for educational institutions.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
