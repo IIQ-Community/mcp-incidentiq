@@ -25,11 +25,21 @@ npm install
 npm run build
 ```
 
-### Option B: Install from npm (When Published)
+### Option B: Install the published package
+
+Released versions are published to **GitHub Packages** as `@iiq-community/mcp-incidentiq` (the tarball is also attached to each GitHub Release). GitHub Packages requires a token even for public installs — create an `.npmrc` with a `read:packages` token:
+
+```ini
+# .npmrc
+@iiq-community:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
 
 ```bash
-npm install -g mcp-incidentiq
+npm install -g @iiq-community/mcp-incidentiq
 ```
+
+Token-free alternative: download `iiq-community-mcp-incidentiq-<version>.tgz` from the [latest release](https://github.com/IIQ-Community/mcp-incidentiq/releases/latest) and `npm install -g ./iiq-community-mcp-incidentiq-<version>.tgz`.
 
 ## Step 2: Configure Your API Credentials
 

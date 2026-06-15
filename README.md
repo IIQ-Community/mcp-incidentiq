@@ -164,7 +164,31 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 > **Note:** This server runs on Node.js and is launched by MCP clients via `node` (or `npx`),
 > matching the standard MCP-server convention. The development toolchain uses npm + Vitest.
 
-### Quick Start
+### Install (published package)
+
+Released versions are published to **GitHub Packages** as `@iiq-community/mcp-incidentiq` and the package tarball is attached to each **GitHub Release**. Two install paths:
+
+**A — GitHub Packages registry (requires a token).** GitHub Packages requires authentication even for *public* packages, so create an `.npmrc` with a GitHub token that has the `read:packages` scope:
+
+```ini
+# .npmrc
+@iiq-community:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+```bash
+npm install @iiq-community/mcp-incidentiq
+```
+
+**B — GitHub Release tarball (token-free).** Download `iiq-community-mcp-incidentiq-<version>.tgz` from the [latest release](https://github.com/IIQ-Community/mcp-incidentiq/releases/latest), then install it directly — no registry auth needed:
+
+```bash
+npm install ./iiq-community-mcp-incidentiq-<version>.tgz
+```
+
+Both expose the `mcp-incidentiq` binary; point your MCP client at it (e.g. `npx @iiq-community/mcp-incidentiq` once the `.npmrc` is set, or `node .../dist/index.js`). See the integration examples below. To work on the server itself, use the from-source setup:
+
+### Quick Start (from source)
 
 1. Clone the repository:
 ```bash
