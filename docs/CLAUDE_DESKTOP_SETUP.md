@@ -65,6 +65,32 @@ IIQ_DEBUG_MODE=false
 
 ## Step 3: Configure Claude Desktop
 
+Pick the configuration that matches how you installed the server in Step 1.
+
+### Published-package configuration (Option B install)
+
+If you installed globally with `npm install -g @iiq-community/mcp-incidentiq` (after setting up the `.npmrc` from Step 1, Option B), the `mcp-incidentiq` binary is on your `PATH` — launch it directly, no source path required:
+
+```json
+{
+  "mcpServers": {
+    "incidentiq": {
+      "command": "mcp-incidentiq",
+      "env": {
+        "IIQ_API_BASE_URL": "https://your-district.incidentiq.com/api/v1.0",
+        "IIQ_API_KEY": "your-jwt-token-here"
+      }
+    }
+  }
+}
+```
+
+> Prefer not to install globally? Use `"command": "npx"` with `"args": ["@iiq-community/mcp-incidentiq"]` (requires the same `.npmrc`). If you installed the **release tarball** globally (`npm install -g ./iiq-community-mcp-incidentiq-<version>.tgz`), the `mcp-incidentiq` binary is likewise on `PATH`, so this same config applies.
+
+### From-source configuration (Option A install)
+
+If you built from a clone (Step 1, Option A), point `node` at the built entry file using the absolute path for your platform:
+
 ### Windows Configuration
 
 1. Open Claude Desktop settings
