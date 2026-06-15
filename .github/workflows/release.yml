@@ -36,13 +36,18 @@ jobs:
           # only an actual release's commit-back needs the admin PAT (else it is blocked by the ruleset).
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
+      # IMPORTANT: deliberately NO registry-url/scope here -- do NOT re-add them. With them, setup-node
+      # writes a userconfig .npmrc containing `//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` and
+      # points NPM_CONFIG_USERCONFIG at it. @semantic-release/npm's set-npmrc-auth then reads that literal
+      # `${NODE_AUTH_TOKEN}` placeholder, treats the registry as already-authenticated, and SKIPS
+      # injecting NPM_TOKEN -- so `npm publish` runs with an unset NODE_AUTH_TOKEN and 401s (verified
+      # v0.5.0 failure, 2026-06-15). The registry is supplied by package.json `publishConfig.registry`,
+      # and @semantic-release/npm writes `//npm.pkg.github.com/:_authToken=${NPM_TOKEN}` itself.
       - name: Setup Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@iiq-community'
 
       - name: Install dependencies
         run: npm ci
