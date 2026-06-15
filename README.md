@@ -6,9 +6,9 @@
 [![Version](https://img.shields.io/github/package-json/v/IIQ-Community/mcp-incidentiq)](https://github.com/IIQ-Community/mcp-incidentiq/releases)
 [![Release](https://img.shields.io/github/v/release/IIQ-Community/mcp-incidentiq?sort=semver)](https://github.com/IIQ-Community/mcp-incidentiq/releases/latest)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![MCP SDK](https://img.shields.io/badge/MCP-v0.5.0-blue)](https://github.com/modelcontextprotocol)
+[![MCP SDK](https://img.shields.io/github/package-json/dependency-version/IIQ-Community/mcp-incidentiq/@modelcontextprotocol/sdk?label=MCP%20SDK)](https://github.com/modelcontextprotocol/typescript-sdk)
 
 ## Overview
 
