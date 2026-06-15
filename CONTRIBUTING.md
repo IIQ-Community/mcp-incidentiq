@@ -189,10 +189,10 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
   bump (e.g. `0.2.0 → 0.3.0`), **not** `1.0.0`. The jump to 1.0 is a deliberate future decision.
 - **Node:** the project runs on Node.js (`engines.node >= 22`); CI and the release workflow both
   run on Node 24 (current LTS) with npm.
-- **npm publishing** is intentionally deferred (GitHub Releases only). To enable it later:
-  `npm install -D @semantic-release/npm` and insert `"@semantic-release/npm"` into `.releaserc.json`
-  `plugins` before `@semantic-release/git` (and drop `package.json` from the exec version bump, since
-  the npm plugin then owns it).
+- **Package publishing:** each release publishes `@iiq-community/mcp-incidentiq` to **GitHub Packages**
+  (`npm.pkg.github.com`) via `@semantic-release/npm`, and attaches the `npm pack` tarball to the GitHub
+  Release as a token-free install. npmjs.com is intentionally NOT used. See README → Install for the two
+  consumer install paths (registry with a `read:packages` token, or the Release tarball).
 
 ## Repository Governance
 
