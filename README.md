@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/iiq-mark-dark.svg">
+    <img src="docs/branding/iiq-mark.svg" alt="IIQ Community" width="128" height="128">
+  </picture>
+</p>
+
 # IncidentIQ MCP Server
 
 > Model Context Protocol server for IncidentIQ - The #1 K-12 service management platform
