@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Least-privilege GITHUB_TOKEN: CI only needs to read the repo (checkout, build,
+# test). Codecov (continue-on-error) and upload-artifact need no extra scopes.
+permissions:
+  contents: read
+
 jobs:
   # Single Node job. Its check context is "ci" - the main-branch ruleset's
   # required_status_checks references exactly this (see scripts/setup-github-governance.sh).
