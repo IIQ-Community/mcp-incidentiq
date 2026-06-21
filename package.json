@@ -69,7 +69,7 @@
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/axios": "^0.14.0",
     "@types/node": "^25.9.3",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
     "msw": "2.14.6",
     "semantic-release": "25.0.5",
     "tsx": "^4.22.4",
