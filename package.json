@@ -68,11 +68,11 @@
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/axios": "^0.14.0",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^4.1.10",
     "msw": "2.15.0",
     "semantic-release": "25.0.9",
-    "tsx": "^4.23.9",
+    "tsx": "^4.23.12",
     "typescript": "^5.3.3",
     "vitest": "^4.1.8"
   },
