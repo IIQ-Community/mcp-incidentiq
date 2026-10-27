@@ -208,8 +208,8 @@ Release with generated notes, and commits the updated `CHANGELOG.md`, `CITATION.
   would force an admin bypass on every self-authored PR). PRs and strict CI still gate every merge. When a
   second maintainer joins, set `SOLO_MODE=false` in [`scripts/setup-github-governance.sh`](scripts/setup-github-governance.sh)
   and re-run it to require **1 approval + Code Owner review** (stale approvals dismissed on new commits).
-- **All CI checks must pass** and the branch must be up to date — `lint-and-type-check`, `test`, and
-  `build-and-package` are required status checks (strict mode).
+- **All CI checks must pass** and the branch must be up to date — the `ci` workflow job is the required status
+  check (strict mode).
 - **Conversation resolution required** before merging.
 - **Merge commits only** — squash and rebase merging are disabled; the head branch is auto-deleted on merge.
 - **Protected tags** — `v*` release tags can only be created/deleted by admins or CI.

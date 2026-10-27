@@ -19,13 +19,13 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Pagination & Filtering**: Full support for search operations with filtering and pagination
 - **Comprehensive API Analysis**: All modules analyzed with 153+ validated endpoints
 
-### Testing Framework (Jest + MSW)
+### Testing Framework (Vitest + MSW)
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
 - **E2E Tests**: MCP test client for end-to-end testing (currently disabled due to ES module issues)
 - **Mock Service Worker**: Realistic API mocking with K-12 specific test data
-- **Test Coverage**: 82% test pass rate (67/82 tests passing)
+- **Test Coverage**: 126 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
-- **Node Modules**: Switched from Yarn PnP to node_modules for better compatibility
+- **Package Manager**: npm (`package-lock.json`); Node ≥ 22 (CI and release run Node 24)
 
 ### ✅ UAT Results
 - **Production Testing**: Successfully tested against a large production K-12 district instance
@@ -92,7 +92,7 @@ mcp-incidentiq/
 context/              # .gitignored - local only
 ├── scripts/          # Test and validation scripts
 ├── testing/          # Coverage reports, debug files
-│   └── coverage/     # Jest coverage output
+│   └── coverage/     # Vitest coverage output
 ├── config/           # .env files with credentials
 ├── iiq-api/          # Third-party API docs
 ├── tools-backup/     # Old implementations
@@ -111,7 +111,7 @@ coverage/             # If generated in root, move to context/testing/
    - No test scripts or experiments
    
 2. **Unit Tests** → `/tests/`
-   - Jest tests that can run in CI/CD
+   - Vitest tests that can run in CI/CD
    - No scripts that hit production APIs
    
 3. **Test Scripts** → `/context/scripts/`
@@ -158,28 +158,27 @@ The project has been initialized with all necessary dependencies and structure.
 
 ```bash
 # Install dependencies
-yarn install
+npm ci
 
 # Copy environment configuration
 cp .env.example .env
 # Edit .env with your IncidentIQ API credentials
 
 # Run development server
-yarn dev
+npm run dev
 ```
 
 ### Available Scripts
 
-- `yarn dev` - Start development server with hot reload
-- `yarn build` - Build TypeScript to JavaScript
-- `yarn start` - Run production server
-- `yarn type-check` - Type check without building
-- `yarn clean` - Clean build directory
-- `yarn test` - Run all tests
-- `yarn test:unit` - Run unit tests only
-- `yarn test:e2e` - Run end-to-end tests only
-- `yarn test:watch` - Run tests in watch mode
-- `yarn test:coverage` - Run tests with coverage report
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm run start` - Run production server
+- `npm run type-check` - Type check without building
+- `npm run clean` - Clean build directory
+- `npm test` - Run all tests
+- `npm run test:unit` - Run unit tests only
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
 
 ## Architecture Guidelines
 
