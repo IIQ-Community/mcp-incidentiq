@@ -20,8 +20,14 @@ RUN rm -rf /var/lib/apt/lists/* && \
         git \
         jq \
         vim \
-        netcat-openbsd \
         dos2unix \
-        socat && \
+        netcat-openbsd \
+        socat \
+        bubblewrap \
+        iptables \
+        ipset \
+        git-crypt \
+        pre-commit \
+        chromium && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

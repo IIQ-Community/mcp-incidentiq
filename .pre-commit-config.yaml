@@ -1,6 +1,6 @@
 # Conventional Commits enforcement via the pre-commit framework (NOT husky).
-# The pre-commit tool is installed by the gvatsal60/pre-commit devcontainer feature;
-# `pre-commit install --hook-type commit-msg` wires this hook (auto-run by post-start.sh).
+# The pre-commit tool is installed via apt in .devcontainer/Dockerfile;
+# run `pre-commit install --hook-type commit-msg` once per clone to wire this hook.
 default_install_hook_types: [commit-msg]
 repos:
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
