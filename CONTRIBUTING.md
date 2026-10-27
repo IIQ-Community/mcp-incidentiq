@@ -168,8 +168,8 @@ Closes #45
 #### Enforcement
 
 Conventional Commits are **enforced** by a [commitlint](https://commitlint.js.org/) `commit-msg`
-hook wired through the [pre-commit](https://pre-commit.com/) framework (not husky). In the
-devcontainer the hook is installed automatically on start; if you work outside it, install it once:
+hook wired through the [pre-commit](https://pre-commit.com/) framework (not husky). The devcontainer
+image provides the `pre-commit` tool (apt); install the hook once per clone, inside or outside the devcontainer:
 
 ```bash
 pre-commit install --hook-type commit-msg
