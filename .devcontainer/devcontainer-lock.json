@@ -40,53 +40,25 @@
       "resolved": "ghcr.io/devcontainers/features/node@sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6",
       "integrity": "sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6"
     },
-    "ghcr.io/devcontainers/features/python": {
-      "version": "1.8.0",
-      "resolved": "ghcr.io/devcontainers/features/python@sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511",
-      "integrity": "sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511"
-    },
     "ghcr.io/devcontainers/features/python:1": {
       "version": "1.8.0",
       "resolved": "ghcr.io/devcontainers/features/python@sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511",
       "integrity": "sha256:fbcad6955caeecc5ad3f7886baf652e25cba5225a6c4c2287c536de2e5607511"
-    },
-    "ghcr.io/eitsupi/devcontainer-features/jq-likes:2": {
-      "version": "2.1.1",
-      "resolved": "ghcr.io/eitsupi/devcontainer-features/jq-likes@sha256:6a8b044f9f424097ec6d212167836b26994a76a556cbcb202084be79fe8032bd",
-      "integrity": "sha256:6a8b044f9f424097ec6d212167836b26994a76a556cbcb202084be79fe8032bd"
-    },
-    "ghcr.io/gvatsal60/dev-container-features/pre-commit:1": {
-      "version": "1.0.6",
-      "resolved": "ghcr.io/gvatsal60/dev-container-features/pre-commit@sha256:cbce6cc47810e4211815cfa88c2cb712c85b656ce42da827a06b010cbbdab907",
-      "integrity": "sha256:cbce6cc47810e4211815cfa88c2cb712c85b656ce42da827a06b010cbbdab907",
-      "dependsOn": [
-        "ghcr.io/devcontainers/features/python"
-      ]
     },
     "ghcr.io/jungaretti/features/ripgrep:1": {
       "version": "1.0.1",
       "resolved": "ghcr.io/jungaretti/features/ripgrep@sha256:c0922b6f4a9184080c8435b6ef25983dee6c734733f0a749d852ad0d33de2253",
       "integrity": "sha256:c0922b6f4a9184080c8435b6ef25983dee6c734733f0a749d852ad0d33de2253"
     },
-    "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {
-      "version": "2.0.0",
-      "resolved": "ghcr.io/meaningful-ooo/devcontainer-features/fish@sha256:c37c61d097aca9f0f4e35193eecd7c1f4f6f92225deaef7d98852de363a68a34",
-      "integrity": "sha256:c37c61d097aca9f0f4e35193eecd7c1f4f6f92225deaef7d98852de363a68a34"
-    },
     "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {
       "version": "2.0.5",
       "resolved": "ghcr.io/meaningful-ooo/devcontainer-features/homebrew@sha256:c49ba0f6275bdd0474f4c7fcf37fc84b5739838b110c7da9c16d6a409ae48a86",
       "integrity": "sha256:c49ba0f6275bdd0474f4c7fcf37fc84b5739838b110c7da9c16d6a409ae48a86"
     },
-    "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli:1": {
-      "version": "1.1.1",
-      "resolved": "ghcr.io/skriptfabrik/devcontainer-features/gitlab-cli@sha256:f87aea79d9299116e06df9f5bf607de00dfcbb26a1783e92ce69e4a07ceb450a",
-      "integrity": "sha256:f87aea79d9299116e06df9f5bf607de00dfcbb26a1783e92ce69e4a07ceb450a"
-    },
-    "ghcr.io/stu-bell/devcontainer-features/claude-code:0": {
-      "version": "0.1.0",
-      "resolved": "ghcr.io/stu-bell/devcontainer-features/claude-code@sha256:f87b4da3f8648db9111cb25c6bd3817d096018d81f3fb596340f7ffdba14409a",
-      "integrity": "sha256:f87b4da3f8648db9111cb25c6bd3817d096018d81f3fb596340f7ffdba14409a"
+    "ghcr.io/michidk/devcontainers-features/bun:1": {
+      "version": "1.0.1",
+      "resolved": "ghcr.io/michidk/devcontainers-features/bun@sha256:568cc553062d184932ba993db954d4ace2bda3907d129477ce174777ac686dbd",
+      "integrity": "sha256:568cc553062d184932ba993db954d4ace2bda3907d129477ce174777ac686dbd"
     },
     "ghcr.io/va-h/devcontainers-features/uv:1": {
       "version": "1.1.4",
