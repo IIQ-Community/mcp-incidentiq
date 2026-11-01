@@ -70,7 +70,7 @@
     "@types/axios": "^0.14.0",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.0.5",
-    "msw": "2.15.0",
+    "msw": "3.0.3",
     "semantic-release": "25.0.9",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
