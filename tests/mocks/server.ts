@@ -109,11 +109,11 @@ export const handlers = [
       return new HttpResponse(null, { status: 405 }); // Method not allowed for empty ID
     }
     
+    // Real IIQ shape: ItemGetResponseOfTicket envelope with the ticket under `Item`.
     const ticket = mockTickets.find(t => t.TicketId === params.ticketId);
     return HttpResponse.json({
-      Success: !!ticket,
-      Data: ticket || null,
-      ErrorMessage: ticket ? undefined : 'Ticket not found',
+      StatusCode: 200,
+      Item: ticket || null,
     });
   }),
 

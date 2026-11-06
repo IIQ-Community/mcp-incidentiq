@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import {
   IIQApiResponse,
+  IIQItemResponse,
   IIQTicket,
   IIQTicketCreate,
   IIQTicketUpdate,
@@ -133,11 +134,11 @@ export class IncidentIQClient {
   }
 
   async getTicket(ticketId: string): Promise<IIQTicket | null> {
-    const response = await this.request<IIQApiResponse<IIQTicket>>({
+    const response = await this.request<IIQItemResponse<IIQTicket>>({
       method: 'GET',
       url: `/tickets/${ticketId}`
     });
-    return response.Data || null;
+    return response?.Item || null;
   }
 
   async createTicket(data: IIQTicketCreate): Promise<IIQTicket | null> {

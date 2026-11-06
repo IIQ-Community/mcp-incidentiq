@@ -13,6 +13,8 @@
 import { IncidentIQClient } from '../api/client.js';
 import {
   Ticket,
+  TicketDetail,
+  IIQItemResponse,
   TicketStatus,
   TicketPriority,
   PaginatedRequest,
@@ -34,6 +36,14 @@ function getClient(): IncidentIQClient {
     client = new IncidentIQClient();
   }
   return client;
+}
+
+/** "Agent (Team)", whichever parts are set, or "Unassigned". */
+function formatAssignee(ticket: TicketDetail): string {
+  const agent = ticket.AssignedToUser?.Name;
+  const team = ticket.AssignedToTeam?.TeamName;
+  if (agent && team) return `${agent} (${team})`;
+  return agent || team || 'Unassigned';
 }
 
 export const ticketTools = [
@@ -442,12 +452,13 @@ export async function handleTicketTool(name: string, args: any) {
       }
       
       case 'ticket_get': {
-        const response = await client.request<Ticket>({
+        const response = await client.request<IIQItemResponse<TicketDetail>>({
           method: 'GET',
           url: `/tickets/${args.ticketId}`,
         });
-        
-        if (!response) {
+        const ticket = response?.Item;
+
+        if (!ticket) {
           return {
             content: [
               {
@@ -462,18 +473,18 @@ export async function handleTicketTool(name: string, args: any) {
           content: [
             {
               type: 'text',
-              text: `Ticket #${response.TicketNumber}:
-Subject: ${response.Subject}
-Status: ${response.Status}
-Priority: ${response.Priority || 'Normal'}
-Created: ${response.CreatedDate}
-Description: ${response.Description || 'No description'}
-Requestor: ${response.RequestorName || 'Unknown'}
-Assigned To: ${response.AssignedToName || 'Unassigned'}
-Location: ${response.LocationName || 'Not specified'}
-Urgent: ${response.IsUrgent ? 'Yes' : 'No'}
-Sensitive: ${response.IsSensitive ? 'Yes' : 'No'}
-ID: ${response.TicketId}`,
+              text: `Ticket #${ticket.TicketNumber}:
+Subject: ${ticket.Subject || 'No subject'}
+Status: ${ticket.WorkflowStep?.StepName || ticket.WorkflowStep?.StatusName || 'Unknown'}
+Priority: ${ticket.PriorityLevel?.Name || 'Normal'}
+Created: ${ticket.CreatedDate || 'Unknown'}
+Description: ${ticket.IssueDescription || 'No description'}
+Requestor: ${ticket.For?.Name || 'Unknown'}
+Assigned To: ${formatAssignee(ticket)}
+Location: ${ticket.Location?.Name || 'Not specified'}
+Urgent: ${ticket.IsUrgent ? 'Yes' : 'No'}
+Sensitive: ${ticket.HasSensitiveInformation ? 'Yes' : 'No'}
+ID: ${ticket.TicketId}`,
             },
           ],
         };

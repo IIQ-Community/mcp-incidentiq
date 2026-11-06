@@ -157,6 +157,28 @@ export interface Ticket {
   ClosedDate?: string;
 }
 
+/** Full ticket from GET /tickets/{TicketId} (Swagger `Ticket`); display fields are nested objects, unlike the flat search-list Ticket. */
+export interface TicketDetail {
+  TicketId: string;
+  TicketNumber: string;
+  Subject?: string;
+  IssueDescription?: string;
+  CreatedDate?: string;
+  WorkflowStep?: { StepName?: string; StatusName?: string };
+  PriorityLevel?: { Name?: string };
+  For?: { Name?: string };
+  AssignedToUser?: { Name?: string };
+  AssignedToTeam?: { TeamName?: string };
+  Location?: { Name?: string };
+  IsUrgent?: boolean;
+  HasSensitiveInformation?: boolean;
+}
+
+/** Single-item envelope IIQ wraps GET-by-id responses in (Swagger `ItemGetResponseOf*`). */
+export interface IIQItemResponse<T> {
+  Item?: T | null;
+}
+
 export interface IIQTicketCreate {
   Subject: string;
   Description: string;

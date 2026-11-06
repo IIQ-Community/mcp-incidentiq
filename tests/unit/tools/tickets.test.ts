@@ -95,6 +95,87 @@ describe('Ticket Tools', () => {
       });
     });
 
+    describe('ticket_get', () => {
+      const ticketId = '9a1b2c3d-0000-4000-8000-000000000001';
+
+      // Shaped like IIQ's real GET /tickets/{TicketId} response (ItemGetResponseOfTicket):
+      // the ticket sits under `Item`, with nested user/step/location objects.
+      const realEnvelope = {
+        RequestDate: '2026-11-05T16:00:00Z',
+        ExecutionTime: 42,
+        StatusCode: 200,
+        ProcessId: 'proc-1',
+        Properties: {},
+        Item: {
+          TicketId: ticketId,
+          TicketNumber: '104233',
+          Subject: 'Chromebook screen cracked',
+          IssueDescription: 'Student dropped device in hallway.',
+          CreatedDate: '2026-11-04T15:30:00Z',
+          WorkflowStep: { StepName: 'In Progress', StatusName: 'Open' },
+          PriorityLevel: { Name: 'High' },
+          For: { UserId: 'u-1', Name: 'Jordan Rivera' },
+          AssignedToUser: { UserId: 'u-2', Name: 'Alex Kim' },
+          AssignedToTeam: { TeamName: 'Tier 1 Support' },
+          Location: { Name: 'Highline High School' },
+          IsUrgent: true,
+          HasSensitiveInformation: false,
+        },
+      };
+
+      it('reads the ticket from the Item envelope and maps nested fields', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json(realEnvelope)),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).not.toContain('undefined');
+        expect(text).toContain('Ticket #104233');
+        expect(text).toContain('Subject: Chromebook screen cracked');
+        expect(text).toContain('Status: In Progress');
+        expect(text).toContain('Priority: High');
+        expect(text).toContain('Created: 2026-11-04T15:30:00Z');
+        expect(text).toContain('Description: Student dropped device in hallway.');
+        expect(text).toContain('Requestor: Jordan Rivera');
+        expect(text).toContain('Assigned To: Alex Kim (Tier 1 Support)');
+        expect(text).toContain('Location: Highline High School');
+        expect(text).toContain('Urgent: Yes');
+        expect(text).toContain('Sensitive: No');
+        expect(text).toContain(`ID: ${ticketId}`);
+      });
+
+      it('falls back to defaults when optional nested fields are absent', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json({
+              Item: { TicketId: ticketId, TicketNumber: '7', Subject: 'Bare ticket', CreatedDate: '2026-11-01' },
+            })),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).not.toContain('undefined');
+        expect(text).toContain('Status: Unknown');
+        expect(text).toContain('Priority: Normal');
+        expect(text).toContain('Requestor: Unknown');
+        expect(text).toContain('Assigned To: Unassigned');
+        expect(text).toContain('Location: Not specified');
+      });
+
+      it('reports not found when the envelope has no Item', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json({ StatusCode: 200, Item: null })),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).toBe('Ticket not found.');
+      });
+    });
+
     describe('Error Handling', () => {
       it('should handle unknown tool gracefully', async () => {
         const result = await handleTicketTool('invalid_tool', {});
