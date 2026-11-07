@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { formatListPage, iiqPagingParams, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
+import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
 import {
   IIQUser,
   PaginatedRequest,
@@ -122,7 +122,11 @@ export const enhancedUserTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100)',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -145,6 +149,14 @@ export const enhancedUserTools = [
         department: {
           type: 'string',
           description: 'Filter by department',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -179,6 +191,14 @@ export const enhancedUserTools = [
         includeInactive: {
           type: 'boolean',
           description: 'Include inactive agents',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -450,50 +470,37 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQUser>>({
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
-          params: iiqPagingParams(0, args.pageSize || 100),
+          params: iiqPagingParams(index, pageSize),
           data: payload,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No students found.',
-            }],
-          };
-        }
-        
-        // Group by grade for better organization
-        const studentsByGrade: Record<string, IIQUser[]> = {};
-        response.Items.forEach((student: IIQUser) => {
-          const grade = student.Grade || 'Unassigned';
-          if (!studentsByGrade[grade]) studentsByGrade[grade] = [];
-          studentsByGrade[grade].push(student);
+        const response = await readPage(pageIndex);
+
+        const studentRow = (student: IIQUser) => `  • ${userName(student)}${student.Homeroom ? ` - Room ${student.Homeroom}` : ''}`;
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'students',
+          emptyText: 'No students found.',
+          render: studentRow,
+          // Every student on the page, grouped by grade.
+          renderPage: (students) => {
+            const byGrade = new Map<string, IIQUser[]>();
+            for (const student of students) {
+              const grade = student.Grade || 'Unassigned';
+              byGrade.set(grade, [...(byGrade.get(grade) ?? []), student]);
+            }
+            return [...byGrade]
+              .map(([grade, group]) => `Grade ${grade} (${group.length}):\n${group.map(studentRow).join('\n')}`)
+              .join('\n\n');
+          },
         });
-        
-        let output = `Student Directory (${iiqTotalRows(response)} students, showing ${response.Items.length}):\n`;
-        
-        for (const [grade, students] of Object.entries(studentsByGrade)) {
-          output += `\nGrade ${grade} (${students.length}):\n`;
-          students.slice(0, 5).forEach(student => {
-            output += `  • ${student.FullName || `${student.FirstName} ${student.LastName}`}`;
-            if (student.Homeroom) output += ` - Room ${student.Homeroom}`;
-            output += '\n';
-          });
-          if (students.length > 5) {
-            output += `  ... and ${students.length - 5} more\n`;
-          }
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
       }
       
       case 'user_get_staff': {
@@ -513,74 +520,45 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQUser>>({
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
-          params: iiqPagingParams(0, 100),
+          params: iiqPagingParams(index, pageSize),
           data: payload,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No staff members found.',
-            }],
-          };
-        }
-        
-        const staffList = response.Items.slice(0, 20).map((staff: IIQUser) =>
-          `• ${staff.FullName || `${staff.FirstName} ${staff.LastName}`}
+        const response = await readPage(pageIndex);
+
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'staff members',
+          emptyText: 'No staff members found.',
+          render: (staff: IIQUser) => `• ${userName(staff)}
   Role: ${staff.Role || 'N/A'} | Email: ${staff.Email || 'N/A'}
-  Location: ${staff.LocationName || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Staff Directory (${iiqTotalRows(response)} members, showing ${response.Items.length}):
-
-${staffList}
-
-${response.Items.length > 20 ? `\n...and ${response.Items.length - 20} more staff members` : ''}`,
-          }],
-        };
-      }
-      
-      case 'user_get_all_agents': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/users/agents',
+  Location: ${staff.LocationName || 'N/A'}`,
         });
-        
-        // Handle different response formats
-        const agents = response?.Items || response || [];
-        
-        if (agents.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No IT support agents found.',
-            }],
-          };
-        }
-        
-        const agentList = agents.slice(0, 20).map((agent: IIQUser) =>
-          `• ${agent.FullName || `${agent.FirstName} ${agent.LastName}`}
-  Email: ${agent.Email || 'N/A'} | Phone: ${agent.PhoneNumber || 'N/A'}
-  Location: ${agent.LocationName || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `IT Support Agents (${agents.length}):
+      }
 
-${agentList}
-
-💡 These agents can be assigned to tickets and have elevated permissions`,
-          }],
-        };
+      case 'user_get_all_agents': {
+        // GET /users/agents defaults to a 200-row page (300 agents live), so read the whole list.
+        const { items, truncated } = await iiqListAll<IIQUser>(client, '/users/agents');
+        const result = formatListPage({
+          rows: items,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'IT support agents',
+          emptyText: 'No IT support agents found.',
+          render: (agent) => `• ${userName(agent)}
+  Email: ${agent.Email || 'N/A'} | Phone: ${agent.Phone || 'N/A'}
+  Location: ${agent.LocationName || 'N/A'}`,
+          truncated,
+        });
+        if (items.length > 0) result.content[0].text += '\n\n💡 These agents can be assigned to tickets and have elevated permissions';
+        return result;
       }
       
       case 'user_get_details': {

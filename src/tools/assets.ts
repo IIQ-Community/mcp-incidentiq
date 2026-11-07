@@ -31,16 +31,14 @@ export interface AssetFundingType {
   Scope?: string;
 }
 
+/** Activity as returned by GET /assets/{id}/activities (live shape, verified 2026-11-07). */
 export interface AssetActivity {
-  ActivityId: string;
-  AssetId: string;
+  ActivityId?: string;
   ActivityDate: string;
-  ActivityType: string;
-  Description: string;
+  /** Numeric activity code (e.g. 1, 3, 5); IIQ sends no name for it. */
+  ActivityType: string | number;
+  Details?: string;
   UserId?: string;
-  UserName?: string;
-  OldValue?: string;
-  NewValue?: string;
 }
 
 /** One asset as a list row, from the nested objects POST /assets returns. */
@@ -305,6 +303,14 @@ export const enhancedAssetTools = [
         assetId: {
           type: 'string',
           description: 'Asset ID to get history for',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['assetId'],
@@ -652,34 +658,21 @@ ${fundingList}
       }
       
       case 'asset_get_history': {
+        // IIQ returns every activity at once (no paging, no TotalRows), so page locally.
         const response = await client.request<PaginatedResponse<AssetActivity>>({
           method: 'GET',
           url: `/assets/${args.assetId}/activities`,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No history available for this asset.',
-            }],
-          };
-        }
-        
-        const historyList = response.Items.slice(0, 10).map((activity: AssetActivity) =>
-          `• ${activity.ActivityDate} - ${activity.ActivityType}
-  ${activity.Description}
-  By: ${activity.UserName || 'System'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset History (showing recent ${Math.min(10, response.Items.length)} of ${iiqTotalRows(response)}):
-
-${historyList}`,
-          }],
-        };
+        return formatListPage({
+          rows: response?.Items ?? [],
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'activities',
+          emptyText: 'No history available for this asset.',
+          render: (activity) => `• ${activity.ActivityDate} - ${activity.ActivityType}
+  ${activity.Details || 'N/A'}
+  By: ${activity.UserId || 'System'}`,
+        });
       }
       
       case 'asset_get_inventory_counts': {

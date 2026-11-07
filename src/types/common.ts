@@ -96,6 +96,8 @@ export interface IIQUser {
   UserTypeName?: string;
   Grade?: string;
   PhoneNumber?: string;
+  /** Phone number field IIQ actually sends (verified 2026-11-07). */
+  Phone?: string;
   MobileNumber?: string;
 }
 
