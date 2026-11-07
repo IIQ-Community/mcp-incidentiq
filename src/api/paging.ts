@@ -6,7 +6,17 @@
  * and ignores its PageIndex on POST /issues/types, so paging must travel in the query string.
  */
 export function iiqPagingParams(pageIndex: number, pageSize: number): { $p: number; $s: number } {
-  return { $p: pageIndex, $s: pageSize };
+  return { $p: normalizePageIndex(pageIndex), $s: normalizePageSize(pageSize) };
+}
+
+/** Whole-number page index >= 0; shared by requests and `formatListPage` so both name the same page. */
+export function normalizePageIndex(pageIndex: unknown): number {
+  return Math.max(0, Math.floor(Number(pageIndex)) || 0);
+}
+
+/** Whole-number page size >= 1; shared by requests and `formatListPage`. */
+export function normalizePageSize(pageSize: unknown): number {
+  return Math.max(1, Math.floor(Number(pageSize)) || 1);
 }
 
 interface PagedListResponse<T> {
@@ -98,8 +108,8 @@ export function formatListPage<T>({ rows, pageIndex = 0, pageSize, noun, emptyTe
   truncated?: boolean;
   total?: number;
 }): { content: Array<{ type: 'text'; text: string }> } {
-  const size = Math.max(1, Math.floor(pageSize) || 1);
-  const index = Math.max(0, Math.floor(pageIndex) || 0);
+  const size = normalizePageSize(pageSize);
+  const index = normalizePageIndex(pageIndex);
   const matched = total ?? rows.length;
   const pageCount = Math.max(1, Math.ceil(matched / size));
   const page = total === undefined ? rows.slice(index * size, index * size + size) : rows;
@@ -122,7 +132,21 @@ export function matchesText(term: string | undefined, ...fields: Array<string | 
   return fields.some((field) => field?.toLowerCase().includes(needle));
 }
 
-type PagedResponse = { Items?: unknown[]; ItemCount?: number; Paging?: { TotalRows?: number } } | null | undefined;
+/** Maps `items` through `fn` with at most `limit` calls in flight, keeping input order. */
+export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+type PagedResponse ={ Items?: unknown[]; ItemCount?: number; Paging?: { TotalRows?: number } } | null | undefined;
 
 /**
  * Total matches for a server-paged IIQ list. IIQ usually reports `TotalRows: 0` for an empty page
