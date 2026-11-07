@@ -11,6 +11,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqPagingParams } from '../api/paging.js';
 import {
   Ticket,
   TicketDetail,
@@ -342,7 +343,8 @@ export async function handleTicketTool(name: string, args: any) {
           }
           const unresolved: string[] = [];
           for (const email of searchArgs.agentEmails) {
-            const userResult = await client.searchUsers({ SearchText: email, PageSize: 100 });
+            // IIQ ignores SearchText on POST /users; the `email` facet is the lookup that narrows.
+            const userResult = await client.searchUsers({ Filters: [{ Facet: 'email', Value: email }] });
             const match = userResult.Items.find(
               (user) => (user.Email ?? '').toLowerCase() === email.toLowerCase()
             );
@@ -363,6 +365,7 @@ export async function handleTicketTool(name: string, args: any) {
         }
 
         const filters = buildTicketFilters({
+          keyword: searchArgs.searchText,
           agentIds: resolvedAgentIds,
           teamIds: searchArgs.teamIds,
           locationIds: searchArgs.locationIds,
@@ -373,7 +376,6 @@ export async function handleTicketTool(name: string, args: any) {
           FilterByViewPermission: false,
         };
         if (filters.length > 0) basePayload.Filters = filters;
-        if (searchArgs.searchText) basePayload.SearchText = searchArgs.searchText;
 
         const pageSize = searchArgs.pageSize ?? 20;
         const pageIndex = searchArgs.pageIndex ?? 0;
@@ -394,7 +396,8 @@ export async function handleTicketTool(name: string, args: any) {
           const firstPage = await client.request<PaginatedResponse<Ticket>>({
             method: 'POST',
             url: '/tickets',
-            data: { ...basePayload, Paging: { PageIndex: 0, PageSize: scanPageSize } },
+            params: iiqPagingParams(0, scanPageSize),
+            data: basePayload,
           });
           const accumulated: Ticket[] = [...(firstPage?.Items ?? [])];
           const serverPageCount = firstPage?.Paging?.PageCount ?? 1;
@@ -403,7 +406,8 @@ export async function handleTicketTool(name: string, args: any) {
             const next = await client.request<PaginatedResponse<Ticket>>({
               method: 'POST',
               url: '/tickets',
-              data: { ...basePayload, Paging: { PageIndex: page, PageSize: scanPageSize } },
+              params: iiqPagingParams(page, scanPageSize),
+              data: basePayload,
             });
             accumulated.push(...(next?.Items ?? []));
           }
@@ -422,7 +426,8 @@ export async function handleTicketTool(name: string, args: any) {
           const response = await client.request<PaginatedResponse<Ticket>>({
             method: 'POST',
             url: '/tickets',
-            data: { ...basePayload, Paging: { PageIndex: pageIndex, PageSize: pageSize } },
+            params: iiqPagingParams(pageIndex, pageSize),
+            data: basePayload,
           });
           pageItems = response?.Items ?? [];
           totalCount = response?.ItemCount ?? pageItems.length;

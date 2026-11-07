@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqPagingParams } from '../api/paging.js';
 import { 
   IIQUser,
   PaginatedRequest,
@@ -347,10 +348,6 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           FilterByViewPermission: false,
           SearchText: args.searchText,
           Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 100, // Optimized default
-          },
         };
         
         // Add view filter if provided
@@ -386,6 +383,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         const response = await client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
+          params: iiqPagingParams(args.pageIndex || 0, args.pageSize || 100),
           data: payload,
         });
         
@@ -429,10 +427,6 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
             Facet: 'UserType',
             Id: 'Student',
           }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: args.pageSize || 100,
-          },
         };
         
         if (args.grade) {
@@ -452,6 +446,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
         const response = await client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
+          params: iiqPagingParams(0, args.pageSize || 100),
           data: payload,
         });
         
@@ -502,10 +497,6 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
             Facet: 'UserType',
             Id: 'Staff',
           }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
         };
         
         if (args.locationId) {
@@ -518,6 +509,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
         const response = await client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
+          params: iiqPagingParams(0, 100),
           data: payload,
         });
         

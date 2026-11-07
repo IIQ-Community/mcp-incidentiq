@@ -6,14 +6,17 @@ export function isValidEmail(value: string): boolean {
 }
 
 interface TicketFilterInput {
+  keyword?: string;
   agentIds?: string[];
   teamIds?: string[];
   locationIds?: string[];
 }
 
-/** Builds server-side IIQ ticket Filters for agent/team/location (OR within a facet, AND across facets). Status is intentionally excluded - the server status facet is unreliable, so status is filtered client-side. */
+/** Builds server-side IIQ ticket Filters for keyword/agent/team/location (OR within a facet, AND across facets). Free text must go in the `keyword` facet: IIQ ignores a body SearchText. Status is intentionally excluded - the server status facet is unreliable, so status is filtered client-side. */
 export function buildTicketFilters(input: TicketFilterInput): IIQFilter[] {
   const filters: IIQFilter[] = [];
+  const keyword = input.keyword?.trim();
+  if (keyword) filters.push({ Facet: 'keyword', Value: keyword });
   for (const id of input.agentIds ?? []) filters.push({ Facet: 'agent', Id: id });
   for (const id of input.teamIds ?? []) filters.push({ Facet: 'team', Id: id });
   for (const id of input.locationIds ?? []) filters.push({ Facet: 'location', Id: id });

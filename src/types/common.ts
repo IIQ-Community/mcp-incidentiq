@@ -6,11 +6,10 @@ export interface IIQApiResponse<T> {
   ErrorCode?: string;
 }
 
-export interface IIQFilter {
-  Facet: string;
-  Id: string;
-  Negative?: boolean;
-}
+/** IIQ search facet: entity facets (agent, team, ...) take an `Id`; text facets (keyword, email) take a `Value`. */
+export type IIQFilter =
+  | { Facet: string; Id: string; Negative?: boolean }
+  | { Facet: string; Value: string; Negative?: boolean };
 
 export interface IIQPaginationParams {
   PageIndex?: number;
