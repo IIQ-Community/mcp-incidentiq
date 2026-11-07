@@ -5,6 +5,16 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.2...v0.5.3) (2026-11-07)
+
+
+### Bug Fixes
+
+* grade filter, homeroom cleanup, statistics via counts ([8a042bb](https://github.com/IIQ-Community/mcp-incidentiq/commit/8a042bb1d003d7c4f10b12428fa07a04bedf0602))
+* page capped list tools and fix location_get_assets ([c8cdc37](https://github.com/IIQ-Community/mcp-incidentiq/commit/c8cdc37d789e27b3a852fc4c4b8755342d25afad))
+* render every row of asset/user search pages ([#96](https://github.com/IIQ-Community/mcp-incidentiq/issues/96)) ([d605488](https://github.com/IIQ-Community/mcp-incidentiq/commit/d60548876020ec3cf53f8b2f8be7c42283108fbc))
+* resolve role/asset type/status names to IIQ ids ([0f1fa75](https://github.com/IIQ-Community/mcp-incidentiq/commit/0f1fa75dcf36915becdac2395249a2b01ff87fc0))
+
 ## [0.5.2](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.1...v0.5.2) (2026-11-07)
 
 
