@@ -96,10 +96,11 @@ export interface IIQUser {
   IsActive?: boolean;
   Homeroom?: string;
   Grade?: string;
-  PhoneNumber?: string;
-  /** Phone number field IIQ actually sends (verified 2026-11-07). */
+  /** Phone number field IIQ actually sends (verified 2026-11-07); there is no PhoneNumber or MobileNumber. */
   Phone?: string;
-  MobileNumber?: string;
+  /** Sent by GET /users/{id} only (verified 2026-11-07). */
+  HomePhone?: string;
+  JobTitle?: string;
 }
 
 export interface IIQAsset {

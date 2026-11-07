@@ -103,9 +103,9 @@ describe('user type label comes from Role.Name', () => {
     expect(text).not.toContain('[object Object]');
   });
 
-  it('in user_get_by_location groups', async () => {
-    server.use(http.get(`${BASE}/users/location/:id`, one));
-    expect(await userText('user_get_by_location', { locationId: 'l1' })).toContain('\nStaff (1):\n');
+  it('in user_get_by_location rows', async () => {
+    server.use(http.post(`${BASE}/users`, one));
+    expect(await userText('user_get_by_location', { locationId: 'l1' })).toContain('• Ann Lee (Staff)\n');
   });
 
   it('in user_quick_search rows', async () => {
