@@ -5,6 +5,16 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.1...v0.5.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* page IIQ lists via $p/$s and filter searches with facets ([d90c218](https://github.com/IIQ-Community/mcp-incidentiq/commit/d90c2182c611a35780fafcf16b72e35ab3fad983)), closes [#92](https://github.com/IIQ-Community/mcp-incidentiq/issues/92) [#93](https://github.com/IIQ-Community/mcp-incidentiq/issues/93)
+* route all tools and correct ticket status, totals and list searches ([bd6616b](https://github.com/IIQ-Community/mcp-incidentiq/commit/bd6616b12c55991462c4c23a5105c4db3fe678aa))
+* share one list-page formatter and render every row on a page ([34b8b99](https://github.com/IIQ-Community/mcp-incidentiq/commit/34b8b9903d901fef8db041f28ee64913f53d8552))
+* **tickets:** read ticket_get from the IIQ Item envelope ([fd67a68](https://github.com/IIQ-Community/mcp-incidentiq/commit/fd67a68d500c42f6f8eeb84c272bb4f889973712)), closes [#91](https://github.com/IIQ-Community/mcp-incidentiq/issues/91)
+
 ## [0.5.1](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.0...v0.5.1) (2026-06-15)
 
 

@@ -20,7 +20,7 @@ import { createToolRouter } from './router.js';
 const server = new Server(
   {
     name: 'mcp-incidentiq',
-    version: '0.5.1',
+    version: '0.5.2',
     description: 'MCP server for IncidentIQ - The #1 K-12 service management platform',
   },
   {
