@@ -88,12 +88,13 @@ export interface IIQUser {
   FullName?: string;
   /** Display name IIQ actually sends (verified 2026-11-07). */
   Name?: string;
-  Role?: string;
+  /** IIQ sends the role as an object (verified 2026-11-07); there is no UserTypeName. */
+  Role?: { RoleId?: string; Name?: string };
+  RoleId?: string;
   LocationId?: string;
   LocationName?: string;
   IsActive?: boolean;
   Homeroom?: string;
-  UserTypeName?: string;
   Grade?: string;
   PhoneNumber?: string;
   /** Phone number field IIQ actually sends (verified 2026-11-07). */

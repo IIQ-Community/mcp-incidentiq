@@ -187,7 +187,7 @@ export const handlers = [
 
   http.get('https://test.incidentiq.com/api/v1.0/users/agents', () => {
     // GET endpoints return paginated object with Items array
-    const agents = mockUsers.filter(u => u.Role === 'IT Agent');
+    const agents = mockUsers.filter(u => u.Role?.Name === 'Agent');
     return HttpResponse.json({
       ItemCount: agents.length,
       Items: agents,
@@ -206,6 +206,21 @@ export const handlers = [
       Data: user || null,
       ErrorMessage: user ? undefined : 'User not found',
     });
+  }),
+
+  // Name -> id lookups for the role / asset type / asset status filters (live shapes, verified 2026-11-07).
+  http.get('https://test.incidentiq.com/api/v1.0/sites/roles', () => {
+    const roles = ['Agent', 'Faculty', 'Guest', 'No Access', 'Parent / Guardian', 'Staff', 'Student']
+      .map((Name) => ({ RoleId: `role-${Name.toLowerCase().replace(/\W+/g, '-')}`, Name }));
+    return HttpResponse.json({ Items: roles, ItemCount: roles.length });
+  }),
+  http.get('https://test.incidentiq.com/api/v1.0/assets/types', () => {
+    const types = ['Devices', 'Networking', 'Furniture'].map((Name) => ({ AssetTypeId: `type-${Name.toLowerCase()}`, Name }));
+    return HttpResponse.json({ Items: types, ItemCount: types.length });
+  }),
+  http.get('https://test.incidentiq.com/api/v1.0/assets/status/types', () => {
+    const statuses = ['In Service', 'Broken', 'In Storage'].map((Name) => ({ AssetStatusTypeId: `status-${Name.toLowerCase().replace(/\W+/g, '-')}`, Name }));
+    return HttpResponse.json({ Items: statuses, ItemCount: statuses.length });
   }),
 
   // Asset endpoints - PowerShell module shows direct response with Items and Paging

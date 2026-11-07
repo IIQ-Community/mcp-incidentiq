@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { ROLES, resolveIds } from '../api/lookups.js';
 import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
 import {
   IIQUser,
@@ -382,29 +383,29 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           });
         }
         
-        // Add other filters
-        if (args.userType) {
-          payload.Filters!.push({
-            Facet: 'UserType',
-            Id: args.userType,
-          });
+        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+
+        // IIQ ignores a UserType facet; a user type is the `role` facet with a RoleId.
+        // Text search ignores filters, so the role is only looked up for the filtered list.
+        if (args.userType && !searchText) {
+          const [roleId] = await resolveIds(client, ROLES, [args.userType]);
+          payload.Filters!.push({ Facet: 'role', Id: roleId });
         }
-        
+
         if (args.grade) {
           payload.Filters!.push({
             Facet: 'Grade',
             Id: args.grade,
           });
         }
-        
+
         if (args.locationId) {
           payload.Filters!.push({
             Facet: 'Location',
             Id: args.locationId,
           });
         }
-        
-        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+
         const pageSize = args.pageSize || 25;
         // IIQ ignores a body SearchText on POST /users; GET /users/search/{term} is its text search.
         // That endpoint takes no facet filters, so text search and the facet filters are exclusive.
@@ -438,7 +439,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           emptyText: 'No users found matching your criteria.',
           render: (user: IIQUser) =>
             `• ${userName(user)}
-  Type: ${user.UserTypeName || 'Unknown'} | Email: ${user.Email || 'N/A'}
+  Type: ${user.Role?.Name || 'Unknown'} | Email: ${user.Email || 'N/A'}
   Location: ${user.LocationName || 'N/A'}${user.Grade ? ` | Grade: ${user.Grade}` : ''}
   Username: ${user.Username || 'N/A'} | Status: ${user.IsActive ? 'Active' : 'Inactive'}`,
         });
@@ -447,13 +448,11 @@ export async function handleEnhancedUserTool(name: string, args: any) {
       }
       
       case 'user_get_students': {
+        const [studentRoleId] = await resolveIds(client, ROLES, ['Student']);
         const payload: PaginatedRequest = {
           OnlyShowDeleted: false,
           FilterByViewPermission: false,
-          Filters: [{
-            Facet: 'UserType',
-            Id: 'Student',
-          }],
+          Filters: [{ Facet: 'role', Id: studentRoleId }],
         };
         
         if (args.grade) {
@@ -504,13 +503,12 @@ export async function handleEnhancedUserTool(name: string, args: any) {
       }
       
       case 'user_get_staff': {
+        // Staff OR Faculty: repeated `role` filters combine as OR in IIQ (3,497 + 72 = 3,569 live).
+        const staffRoleIds = await resolveIds(client, ROLES, ['Staff', 'Faculty'], { skipMissing: true });
         const payload: PaginatedRequest = {
           OnlyShowDeleted: false,
           FilterByViewPermission: false,
-          Filters: [{
-            Facet: 'UserType',
-            Id: 'Staff',
-          }],
+          Filters: staffRoleIds.map((id) => ({ Facet: 'role', Id: id })),
         };
         
         if (args.locationId) {
@@ -538,7 +536,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           noun: 'staff members',
           emptyText: 'No staff members found.',
           render: (staff: IIQUser) => `• ${userName(staff)}
-  Role: ${staff.Role || 'N/A'} | Email: ${staff.Email || 'N/A'}
+  Role: ${staff.Role?.Name || 'N/A'} | Email: ${staff.Email || 'N/A'}
   Location: ${staff.LocationName || 'N/A'}`,
         });
       }
@@ -582,11 +580,11 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           content: [{
             type: 'text',
             text: `User Details:
-Name: ${user.FullName || `${user.FirstName} ${user.LastName}`}
+Name: ${userName(user)}
 Username: ${user.Username || 'N/A'}
 Email: ${user.Email || 'N/A'}
-Type: ${user.UserTypeName || 'Unknown'}
-Role: ${user.Role || 'N/A'}
+Type: ${user.Role?.Name || 'Unknown'}
+Role: ${user.Role?.Name || 'N/A'}
 Location: ${user.LocationName || 'N/A'}
 ${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.PhoneNumber || 'N/A'}
 Mobile: ${user.MobileNumber || 'N/A'}
@@ -718,7 +716,7 @@ Total Users: ${totalUsers}`,
         
         const usersByType: Record<string, IIQUser[]> = {};
         response.Items.forEach((user: IIQUser) => {
-          const type = user.UserTypeName || 'Unknown';
+          const type = user.Role?.Name || 'Unknown';
           if (!usersByType[type]) usersByType[type] = [];
           usersByType[type].push(user);
         });
@@ -728,7 +726,7 @@ Total Users: ${totalUsers}`,
         for (const [type, users] of Object.entries(usersByType)) {
           output += `\n${type} (${users.length}):\n`;
           users.slice(0, 5).forEach(user => {
-            output += `  • ${user.FullName || `${user.FirstName} ${user.LastName}`}\n`;
+            output += `  • ${userName(user)}\n`;
           });
           if (users.length > 5) {
             output += `  ... and ${users.length - 5} more\n`;
@@ -761,7 +759,7 @@ Total Users: ${totalUsers}`,
         }
         
         const userList = users.map((user: IIQUser) =>
-          `• ${user.FullName || `${user.FirstName} ${user.LastName}`} (${user.UserTypeName || 'Unknown'})`
+          `• ${userName(user)} (${user.Role?.Name || 'Unknown'})`
         ).join('\n');
         
         return {

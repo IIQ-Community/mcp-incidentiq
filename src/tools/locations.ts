@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { ASSET_TYPES, resolveIds } from '../api/lookups.js';
 import { formatListPage, iiqListAll, iiqServerTotal, matchesText, withTruncationNote } from '../api/paging.js';
 import { IIQAsset, IIQFilter, IIQLocation, PaginatedResponse } from '../types/common.js';
 import { renderAssetRow } from './assets.js';
@@ -307,7 +308,7 @@ export const enhancedLocationTools = [
         },
         assetType: {
           type: 'string',
-          description: 'Filter by asset type ID (GUID)',
+          description: 'Filter by asset type name or ID, e.g. Devices, Networking (GET /assets/types)',
         },
         pageSize: {
           type: 'number',
@@ -668,7 +669,10 @@ ${roomList}`,
       case 'location_get_assets': {
         // GET /locations/{id}/assets does not exist (404 live); the asset search takes a location filter.
         const filters: IIQFilter[] = [{ Facet: 'location', Id: args.locationId }];
-        if (args.assetType) filters.push({ Facet: 'AssetType', Id: args.assetType });
+        if (args.assetType) {
+          const [assetTypeId] = await resolveIds(client, ASSET_TYPES, [args.assetType]);
+          filters.push({ Facet: 'AssetType', Id: assetTypeId });
+        }
         const paging = { PageIndex: args.pageIndex || 0, PageSize: args.pageSize || 25 };
         const readPage = (pageIndex: number) => client.request<PaginatedResponse<IIQAsset>>({
           method: 'POST',

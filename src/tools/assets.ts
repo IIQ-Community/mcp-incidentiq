@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { ASSET_STATUSES, ASSET_TYPES, resolveIds } from '../api/lookups.js';
 import { formatListPage, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
 import { 
   IIQAsset,
@@ -77,11 +78,11 @@ export const enhancedAssetTools = [
         },
         assetType: {
           type: 'string',
-          description: 'Filter by type (Chromebook, iPad, Desktop, etc.)',
+          description: 'Filter by asset type name or ID, e.g. Devices, Networking, Furniture (GET /assets/types)',
         },
         status: {
           type: 'string',
-          description: 'Filter by status (Active, Repair, Lost, etc.)',
+          description: 'Filter by status name or ID, e.g. In Service, Broken, In Storage (GET /assets/status/types)',
         },
         locationId: {
           type: 'string',
@@ -385,19 +386,15 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           });
         }
         
-        // Add other filters
+        // IIQ filters asset type and status by id only (a name, or a `Status` facet, is ignored).
         if (args.assetType) {
-          payload.Filters!.push({
-            Facet: 'AssetType',
-            Id: args.assetType,
-          });
+          const [assetTypeId] = await resolveIds(client, ASSET_TYPES, [args.assetType]);
+          payload.Filters!.push({ Facet: 'AssetType', Id: assetTypeId });
         }
-        
+
         if (args.status) {
-          payload.Filters!.push({
-            Facet: 'Status',
-            Id: args.status,
-          });
+          const [statusId] = await resolveIds(client, ASSET_STATUSES, [args.status]);
+          payload.Filters!.push({ Facet: 'assetstatus', Id: statusId });
         }
         
         if (args.locationId) {
