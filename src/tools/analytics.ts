@@ -186,22 +186,9 @@ export const analyticsTools = [
     inputSchema: {
       type: 'object',
       properties: {
-        includeTickets: {
-          type: 'boolean',
-          description: 'Include ticket metrics (default: true)',
-        },
         includeAssets: {
           type: 'boolean',
-          description: 'Include asset metrics (default: true)',
-        },
-        includeUsers: {
-          type: 'boolean',
-          description: 'Include user metrics (default: false)',
-        },
-        dateRange: {
-          type: 'string',
-          enum: ['today', 'week', 'month', 'quarter', 'year'],
-          description: 'Date range for metrics (default: month)',
+          description: 'Include asset audit status metrics (default: true)',
         },
       },
       required: [],
