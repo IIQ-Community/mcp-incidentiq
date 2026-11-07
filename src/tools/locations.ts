@@ -8,13 +8,19 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { pathSegment } from '../api/path.js';
 import { ASSET_TYPES, resolveIds } from '../api/lookups.js';
 import { formatListPage, iiqListAll, iiqServerTotal, matchesText, withTruncationNote } from '../api/paging.js';
 import { IIQAsset, IIQFilter, IIQLocation, PaginatedResponse } from '../types/common.js';
 import { renderAssetRow } from './assets.js';
 
 /** Location as returned by GET /locations/all (live shape) plus the legacy flat fields. */
-type ListedLocation = IIQLocation & { Description?: string; LocationType?: { Name?: string }; IsDeleted?: boolean };
+type ListedLocation = IIQLocation & {
+  Description?: string;
+  LocationType?: { Name?: string };
+  LocationStatusType?: { Name?: string };
+  IsDeleted?: boolean;
+};
 
 /** Room as returned by GET /locations/rooms and GET /locations/{id}/rooms (live shape, verified 2026-11-06). */
 interface ListedRoom {
@@ -24,37 +30,28 @@ interface ListedRoom {
   LocationRoomTypeName?: string;
   LocationId?: string;
   LocationName?: string;
+  LocationAbbreviation?: string;
 }
+
+/**
+ * Whether a location's status marks it out of use. IIQ has no IsActive on locations; its status
+ * names live were 'Active / In Use', 'Decommissioned / Retired', 'Pending' and 'Other'.
+ * SHORTCUT: matches the status NAME by words (decommission/retired/inactive), so a district that
+ * renames its statuses (e.g. "Closed") is not filtered; switch to status ids if that happens.
+ */
+const isOutOfUse = (loc: ListedLocation): boolean =>
+  /decommission|retired|inactive/i.test(loc.LocationStatusType?.Name ?? '');
 
 const locationName = (loc: ListedLocation): string => loc.Name || loc.LocationName || 'Unnamed';
 const locationTypeName = (loc: ListedLocation): string | undefined => loc.LocationType?.Name || loc.LocationTypeName;
 
 // Location-specific types
-export interface LocationRoom {
-  LocationRoomId: string;
-  LocationId: string;
-  RoomNumber: string;
-  RoomName?: string;
-  RoomType?: string;
-  Capacity?: number;
-  Floor?: number;
-  Wing?: string;
-  IsActive?: boolean;
-}
-
 export interface LocationType {
   LocationTypeId: string;
   Name: string;
   Description?: string;
   IsBuilding?: boolean;
   IsRoom?: boolean;
-}
-
-export interface LocationHierarchy {
-  LocationId: string;
-  Name: string;
-  Type: string;
-  Children?: LocationHierarchy[];
 }
 
 // Initialize client lazily
@@ -71,13 +68,13 @@ export const enhancedLocationTools = [
   // Core Operations
   {
     name: 'location_get_all',
-    description: 'Get all locations in the district (GET /locations/all)',
+    description: 'Get all locations in the district, grouped by location type (GET /locations/all); decommissioned/retired locations are hidden unless includeInactive',
     inputSchema: {
       type: 'object',
       properties: {
         includeInactive: {
           type: 'boolean',
-          description: 'Include inactive locations',
+          description: 'Include locations whose status is decommissioned/retired/inactive (default: false)',
         },
       },
       required: [],
@@ -167,77 +164,44 @@ export const enhancedLocationTools = [
   },
   {
     name: 'location_get_building_rooms',
-    description: 'Get all rooms in a specific building (GET /locations/{id}/rooms)',
+    description: 'Get all rooms in a specific building, grouped by room type (GET /locations/{id}/rooms)',
     inputSchema: {
       type: 'object',
       properties: {
         buildingId: {
           type: 'string',
-          description: 'Building/location ID',
-        },
-        floor: {
-          type: 'number',
-          description: 'Filter by floor',
+          description: 'Building/location ID (GUID)',
         },
         roomType: {
           type: 'string',
-          description: 'Filter by room type',
+          description: 'Filter by room type, e.g. Classroom, Office (case-insensitive exact match)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['buildingId'],
     },
   },
   
-  // Building Hierarchy
+  // Buildings
   {
     name: 'location_get_buildings',
-    description: 'Get all school buildings in the district',
+    description: 'Get all district buildings with their location type (from GET /locations/all; excludes District-type locations; decommissioned/retired sites are hidden unless includeInactive)',
     inputSchema: {
       type: 'object',
       properties: {
-        campusId: {
-          type: 'string',
-          description: 'Filter by campus',
+        includeInactive: {
+          type: 'boolean',
+          description: 'Include sites whose status is decommissioned/retired/inactive (default: false)',
         },
       },
       required: [],
-    },
-  },
-  {
-    name: 'location_get_campuses',
-    description: 'Get all district campuses',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: 'location_get_hierarchy',
-    description: 'Get hierarchical location structure',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        rootLocationId: {
-          type: 'string',
-          description: 'Start from specific location (optional)',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'location_get_children',
-    description: 'Get sub-locations (rooms, areas) of a location',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        locationId: {
-          type: 'string',
-          description: 'Parent location ID',
-        },
-      },
-      required: ['locationId'],
     },
   },
   
@@ -272,29 +236,6 @@ export const enhancedLocationTools = [
       required: ['roomType'],
     },
   },
-  {
-    name: 'location_get_available_rooms',
-    description: 'Get currently available rooms',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        minCapacity: {
-          type: 'number',
-          description: 'Minimum capacity needed',
-        },
-        roomType: {
-          type: 'string',
-          description: 'Preferred room type',
-        },
-        buildingId: {
-          type: 'string',
-          description: 'Specific building',
-        },
-      },
-      required: [],
-    },
-  },
-  
   // Integration
   {
     name: 'location_get_assets',
@@ -322,43 +263,6 @@ export const enhancedLocationTools = [
       required: ['locationId'],
     },
   },
-  {
-    name: 'location_get_users',
-    description: 'Get all users assigned to a location',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        locationId: {
-          type: 'string',
-          description: 'Location ID',
-        },
-        userType: {
-          type: 'string',
-          description: 'Filter by user type (Student, Staff)',
-        },
-      },
-      required: ['locationId'],
-    },
-  },
-  {
-    name: 'location_get_tickets',
-    description: 'Get all tickets for a location',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        locationId: {
-          type: 'string',
-          description: 'Location ID',
-        },
-        status: {
-          type: 'string',
-          description: 'Filter by ticket status',
-        },
-      },
-      required: ['locationId'],
-    },
-  },
-  
   // Quick Lookup
   {
     name: 'location_find_by_code',
@@ -382,51 +286,34 @@ export async function handleEnhancedLocationTool(name: string, args: any) {
   try {
     switch (name) {
       case 'location_get_all': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/locations/all',
-        });
-        
-        // Handle different response formats
-        const locations = Array.isArray(response) ? response : response?.Items || [];
-        
+        const { items, truncated } = await iiqListAll<ListedLocation>(client, '/locations/all');
+        const locations = args.includeInactive ? items : items.filter((loc) => !isOutOfUse(loc));
+        const hidden = items.length - locations.length;
+
         if (locations.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No locations found in the district.',
-            }],
-          };
-        }
-        
-        // Group by type
-        const locationsByType: Record<string, any[]> = {};
-        locations.forEach((loc: IIQLocation) => {
-          const type = loc.LocationTypeName || 'Unknown';
-          if (!locationsByType[type]) locationsByType[type] = [];
-          locationsByType[type].push(loc);
-        });
-        
-        let output = `District Locations (${locations.length} total):\n`;
-        
-        for (const [type, locs] of Object.entries(locationsByType)) {
-          output += `\n${type} (${locs.length}):\n`;
-          locs.slice(0, 5).forEach(loc => {
-            output += `  • ${loc.LocationName || loc.Name}`;
-            if (loc.Abbreviation) output += ` (${loc.Abbreviation})`;
-            output += '\n';
+          return withTruncationNote(truncated, {
+            content: [{ type: 'text', text: 'No locations found in the district.' }],
           });
-          if (locs.length > 5) {
-            output += `  ... and ${locs.length - 5} more\n`;
-          }
         }
-        
-        return {
+
+        const byType = new Map<string, ListedLocation[]>();
+        for (const loc of locations) {
+          const type = locationTypeName(loc) || 'Unknown';
+          byType.set(type, [...(byType.get(type) ?? []), loc]);
+        }
+        const groups = [...byType].map(([type, locs]) =>
+          `${type} (${locs.length}):\n${locs.map((loc) => `  • ${locationName(loc)}${loc.Abbreviation ? ` (${loc.Abbreviation})` : ''}`).join('\n')}`
+        );
+        const hiddenNote = hidden > 0
+          ? `\n\n${hidden} decommissioned/retired/inactive location${hidden === 1 ? '' : 's'} hidden (includeInactive: true shows ${hidden === 1 ? 'it' : 'them'}).`
+          : '';
+
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: output,
+            text: `District Locations (${locations.length} total):\n\n${groups.join('\n\n')}${hiddenNote}`,
           }],
-        };
+        });
       }
       
       case 'location_search_advanced': {
@@ -454,7 +341,7 @@ export async function handleEnhancedLocationTool(name: string, args: any) {
       case 'location_get_details': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/locations/${args.locationId}`,
+          url: `/locations/${pathSegment(args.locationId)}`,
         });
         
         const location = response?.Item || response;
@@ -499,107 +386,87 @@ ID: ${location.LocationId}`,
         });
       }
       
-      case 'location_get_building_rooms': {
-        const response = await client.request<any>({
+      case 'location_get_room_details': {
+        const response = await client.request<{ Item?: ListedRoom }>({
           method: 'GET',
-          url: `/locations/${args.buildingId}/rooms`,
+          url: `/locations/rooms/${pathSegment(args.roomId)}`,
         });
-        
-        const rooms = response?.Items || response || [];
-        
-        if (rooms.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No rooms found in this building.',
-            }],
-          };
+        const room = response?.Item;
+        if (!room) {
+          return { content: [{ type: 'text', text: 'Room not found.' }] };
         }
-        
-        // Group by floor if available
-        const roomsByFloor: Record<string, LocationRoom[]> = {};
-        rooms.forEach((room: LocationRoom) => {
-          const floor = room.Floor ? `Floor ${room.Floor}` : 'Unspecified';
-          if (!roomsByFloor[floor]) roomsByFloor[floor] = [];
-          roomsByFloor[floor].push(room);
-        });
-        
-        let output = `Building Rooms (${rooms.length} total):\n`;
-        
-        for (const [floor, floorRooms] of Object.entries(roomsByFloor)) {
-          output += `\n${floor} (${floorRooms.length} rooms):\n`;
-          floorRooms.forEach(room => {
-            output += `  • Room ${room.RoomNumber}`;
-            if (room.RoomName) output += ` - ${room.RoomName}`;
-            if (room.Capacity) output += ` (Cap: ${room.Capacity})`;
-            output += '\n';
-          });
-        }
-        
+        const building = room.LocationName
+          ? `${room.LocationName}${room.LocationAbbreviation ? ` (${room.LocationAbbreviation})` : ''}`
+          : 'N/A';
         return {
           content: [{
             type: 'text',
-            text: output,
+            text: `Room Details:
+Name: ${room.Name || 'Unnamed room'}
+Building: ${building}
+Type: ${room.LocationRoomTypeName || 'N/A'}
+${room.Description ? `Description: ${room.Description}\n` : ''}ID: ${room.LocationRoomId}`,
           }],
         };
       }
+
+      case 'location_get_building_rooms': {
+        // GET /locations/{id}/rooms defaults to a 20-row page (193 rooms at one site live), so read them all.
+        const { items, truncated } = await iiqListAll<ListedRoom>(
+          client, `/locations/${pathSegment(args.buildingId)}/rooms`
+        );
+        const roomType = typeof args.roomType === 'string' ? args.roomType.trim().toLowerCase() : '';
+        const rooms = roomType
+          ? items.filter((room) => room.LocationRoomTypeName?.toLowerCase() === roomType)
+          : items;
+        const roomRow = (room: ListedRoom) => `  • ${room.Name || 'Unnamed room'}`;
+        return formatListPage({
+          rows: rooms,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'rooms',
+          emptyText: 'No rooms found in this building.',
+          render: roomRow,
+          // Every room on the page, grouped by room type.
+          renderPage: (page) => {
+            const byType = new Map<string, ListedRoom[]>();
+            for (const room of page) {
+              const type = room.LocationRoomTypeName || 'Unspecified';
+              byType.set(type, [...(byType.get(type) ?? []), room]);
+            }
+            return [...byType]
+              .map(([type, group]) => `${type} (${group.length}):\n${group.map(roomRow).join('\n')}`)
+              .join('\n\n');
+          },
+          truncated,
+        });
+      }
       
       case 'location_get_buildings': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/locations/buildings',
-        });
-        
-        const buildings = response?.Items || response || [];
-        
-        if (buildings.length === 0) {
-          // Fallback to filtering from all locations
-          const allResponse = await client.request<any>({
-            method: 'GET',
-            url: '/locations/all',
-          });
-          
-          const allLocations = Array.isArray(allResponse) ? allResponse : allResponse?.Items || [];
-          const buildingLocations = allLocations.filter((loc: IIQLocation) =>
-            loc.LocationTypeName?.toLowerCase().includes('building') ||
-            (!loc.ParentLocationId && loc.LocationTypeName !== 'District')
-          );
-          
-          if (buildingLocations.length === 0) {
-            return {
-              content: [{
-                type: 'text',
-                text: 'No buildings found.',
-              }],
-            };
-          }
-          
-          const buildingList = buildingLocations.map((b: IIQLocation) =>
-            `• ${b.LocationName || b.Name}${b.Abbreviation ? ` (${b.Abbreviation})` : ''}`
-          ).join('\n');
-          
-          return {
-            content: [{
-              type: 'text',
-              text: `District Buildings (${buildingLocations.length}):
+        // GET /locations/buildings returns 404 live. Every /locations/all item is a site (rooms are
+        // a separate list, and there is no ParentLocationId), so a building is any non-District site.
+        const { items, truncated } = await iiqListAll<ListedLocation>(client, '/locations/all');
+        const sites = items.filter((loc) => locationTypeName(loc)?.toLowerCase() !== 'district');
+        const buildings = args.includeInactive ? sites : sites.filter((loc) => !isOutOfUse(loc));
+        const hidden = sites.length - buildings.length;
+        const hiddenNote = hidden > 0
+          ? `\n\n${hidden} decommissioned/retired/inactive location${hidden === 1 ? '' : 's'} hidden (includeInactive: true shows ${hidden === 1 ? 'it' : 'them'}).`
+          : '';
 
-${buildingList}`,
-            }],
-          };
+        if (buildings.length === 0) {
+          return withTruncationNote(truncated, { content: [{ type: 'text', text: 'No buildings found.' }] });
         }
-        
-        const buildingList = buildings.map((b: IIQLocation) =>
-          `• ${b.LocationName || b.Name}${b.Abbreviation ? ` (${b.Abbreviation})` : ''}`
+
+        const buildingList = buildings.map((b) =>
+          `• ${locationName(b)}${b.Abbreviation ? ` (${b.Abbreviation})` : ''} - ${locationTypeName(b) || 'Unknown'}`
         ).join('\n');
-        
-        return {
+
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: `District Buildings (${buildings.length}):
-
-${buildingList}`,
+            text: `District Buildings (${buildings.length}):\n\n${buildingList}${hiddenNote}`,
           }],
-        };
+        });
       }
       
       case 'location_get_types': {
@@ -636,7 +503,7 @@ ${typeList}`,
       case 'location_find_special_rooms': {
         // IIQ has no room search (POST /locations returns 400): list rooms and match by name.
         const roomsUrl = args.buildingId
-          ? `/locations/${encodeURIComponent(args.buildingId)}/rooms`
+          ? `/locations/${pathSegment(args.buildingId)}/rooms`
           : '/locations/rooms';
         const { items, truncated } = await iiqListAll<ListedRoom>(client, roomsUrl, { pageSize: 5000 });
         const specialRooms = items.filter((room) =>
@@ -733,15 +600,6 @@ ID: ${location.LocationId}`,
   } catch (error: any) {
     // Handle 404s specially
     if (error.response?.status === 404) {
-      if (name.includes('buildings') || name.includes('campuses')) {
-        // These endpoints might not exist, use fallback
-        return {
-          content: [{
-            type: 'text',
-            text: 'This endpoint may not be available. Try using location_get_all or location_search_advanced instead.',
-          }],
-        };
-      }
       return {
         content: [{
           type: 'text',
