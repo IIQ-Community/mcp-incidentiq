@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { IIQ_LIST_BODY, matchesText } from '../api/paging.js';
+import { IIQ_LIST_BODY, formatListPage, matchesText } from '../api/paging.js';
 
 /**
  * IIQ entity-type GUIDs are global constants. Ticket is confirmed by the IIQ API docs; User by live
@@ -490,34 +490,16 @@ export async function handleEnhancedCustomFieldTool(name: string, args: any) {
           (args.isRequired === undefined || !!field.IsRequired === !!args.isRequired) &&
           (!args.fieldType || field.CustomFieldTypeId?.toLowerCase() === String(args.fieldType).trim().toLowerCase())
         );
-        const pageSize = args.pageSize || 50;
-        const pageIndex = args.pageIndex || 0;
-        const page = matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
-
-        if (page.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No custom fields found matching your criteria.',
-            }],
-          };
-        }
-
-        const fieldList = page.slice(0, 10).map((field: CustomField) =>
-          `• ${fieldName(field)}${field.IsRequired ? ' (Required)' : ''}
-  Entity: ${entityTypeName(field.EntityTypeId)} | Type ID: ${field.CustomFieldTypeId} | ID: ${field.CustomFieldId}`
-        ).join('\n\n');
-
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${matched.length} custom fields (showing ${Math.min(10, page.length)}):
-
-${fieldList}${page.length > 10 ? `\n\n...and ${page.length - 10} more fields on this page` : ''}
-
-Page ${pageIndex + 1} of ${Math.max(1, Math.ceil(matched.length / pageSize))}`,
-          }],
-        };
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 50,
+          noun: 'custom fields',
+          emptyText: 'No custom fields found matching your criteria.',
+          render: (field: CustomField) =>
+            `• ${fieldName(field)}${field.IsRequired ? ' (Required)' : ''}
+  Entity: ${entityTypeName(field.EntityTypeId)} | Type ID: ${field.CustomFieldTypeId} | ID: ${field.CustomFieldId}`,
+        });
       }
 
       case 'customfield_get_all': {

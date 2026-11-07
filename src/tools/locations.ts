@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
 import { IIQLocation } from '../types/common.js';
 
 /** Location as returned by GET /locations/all (live shape) plus the legacy flat fields. */
@@ -424,35 +424,17 @@ export async function handleEnhancedLocationTool(name: string, args: any) {
           (!args.locationType || locationTypeName(loc)?.toLowerCase() === String(args.locationType).trim().toLowerCase())
         );
 
-        const pageSize = args.pageSize || 100;
-        const pageIndex = args.pageIndex || 0;
-        const page = matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
-        const truncationNote = truncated ? '\n\nNote: the location list was truncated; results may be incomplete.' : '';
-
-        if (page.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No locations found matching your criteria.${truncationNote}`,
-            }],
-          };
-        }
-
-        const locationList = page.slice(0, 10).map((loc) =>
-          `• ${locationName(loc)}${loc.Abbreviation ? ` (${loc.Abbreviation})` : ''}
-  Type: ${locationTypeName(loc) || 'Unknown'} | ID: ${loc.LocationId}`
-        ).join('\n\n');
-
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${matched.length} locations (showing ${Math.min(10, page.length)}):
-
-${locationList}${page.length > 10 ? `\n\n...and ${page.length - 10} more locations on this page` : ''}
-
-Page ${pageIndex + 1} of ${Math.max(1, Math.ceil(matched.length / pageSize))}${truncationNote}`,
-          }],
-        };
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 100,
+          noun: 'locations',
+          emptyText: 'No locations found matching your criteria.',
+          render: (loc: ListedLocation) =>
+            `• ${locationName(loc)}${loc.Abbreviation ? ` (${loc.Abbreviation})` : ''}
+  Type: ${locationTypeName(loc) || 'Unknown'} | ID: ${loc.LocationId}`,
+          truncated,
+        });
       }
       
       case 'location_get_details': {

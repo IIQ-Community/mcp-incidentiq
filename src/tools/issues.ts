@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { IIQ_LIST_BODY, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { IIQ_LIST_BODY, formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
 
 /**
  * Reads every issue type. POST /issues/types ignores body SearchText, the keyword facet and body
@@ -611,34 +611,17 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
           (!args.scope || args.scope === 'All' || type.Scope?.toLowerCase() === String(args.scope).toLowerCase()) &&
           matchesText(args.category, type.Category, type.Name)
         );
-        const pageSize = args.pageSize || 50;
-        const pageIndex = args.pageIndex || 0;
-        const page = matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
-
-        if (page.length === 0) {
-          return withTruncationNote(truncated, {
-            content: [{
-              type: 'text',
-              text: 'No issue types found matching your criteria.',
-            }],
-          });
-        }
-
-        const typeList = page.slice(0, 10).map((type: IssueType) =>
-          `• ${type.Name}${type.Category ? ` (${type.Category})` : ''}
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 50,
+          noun: 'issue types',
+          emptyText: 'No issue types found matching your criteria.',
+          render: (type: IssueType) =>
+            `• ${type.Name}${type.Category ? ` (${type.Category})` : ''}
   Scope: ${type.Scope} | Active: ${type.IsActive ? 'Yes' : 'No'}
-  ${type.Metadata ? `Usage: ${type.Metadata.UsageCount || 0} times` : ''}`
-        ).join('\n\n');
-        
-        return withTruncationNote(truncated, {
-          content: [{
-            type: 'text',
-            text: `Found ${matched.length} issue types (showing ${Math.min(10, page.length)}):
-
-${typeList}${page.length > 10 ? `\n\n...and ${page.length - 10} more types on this page` : ''}
-
-Page ${pageIndex + 1} of ${Math.max(1, Math.ceil(matched.length / pageSize))}`,
-          }],
+  ${type.Metadata ? `Usage: ${type.Metadata.UsageCount || 0} times` : ''}`,
+          truncated,
         });
       }
       

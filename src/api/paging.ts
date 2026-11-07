@@ -77,6 +77,36 @@ export function iiqPage<T>(rows: T[], pageIndex = 0, pageSize = 20, truncated = 
   };
 }
 
+/**
+ * Builds the MCP text result for one page of a client-side-filtered list: a "Found N <noun>
+ * (showing M):" header, every row on the page, and a "Page X of Y" footer. A page past the end
+ * says so (rather than claiming nothing matched); `emptyText` is used only when no row matched.
+ * Out-of-range paging input is normalised: pageIndex to a whole number >= 0, pageSize to >= 1.
+ */
+export function formatListPage<T>({ rows, pageIndex = 0, pageSize, noun, emptyText, render, truncated = false }: {
+  rows: T[];
+  pageIndex?: number;
+  pageSize: number;
+  noun: string;
+  emptyText: string;
+  render: (row: T) => string;
+  truncated?: boolean;
+}): { content: Array<{ type: 'text'; text: string }> } {
+  const size = Math.max(1, Math.floor(pageSize) || 1);
+  const index = Math.max(0, Math.floor(pageIndex) || 0);
+  const pageCount = Math.max(1, Math.ceil(rows.length / size));
+  let text: string;
+  if (rows.length === 0) {
+    text = emptyText;
+  } else if (index >= pageCount) {
+    text = `Page ${index + 1} is past the end: ${rows.length} ${noun} match (${pageCount} page${pageCount === 1 ? '' : 's'}).`;
+  } else {
+    const page = rows.slice(index * size, index * size + size);
+    text = `Found ${rows.length} ${noun} (showing ${page.length}):\n\n${page.map(render).join('\n\n')}\n\nPage ${index + 1} of ${pageCount}`;
+  }
+  return withTruncationNote(truncated, { content: [{ type: 'text', text }] });
+}
+
 /** Case-insensitive "any field contains the term" match; an empty term matches everything. */
 export function matchesText(term: string | undefined, ...fields: Array<string | null | undefined>): boolean {
   const needle = term?.trim().toLowerCase();

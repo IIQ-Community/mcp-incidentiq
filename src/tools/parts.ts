@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
 
 /** IIQ has no parts search (POST /parts returns 405, verified 2026-11-06): read GET /parts and filter. */
 async function listParts(client: IncidentIQClient): Promise<{ items: Part[]; truncated: boolean }> {
@@ -605,34 +605,17 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           matchesText(args.deviceType, part.DeviceType, part.Name) &&
           (!args.supplierId || part.StandardSupplierId === args.supplierId)
         );
-        const pageSize = args.pageSize || 50;
-        const pageIndex = args.pageIndex || 0;
-        const page = matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
-
-        if (page.length === 0) {
-          return withTruncationNote(truncated, {
-            content: [{
-              type: 'text',
-              text: 'No parts found matching your criteria.',
-            }],
-          });
-        }
-
-        const partsList = page.slice(0, 10).map((part: Part) =>
-          `• ${part.Name || part.PartNumber}${part.Category ? ` (${part.Category})` : ''}
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 50,
+          noun: 'parts',
+          emptyText: 'No parts found matching your criteria.',
+          render: (part: Part) =>
+            `• ${part.Name || part.PartNumber}${part.Category ? ` (${part.Category})` : ''}
   Stock: ${part.QuantityOnHand || 0} | Cost: $${part.StandardCostEach ?? 'N/A'} | Supplier: ${part.StandardSupplier?.Name || 'N/A'}
-  ID: ${part.PartId}`
-        ).join('\n\n');
-
-        return withTruncationNote(truncated, {
-          content: [{
-            type: 'text',
-            text: `Found ${matched.length} parts (showing ${Math.min(10, page.length)}):
-
-${partsList}${page.length > 10 ? `\n\n...and ${page.length - 10} more parts on this page` : ''}
-
-Page ${pageIndex + 1} of ${Math.max(1, Math.ceil(matched.length / pageSize))}`,
-          }],
+  ID: ${part.PartId}`,
+          truncated,
         });
       }
 

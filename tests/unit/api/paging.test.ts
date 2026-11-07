@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { iiqListAll, iiqPage, withTruncationNote, TRUNCATION_NOTE, type IIQRequester } from '../../../src/api/paging';
+import { formatListPage, iiqListAll, iiqPage, withTruncationNote, TRUNCATION_NOTE, type IIQRequester } from '../../../src/api/paging';
 
 /** In-memory IIQ GET list: pages via $p/$s; `withTotal: false` omits Paging.TotalRows. */
 function fakeList(rowCount: number, { withTotal = true } = {}) {
@@ -66,5 +66,40 @@ describe('truncation disclosure', () => {
     const make = () => ({ content: [{ type: 'text', text: 'Found 2 parts' }] });
     expect(withTruncationNote(true, make()).content[0].text).toBe(`Found 2 parts${TRUNCATION_NOTE}`);
     expect(withTruncationNote(false, make()).content[0].text).toBe('Found 2 parts');
+  });
+});
+
+describe('formatListPage', () => {
+  const base = { pageSize: 2, noun: 'widgets', emptyText: 'No widgets found.', render: (n: number) => `• w${n}` };
+  const text = (opts: Partial<Parameters<typeof formatListPage<number>>[0]> & { rows: number[] }) =>
+    formatListPage<number>({ ...base, ...opts }).content[0].text;
+
+  it('renders the header, every row on the page and the footer', () => {
+    expect(text({ rows: [1, 2, 3] })).toBe('Found 3 widgets (showing 2):\n\n• w1\n\n• w2\n\nPage 1 of 2');
+    expect(text({ rows: [1, 2, 3], pageIndex: 1 })).toBe('Found 3 widgets (showing 1):\n\n• w3\n\nPage 2 of 2');
+  });
+
+  it('uses emptyText only when nothing matched, on any page', () => {
+    expect(text({ rows: [] })).toBe('No widgets found.');
+    expect(text({ rows: [], pageIndex: 4 })).toBe('No widgets found.');
+  });
+
+  it('reports a page past the end with the match and page counts', () => {
+    expect(text({ rows: [1], pageIndex: 1 })).toBe('Page 2 is past the end: 1 widgets match (1 page).');
+    expect(text({ rows: [1, 2, 3], pageIndex: 7 })).toBe('Page 8 is past the end: 3 widgets match (2 pages).');
+  });
+
+  it('normalises out-of-range paging input', () => {
+    expect(text({ rows: [1, 2, 3], pageIndex: -1 })).toBe(text({ rows: [1, 2, 3], pageIndex: 0 }));
+    expect(text({ rows: [1, 2, 3], pageIndex: 1.7 })).toBe(text({ rows: [1, 2, 3], pageIndex: 1 }));
+    expect(text({ rows: [1, 2, 3], pageIndex: Number.NaN })).toBe(text({ rows: [1, 2, 3], pageIndex: 0 }));
+    expect(text({ rows: [1, 2, 3], pageSize: 0 })).toBe('Found 3 widgets (showing 1):\n\n• w1\n\nPage 1 of 3');
+    expect(text({ rows: [1, 2, 3], pageSize: -5 })).toBe('Found 3 widgets (showing 1):\n\n• w1\n\nPage 1 of 3');
+  });
+
+  it('appends the truncation note to every outcome when the source list was truncated', () => {
+    expect(text({ rows: [1], truncated: true })).toBe(`Found 1 widgets (showing 1):\n\n• w1\n\nPage 1 of 1${TRUNCATION_NOTE}`);
+    expect(text({ rows: [], truncated: true })).toBe(`No widgets found.${TRUNCATION_NOTE}`);
+    expect(text({ rows: [1], pageIndex: 3, truncated: true })).toBe(`Page 4 is past the end: 1 widgets match (1 page).${TRUNCATION_NOTE}`);
   });
 });
