@@ -82,27 +82,35 @@ export function iiqPage<T>(rows: T[], pageIndex = 0, pageSize = 20, truncated = 
  * (showing M):" header, every row on the page, and a "Page X of Y" footer. A page past the end
  * says so (rather than claiming nothing matched); `emptyText` is used only when no row matched.
  * Out-of-range paging input is normalised: pageIndex to a whole number >= 0, pageSize to >= 1.
+ *
+ * With `total` (a server-paged list), `rows` is already the requested page and `total` is the
+ * server's match count (`Paging.TotalRows`): rows are not sliced again, and an empty page with a
+ * non-zero total is past the end. `renderPage` replaces the default one-row-per-paragraph body.
  */
-export function formatListPage<T>({ rows, pageIndex = 0, pageSize, noun, emptyText, render, truncated = false }: {
+export function formatListPage<T>({ rows, pageIndex = 0, pageSize, noun, emptyText, render, renderPage, truncated = false, total }: {
   rows: T[];
   pageIndex?: number;
   pageSize: number;
   noun: string;
   emptyText: string;
   render: (row: T) => string;
+  renderPage?: (page: T[]) => string;
   truncated?: boolean;
+  total?: number;
 }): { content: Array<{ type: 'text'; text: string }> } {
   const size = Math.max(1, Math.floor(pageSize) || 1);
   const index = Math.max(0, Math.floor(pageIndex) || 0);
-  const pageCount = Math.max(1, Math.ceil(rows.length / size));
+  const matched = total ?? rows.length;
+  const pageCount = Math.max(1, Math.ceil(matched / size));
+  const page = total === undefined ? rows.slice(index * size, index * size + size) : rows;
   let text: string;
-  if (rows.length === 0) {
+  if (matched === 0) {
     text = emptyText;
-  } else if (index >= pageCount) {
-    text = `Page ${index + 1} is past the end: ${rows.length} ${noun} match (${pageCount} page${pageCount === 1 ? '' : 's'}).`;
+  } else if (index >= pageCount || page.length === 0) {
+    text = `Page ${index + 1} is past the end: ${matched} ${noun} match (${pageCount} page${pageCount === 1 ? '' : 's'}).`;
   } else {
-    const page = rows.slice(index * size, index * size + size);
-    text = `Found ${rows.length} ${noun} (showing ${page.length}):\n\n${page.map(render).join('\n\n')}\n\nPage ${index + 1} of ${pageCount}`;
+    const body = renderPage ? renderPage(page) : page.map(render).join('\n\n');
+    text = `Found ${matched} ${noun} (showing ${page.length}):\n\n${body}\n\nPage ${index + 1} of ${pageCount}`;
   }
   return withTruncationNote(truncated, { content: [{ type: 'text', text }] });
 }
@@ -112,6 +120,23 @@ export function matchesText(term: string | undefined, ...fields: Array<string | 
   const needle = term?.trim().toLowerCase();
   if (!needle) return true;
   return fields.some((field) => field?.toLowerCase().includes(needle));
+}
+
+type PagedResponse = { Items?: unknown[]; ItemCount?: number; Paging?: { TotalRows?: number } } | null | undefined;
+
+/**
+ * Total matches for a server-paged IIQ list. IIQ usually reports `TotalRows: 0` for an empty page
+ * past the end (verified 2026-11-07), which reads the same as "nothing matched", so an empty page
+ * after the first re-reads page 0 for the real total.
+ */
+export async function iiqServerTotal(
+  response: PagedResponse,
+  pageIndex: number,
+  readPage: (pageIndex: number) => Promise<PagedResponse>
+): Promise<number> {
+  const total = iiqTotalRows(response);
+  if (total > 0 || (response?.Items?.length ?? 0) > 0 || !(pageIndex > 0)) return total;
+  return iiqTotalRows(await readPage(0));
 }
 
 /** Total matching rows for a paginated IIQ response: `Paging.TotalRows`, else `ItemCount`, else the page length. `ItemCount` alone is only the current page's count. */

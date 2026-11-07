@@ -52,9 +52,9 @@ describe('Asset Tools', () => {
       it('should apply multiple filters', async () => {
         const result = await handleAssetTool('asset_search_advanced', {
           searchText: 'CHR',
-          assetType: 'Chromebook',
+          assetType: 'Devices',
           locationId: 'loc-1',
-          status: 'Active',
+          status: 'In Service',
         });
 
         expect(result.content[0].type).toBe('text');

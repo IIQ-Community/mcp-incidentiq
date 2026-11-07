@@ -86,14 +86,19 @@ export interface IIQUser {
   FirstName?: string;
   LastName?: string;
   FullName?: string;
-  Role?: string;
+  /** Display name IIQ actually sends (verified 2026-11-07). */
+  Name?: string;
+  /** IIQ sends the role as an object (verified 2026-11-07); there is no UserTypeName. */
+  Role?: { RoleId?: string; Name?: string };
+  RoleId?: string;
   LocationId?: string;
   LocationName?: string;
   IsActive?: boolean;
   Homeroom?: string;
-  UserTypeName?: string;
   Grade?: string;
   PhoneNumber?: string;
+  /** Phone number field IIQ actually sends (verified 2026-11-07). */
+  Phone?: string;
   MobileNumber?: string;
 }
 
@@ -112,6 +117,11 @@ export interface IIQAsset {
   PurchaseDate?: string;
   WarrantyExpirationDate?: string;
   Notes?: string;
+  /** Nested objects POST /assets actually returns (verified 2026-11-07); the flat *Name fields above are not sent. */
+  Model?: { Name?: string };
+  Status?: { Name?: string };
+  Location?: { Name?: string };
+  Owner?: { Name?: string };
 }
 
 export interface IIQTicket {

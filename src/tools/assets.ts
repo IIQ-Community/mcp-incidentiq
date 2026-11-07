@@ -8,7 +8,8 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqTotalRows } from '../api/paging.js';
+import { ASSET_STATUSES, ASSET_TYPES, resolveIds } from '../api/lookups.js';
+import { formatListPage, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
 import { 
   IIQAsset,
   PaginatedRequest,
@@ -31,16 +32,22 @@ export interface AssetFundingType {
   Scope?: string;
 }
 
+/** Activity as returned by GET /assets/{id}/activities (live shape, verified 2026-11-07). */
 export interface AssetActivity {
-  ActivityId: string;
-  AssetId: string;
+  ActivityId?: string;
   ActivityDate: string;
-  ActivityType: string;
-  Description: string;
+  /** Numeric activity code (e.g. 1, 3, 5); IIQ sends no name for it. */
+  ActivityType: string | number;
+  Details?: string;
   UserId?: string;
-  UserName?: string;
-  OldValue?: string;
-  NewValue?: string;
+}
+
+/** One asset as a list row, from the nested objects POST /assets returns. */
+export function renderAssetRow(asset: IIQAsset): string {
+  return `• ${asset.AssetTag} - ${asset.AssetTypeName || 'Unknown Type'}
+  Model: ${asset.Model?.Name || 'N/A'} | Serial: ${asset.SerialNumber || 'N/A'}
+  Status: ${asset.Status?.Name || 'Unknown'} | Location: ${asset.Location?.Name || 'N/A'}
+  User: ${asset.Owner?.Name || 'Unassigned'}`;
 }
 
 // Initialize client lazily
@@ -71,11 +78,11 @@ export const enhancedAssetTools = [
         },
         assetType: {
           type: 'string',
-          description: 'Filter by type (Chromebook, iPad, Desktop, etc.)',
+          description: 'Filter by asset type name or ID, e.g. Devices, Networking, Furniture (GET /assets/types)',
         },
         status: {
           type: 'string',
-          description: 'Filter by status (Active, Repair, Lost, etc.)',
+          description: 'Filter by status name or ID, e.g. In Service, Broken, In Storage (GET /assets/status/types)',
         },
         locationId: {
           type: 'string',
@@ -99,7 +106,7 @@ export const enhancedAssetTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100, max: 1000)',
+          description: 'Results per page (default: 25, max: 1000)',
         },
         pageIndex: {
           type: 'number',
@@ -298,6 +305,14 @@ export const enhancedAssetTools = [
           type: 'string',
           description: 'Asset ID to get history for',
         },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
+        },
       },
       required: ['assetId'],
     },
@@ -353,7 +368,7 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           Filters: [],
           Paging: {
             PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 100, // Optimized default
+            PageSize: args.pageSize || 25,
           },
         };
         
@@ -371,19 +386,15 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           });
         }
         
-        // Add other filters
+        // IIQ filters asset type and status by id only (a name, or a `Status` facet, is ignored).
         if (args.assetType) {
-          payload.Filters!.push({
-            Facet: 'AssetType',
-            Id: args.assetType,
-          });
+          const [assetTypeId] = await resolveIds(client, ASSET_TYPES, [args.assetType]);
+          payload.Filters!.push({ Facet: 'AssetType', Id: assetTypeId });
         }
-        
+
         if (args.status) {
-          payload.Filters!.push({
-            Facet: 'Status',
-            Id: args.status,
-          });
+          const [statusId] = await resolveIds(client, ASSET_STATUSES, [args.status]);
+          payload.Filters!.push({ Facet: 'assetstatus', Id: statusId });
         }
         
         if (args.locationId) {
@@ -393,42 +404,23 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
+        const readPage = (pageIndex: number) => client.request<PaginatedResponse<IIQAsset>>({
           method: 'POST',
           url: '/assets',
-          data: payload,
+          data: { ...payload, Paging: { ...payload.Paging!, PageIndex: pageIndex } },
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No assets found matching your criteria.',
-            }],
-          };
-        }
-        
-        const assetList = response.Items.slice(0, 10).map((asset: IIQAsset) =>
-          `• ${asset.AssetTag} - ${asset.AssetTypeName || 'Unknown Type'}
-  Model: ${asset.ModelName || 'N/A'} | Serial: ${asset.SerialNumber || 'N/A'}
-  Status: ${asset.StatusName || 'Unknown'} | Location: ${asset.LocationName || 'N/A'}
-  User: ${asset.AssignedUserName || 'Unassigned'}`
-        ).join('\n\n');
-        
-        const summary = response.Items.length > 10 
-          ? `\n\n...and ${response.Items.length - 10} more assets`
-          : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${iiqTotalRows(response)} assets (showing ${Math.min(10, response.Items.length)}):
+        const response = await readPage(payload.Paging!.PageIndex);
 
-${assetList}${summary}
-
-Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / (args.pageSize || 100)))}`,
-          }],
-        };
+        // IIQ returns exactly the requested page, so every row is rendered (#96).
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, payload.Paging!.PageIndex, readPage),
+          pageIndex: payload.Paging!.PageIndex,
+          pageSize: payload.Paging!.PageSize,
+          noun: 'assets',
+          emptyText: 'No assets found matching your criteria.',
+          render: renderAssetRow,
+        });
       }
       
       case 'asset_find_by_tag': {
@@ -663,34 +655,21 @@ ${fundingList}
       }
       
       case 'asset_get_history': {
+        // IIQ returns every activity at once (no paging, no TotalRows), so page locally.
         const response = await client.request<PaginatedResponse<AssetActivity>>({
           method: 'GET',
           url: `/assets/${args.assetId}/activities`,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No history available for this asset.',
-            }],
-          };
-        }
-        
-        const historyList = response.Items.slice(0, 10).map((activity: AssetActivity) =>
-          `• ${activity.ActivityDate} - ${activity.ActivityType}
-  ${activity.Description}
-  By: ${activity.UserName || 'System'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset History (showing recent ${Math.min(10, response.Items.length)} of ${iiqTotalRows(response)}):
-
-${historyList}`,
-          }],
-        };
+        return formatListPage({
+          rows: response?.Items ?? [],
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'activities',
+          emptyText: 'No history available for this asset.',
+          render: (activity) => `• ${activity.ActivityDate} - ${activity.ActivityType}
+  ${activity.Details || 'N/A'}
+  By: ${activity.UserId || 'System'}`,
+        });
       }
       
       case 'asset_get_inventory_counts': {

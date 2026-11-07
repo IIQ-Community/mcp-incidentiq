@@ -64,29 +64,21 @@ export interface PartSupplier {
   Notes?: string;
 }
 
+/** Purchase order as returned by GET /purchaseorders (live shape, verified 2026-11-07). */
 export interface PurchaseOrder {
   PurchaseOrderId: string;
-  OrderNumber?: string;
-  SupplierId: string;
-  OrderDate: string;
-  ExpectedDate?: string;
-  Status: string;
-  TotalAmount: number;
-  Items: PurchaseOrderItem[];
-  ShippingCost?: number;
-  TaxAmount?: number;
-  TrackingNumber?: string;
-  ReceivedDate?: string;
-  ReceivedBy?: string;
-  InvoiceNumber?: string;
-  Notes?: string;
+  PoNumber?: string;
+  CreatedDate?: string;
+  IsApproved?: boolean;
+  IsClosed?: boolean;
+  PurchaseTotalCosts?: number;
+  Purchases?: unknown[];
 }
 
-export interface PurchaseOrderItem {
-  PartId: string;
-  Quantity: number;
-  UnitCost: number;
-  TotalCost: number;
+/** IIQ has no order status field; it is derived from the IsClosed / IsApproved flags. */
+function orderStatus(order: PurchaseOrder): 'Closed' | 'Approved' | 'Open' {
+  if (order.IsClosed) return 'Closed';
+  return order.IsApproved ? 'Approved' : 'Open';
 }
 
 export interface PartUsage {
@@ -267,8 +259,8 @@ export const enhancedPartsTools = [
       properties: {
         status: {
           type: 'string',
-          enum: ['Pending', 'Ordered', 'Shipped', 'Received', 'Cancelled'],
-          description: 'Filter by order status',
+          enum: ['Open', 'Approved', 'Closed'],
+          description: 'Filter by order status (derived from IIQ approval/closed flags)',
         },
         supplierId: {
           type: 'string',
@@ -281,6 +273,14 @@ export const enhancedPartsTools = [
         dateTo: {
           type: 'string',
           description: 'Orders before date (YYYY-MM-DD)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -658,41 +658,20 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
       }
       
       case 'parts_get_orders': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/purchaseorders',
+        const { items, truncated } = await iiqListAll<PurchaseOrder>(client, '/purchaseorders');
+        const status = typeof args.status === 'string' ? args.status.trim().toLowerCase() : '';
+        const orders = status ? items.filter((order) => orderStatus(order).toLowerCase() === status) : items;
+        return formatListPage({
+          rows: orders,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'purchase orders',
+          emptyText: 'No purchase orders found.',
+          render: (order) => `• PO ${order.PoNumber || order.PurchaseOrderId.substring(0, 8)}
+  Status: ${orderStatus(order)} | Created: ${order.CreatedDate || 'N/A'}
+  Total: $${order.PurchaseTotalCosts ?? 0} | Items: ${order.Purchases?.length ?? 0}`,
+          truncated,
         });
-        
-        const orders = Array.isArray(response) ? response : response?.Items || [];
-        
-        if (orders.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No purchase orders found.',
-            }],
-          };
-        }
-        
-        // Filter by status if provided
-        let filteredOrders = orders;
-        if (args.status) {
-          filteredOrders = orders.filter((o: PurchaseOrder) => o.Status === args.status);
-        }
-        
-        const orderList = filteredOrders.slice(0, 10).map((order: PurchaseOrder) =>
-          `• Order ${order.OrderNumber || order.PurchaseOrderId.substring(0, 8)}
-  Status: ${order.Status} | Date: ${order.OrderDate}
-  Total: $${order.TotalAmount} | Items: ${order.Items?.length || 0}
-  ${order.ExpectedDate ? `Expected: ${order.ExpectedDate}` : ''}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Purchase Orders (${filteredOrders.length}):\n\n${orderList}`,
-          }],
-        };
       }
       
       case 'parts_get_chromebook_parts': {

@@ -8,8 +8,10 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
-import { IIQLocation } from '../types/common.js';
+import { ASSET_TYPES, resolveIds } from '../api/lookups.js';
+import { formatListPage, iiqListAll, iiqServerTotal, matchesText, withTruncationNote } from '../api/paging.js';
+import { IIQAsset, IIQFilter, IIQLocation, PaginatedResponse } from '../types/common.js';
+import { renderAssetRow } from './assets.js';
 
 /** Location as returned by GET /locations/all (live shape) plus the legacy flat fields. */
 type ListedLocation = IIQLocation & { Description?: string; LocationType?: { Name?: string }; IsDeleted?: boolean };
@@ -135,11 +137,15 @@ export const enhancedLocationTools = [
       properties: {
         roomType: {
           type: 'string',
-          description: 'Filter by room type',
+          description: 'Filter by room type, e.g. Classroom, Office, Library (case-insensitive exact match)',
         },
-        minCapacity: {
+        pageSize: {
           type: 'number',
-          description: 'Minimum room capacity',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -292,7 +298,7 @@ export const enhancedLocationTools = [
   // Integration
   {
     name: 'location_get_assets',
-    description: 'Get all assets at a specific location',
+    description: 'Get all assets at a specific location (POST /assets with a location filter)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -302,7 +308,15 @@ export const enhancedLocationTools = [
         },
         assetType: {
           type: 'string',
-          description: 'Filter by asset type',
+          description: 'Filter by asset type name or ID, e.g. Devices, Networking (GET /assets/types)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['locationId'],
@@ -467,50 +481,22 @@ ID: ${location.LocationId}`,
       }
       
       case 'location_get_all_rooms': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/locations/rooms',
+        // GET /locations/rooms defaults to a 20-row page (4,927 rooms live), so read the whole list.
+        const { items, truncated } = await iiqListAll<ListedRoom>(client, '/locations/rooms', { pageSize: 5000 });
+        const roomType = typeof args.roomType === 'string' ? args.roomType.trim().toLowerCase() : '';
+        const rooms = roomType
+          ? items.filter((room) => room.LocationRoomTypeName?.toLowerCase() === roomType)
+          : items;
+        return formatListPage({
+          rows: rooms,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'rooms',
+          emptyText: 'No rooms found.',
+          render: (room) => `• ${room.Name || 'Unnamed room'} - ${room.LocationName || 'Unknown Building'}
+  Type: ${room.LocationRoomTypeName || 'N/A'}`,
+          truncated,
         });
-        
-        const rooms = response?.Items || response || [];
-        
-        if (rooms.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No rooms found.',
-            }],
-          };
-        }
-        
-        // Apply filters if provided
-        let filteredRooms = rooms;
-        if (args.roomType) {
-          filteredRooms = filteredRooms.filter((r: LocationRoom) => 
-            r.RoomType === args.roomType
-          );
-        }
-        if (args.minCapacity) {
-          filteredRooms = filteredRooms.filter((r: LocationRoom) => 
-            r.Capacity && r.Capacity >= args.minCapacity
-          );
-        }
-        
-        const roomList = filteredRooms.slice(0, 20).map((room: LocationRoom) =>
-          `• Room ${room.RoomNumber}${room.RoomName ? ` - ${room.RoomName}` : ''}
-  Type: ${room.RoomType || 'N/A'} | Capacity: ${room.Capacity || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Rooms (${filteredRooms.length} matching):
-
-${roomList}
-
-${filteredRooms.length > 20 ? `\n...and ${filteredRooms.length - 20} more rooms` : ''}`,
-          }],
-        };
       }
       
       case 'location_get_building_rooms': {
@@ -681,36 +667,31 @@ ${roomList}`,
       }
       
       case 'location_get_assets': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: `/locations/${args.locationId}/assets`,
-        });
-        
-        const assets = response?.Items || response || [];
-        
-        if (assets.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No assets found at this location.',
-            }],
-          };
+        // GET /locations/{id}/assets does not exist (404 live); the asset search takes a location filter.
+        const filters: IIQFilter[] = [{ Facet: 'location', Id: args.locationId }];
+        if (args.assetType) {
+          const [assetTypeId] = await resolveIds(client, ASSET_TYPES, [args.assetType]);
+          filters.push({ Facet: 'AssetType', Id: assetTypeId });
         }
-        
-        const assetList = assets.slice(0, 10).map((asset: any) =>
-          `• ${asset.AssetTag} - ${asset.AssetTypeName || 'Unknown Type'}`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Assets at Location (${assets.length}):
-
-${assetList}
-
-${assets.length > 10 ? `\n...and ${assets.length - 10} more assets` : ''}`,
-          }],
-        };
+        const paging = { PageIndex: args.pageIndex || 0, PageSize: args.pageSize || 25 };
+        const readPage = (pageIndex: number) => client.request<PaginatedResponse<IIQAsset>>({
+          method: 'POST',
+          url: '/assets',
+          data: {
+            OnlyShowDeleted: false, FilterByViewPermission: false, Filters: filters,
+            Paging: { ...paging, PageIndex: pageIndex },
+          },
+        });
+        const response = await readPage(paging.PageIndex);
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, paging.PageIndex, readPage),
+          pageIndex: paging.PageIndex,
+          pageSize: paging.PageSize,
+          noun: 'assets',
+          emptyText: 'No assets found at this location.',
+          render: renderAssetRow,
+        });
       }
       
       case 'location_find_by_code': {

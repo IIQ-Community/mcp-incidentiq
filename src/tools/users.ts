@@ -8,12 +8,67 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
-import { 
+import { ROLES, resolveIds } from '../api/lookups.js';
+import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows, withTruncationNote } from '../api/paging.js';
+import {
+  IIQFilter,
+  IIQLocation,
   IIQUser,
   PaginatedRequest,
-  PaginatedResponse 
+  PaginatedResponse
 } from '../types/common.js';
+
+/** Display name: IIQ sends `Name` (there is no `FullName`); first + last is the fallback. */
+function userName(user: IIQUser): string {
+  return user.Name || `${user.FirstName} ${user.LastName}`;
+}
+
+/** Most statistics count requests in flight at once (one request per grade or location). */
+const STAT_CONCURRENCY = 4;
+
+/** IIQ grade codes, in school order. */
+const GRADE_CODES = ['PK', 'KG', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+/**
+ * Maps a grade as a person types it ("8", "K", "Pre-K", "Grade 9") to the IIQ grade code the
+ * `grade` filter matches exactly; anything else is sent as typed.
+ * SHORTCUT: assumes the SIS codes seen on a production district (2026-11-07): '01'-'12', 'KG',
+ * 'PK'. A district whose SIS stores grades differently (e.g. '8', 'K') needs its own mapping;
+ * revisit when a second district's grade codes are observed.
+ */
+function gradeCode(input: string): string {
+  const grade = input.trim().toUpperCase().replace(/^GRADE\s*/, '');
+  const number = Number(grade);
+  if (/^\d{1,2}$/.test(grade) && number >= 1 && number <= 12) return String(number).padStart(2, '0');
+  if (['K', 'KG', 'KINDERGARTEN'].includes(grade)) return 'KG';
+  if (['PK', 'PRE-K', 'PREK', 'PRE K', 'PRE-KINDERGARTEN', 'PRESCHOOL'].includes(grade)) return 'PK';
+  return input.trim();
+}
+
+/** Users matching `filters` (Paging.TotalRows of a one-row POST /users page). */
+async function countUsers(client: IncidentIQClient, filters: IIQFilter[]): Promise<number> {
+  const response = await client.request<PaginatedResponse<IIQUser>>({
+    method: 'POST',
+    url: '/users',
+    params: iiqPagingParams(0, 1),
+    data: { OnlyShowDeleted: false, FilterByViewPermission: false, Filters: filters },
+  });
+  return iiqTotalRows(response);
+}
+
+/** Maps `items` through `fn` with at most `limit` calls in flight, keeping input order. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
 // User-specific types
 export interface UserStatistics {
@@ -65,15 +120,11 @@ export const enhancedUserTools = [
         },
         grade: {
           type: 'string',
-          description: 'Grade level (K-12, or specific like "8")',
+          description: 'Grade level: 1-12, K or Pre-K (sent as the IIQ codes 01-12, KG, PK)',
         },
         locationId: {
           type: 'string',
           description: 'Building/school ID',
-        },
-        homeroom: {
-          type: 'string',
-          description: 'Homeroom/classroom assignment',
         },
         isActive: {
           type: 'boolean',
@@ -89,7 +140,7 @@ export const enhancedUserTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100, max: 1000)',
+          description: 'Results per page (default: 25, max: 1000)',
         },
         pageIndex: {
           type: 'number',
@@ -103,13 +154,13 @@ export const enhancedUserTools = [
   // User Types
   {
     name: 'user_get_students',
-    description: 'Get all student users with grade/homeroom info',
+    description: 'Get student users, grouped by grade',
     inputSchema: {
       type: 'object',
       properties: {
         grade: {
           type: 'string',
-          description: 'Filter by grade level',
+          description: 'Filter by grade level: 1-12, K or Pre-K (sent as the IIQ codes 01-12, KG, PK)',
         },
         locationId: {
           type: 'string',
@@ -117,7 +168,11 @@ export const enhancedUserTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100)',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -140,6 +195,14 @@ export const enhancedUserTools = [
         department: {
           type: 'string',
           description: 'Filter by department',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -174,6 +237,14 @@ export const enhancedUserTools = [
         includeInactive: {
           type: 'boolean',
           description: 'Include inactive agents',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -230,7 +301,7 @@ export const enhancedUserTools = [
   // Statistics
   {
     name: 'user_statistics_grades',
-    description: 'Get user distribution by grade level (GET /users/statistics/grades)',
+    description: 'Get student counts per grade level (counted with filtered POST /users requests)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -244,13 +315,13 @@ export const enhancedUserTools = [
   },
   {
     name: 'user_statistics_locations',
-    description: 'Get user distribution by building/location (GET /users/statistics/locations)',
+    description: 'Get user counts per building/location (counted with filtered POST /users requests)',
     inputSchema: {
       type: 'object',
       properties: {
         userType: {
           type: 'string',
-          description: 'Filter by user type (optional)',
+          description: 'Filter by user type / role name, e.g. Student, Staff (optional)',
         },
       },
       required: [],
@@ -357,44 +428,43 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           });
         }
         
-        // Add other filters
-        if (args.userType) {
-          payload.Filters!.push({
-            Facet: 'UserType',
-            Id: args.userType,
-          });
+        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+
+        // IIQ ignores a UserType facet; a user type is the `role` facet with a RoleId.
+        // Text search ignores filters, so the role is only looked up for the filtered list.
+        if (args.userType && !searchText) {
+          const [roleId] = await resolveIds(client, ROLES, [args.userType]);
+          payload.Filters!.push({ Facet: 'role', Id: roleId });
         }
-        
+
         if (args.grade) {
-          payload.Filters!.push({
-            Facet: 'Grade',
-            Id: args.grade,
-          });
+          // IIQ matches a grade by Value (an Id grade filter matches only ungraded users).
+          payload.Filters!.push({ Facet: 'grade', Value: gradeCode(args.grade) });
         }
-        
+
         if (args.locationId) {
           payload.Filters!.push({
             Facet: 'Location',
             Id: args.locationId,
           });
         }
-        
-        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
-        const pageSize = args.pageSize || 100;
+
+        const pageSize = args.pageSize || 25;
         // IIQ ignores a body SearchText on POST /users; GET /users/search/{term} is its text search.
         // That endpoint takes no facet filters, so text search and the facet filters are exclusive.
-        const response = searchText
-          ? await client.request<PaginatedResponse<IIQUser>>({
+        const readPage = (pageIndex: number) => searchText
+          ? client.request<PaginatedResponse<IIQUser>>({
             method: 'GET',
             url: `/users/search/${encodeURIComponent(searchText)}`,
-            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+            params: iiqPagingParams(pageIndex, pageSize),
           })
-          : await client.request<PaginatedResponse<IIQUser>>({
+          : client.request<PaginatedResponse<IIQUser>>({
             method: 'POST',
             url: '/users',
-            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+            params: iiqPagingParams(pageIndex, pageSize),
             data: payload,
           });
+        const response = await readPage(args.pageIndex || 0);
         const ignoredFilters = searchText
           ? ['viewId', 'userType', 'grade', 'locationId', 'includeDeleted'].filter((key) => args[key])
           : [];
@@ -402,53 +472,35 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           ? `\n\nNote: ${ignoredFilters.join(', ')} not applied - IIQ text search does not combine with filters.`
           : '';
         
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No users found matching your criteria.',
-            }],
-          };
-        }
-        
-        const userList = response.Items.slice(0, 10).map((user: IIQUser) =>
-          `• ${user.FullName || `${user.FirstName} ${user.LastName}`}
-  Type: ${user.UserTypeName || 'Unknown'} | Email: ${user.Email || 'N/A'}
+        // IIQ returns exactly the requested page, so every row is rendered (#96).
+        const result = formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, args.pageIndex || 0, readPage),
+          pageIndex: args.pageIndex || 0,
+          pageSize,
+          noun: 'users',
+          emptyText: 'No users found matching your criteria.',
+          render: (user: IIQUser) =>
+            `• ${userName(user)}
+  Type: ${user.Role?.Name || 'Unknown'} | Email: ${user.Email || 'N/A'}
   Location: ${user.LocationName || 'N/A'}${user.Grade ? ` | Grade: ${user.Grade}` : ''}
-  Username: ${user.Username || 'N/A'} | Status: ${user.IsActive ? 'Active' : 'Inactive'}`
-        ).join('\n\n');
-        
-        const summary = response.Items.length > 10 
-          ? `\n\n...and ${response.Items.length - 10} more users`
-          : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${iiqTotalRows(response)} users (showing ${Math.min(10, response.Items.length)}):
-
-${userList}${summary}
-
-Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / pageSize))}${filterNote}`,
-          }],
-        };
+  Username: ${user.Username || 'N/A'} | Status: ${user.IsActive ? 'Active' : 'Inactive'}`,
+        });
+        result.content[0].text += filterNote;
+        return result;
       }
       
       case 'user_get_students': {
+        const [studentRoleId] = await resolveIds(client, ROLES, ['Student']);
         const payload: PaginatedRequest = {
           OnlyShowDeleted: false,
           FilterByViewPermission: false,
-          Filters: [{
-            Facet: 'UserType',
-            Id: 'Student',
-          }],
+          Filters: [{ Facet: 'role', Id: studentRoleId }],
         };
         
         if (args.grade) {
-          payload.Filters!.push({
-            Facet: 'Grade',
-            Id: args.grade,
-          });
+          // IIQ matches a grade by Value (an Id grade filter matches only ungraded users).
+          payload.Filters!.push({ Facet: 'grade', Value: gradeCode(args.grade) });
         }
         
         if (args.locationId) {
@@ -458,60 +510,46 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(respon
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQUser>>({
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
-          params: iiqPagingParams(0, args.pageSize || 100),
+          params: iiqPagingParams(index, pageSize),
           data: payload,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No students found.',
-            }],
-          };
-        }
-        
-        // Group by grade for better organization
-        const studentsByGrade: Record<string, IIQUser[]> = {};
-        response.Items.forEach((student: IIQUser) => {
-          const grade = student.Grade || 'Unassigned';
-          if (!studentsByGrade[grade]) studentsByGrade[grade] = [];
-          studentsByGrade[grade].push(student);
+        const response = await readPage(pageIndex);
+
+        const studentRow = (student: IIQUser) => `  • ${userName(student)}`;
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'students',
+          emptyText: 'No students found.',
+          render: studentRow,
+          // Every student on the page, grouped by grade.
+          renderPage: (students) => {
+            const byGrade = new Map<string, IIQUser[]>();
+            for (const student of students) {
+              const grade = student.Grade || 'Unassigned';
+              byGrade.set(grade, [...(byGrade.get(grade) ?? []), student]);
+            }
+            return [...byGrade]
+              .map(([grade, group]) => `Grade ${grade} (${group.length}):\n${group.map(studentRow).join('\n')}`)
+              .join('\n\n');
+          },
         });
-        
-        let output = `Student Directory (${iiqTotalRows(response)} students, showing ${response.Items.length}):\n`;
-        
-        for (const [grade, students] of Object.entries(studentsByGrade)) {
-          output += `\nGrade ${grade} (${students.length}):\n`;
-          students.slice(0, 5).forEach(student => {
-            output += `  • ${student.FullName || `${student.FirstName} ${student.LastName}`}`;
-            if (student.Homeroom) output += ` - Room ${student.Homeroom}`;
-            output += '\n';
-          });
-          if (students.length > 5) {
-            output += `  ... and ${students.length - 5} more\n`;
-          }
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
       }
       
       case 'user_get_staff': {
+        // Staff OR Faculty: repeated `role` filters combine as OR in IIQ (3,497 + 72 = 3,569 live).
+        const staffRoleIds = await resolveIds(client, ROLES, ['Staff', 'Faculty'], { skipMissing: true });
         const payload: PaginatedRequest = {
           OnlyShowDeleted: false,
           FilterByViewPermission: false,
-          Filters: [{
-            Facet: 'UserType',
-            Id: 'Staff',
-          }],
+          Filters: staffRoleIds.map((id) => ({ Facet: 'role', Id: id })),
         };
         
         if (args.locationId) {
@@ -521,74 +559,45 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(respon
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQUser>>({
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
-          params: iiqPagingParams(0, 100),
+          params: iiqPagingParams(index, pageSize),
           data: payload,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No staff members found.',
-            }],
-          };
-        }
-        
-        const staffList = response.Items.slice(0, 20).map((staff: IIQUser) =>
-          `• ${staff.FullName || `${staff.FirstName} ${staff.LastName}`}
-  Role: ${staff.Role || 'N/A'} | Email: ${staff.Email || 'N/A'}
-  Location: ${staff.LocationName || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Staff Directory (${iiqTotalRows(response)} members, showing ${response.Items.length}):
+        const response = await readPage(pageIndex);
 
-${staffList}
-
-${response.Items.length > 20 ? `\n...and ${response.Items.length - 20} more staff members` : ''}`,
-          }],
-        };
-      }
-      
-      case 'user_get_all_agents': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/users/agents',
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'staff members',
+          emptyText: 'No staff members found.',
+          render: (staff: IIQUser) => `• ${userName(staff)}
+  Role: ${staff.Role?.Name || 'N/A'} | Email: ${staff.Email || 'N/A'}
+  Location: ${staff.LocationName || 'N/A'}`,
         });
-        
-        // Handle different response formats
-        const agents = response?.Items || response || [];
-        
-        if (agents.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No IT support agents found.',
-            }],
-          };
-        }
-        
-        const agentList = agents.slice(0, 20).map((agent: IIQUser) =>
-          `• ${agent.FullName || `${agent.FirstName} ${agent.LastName}`}
-  Email: ${agent.Email || 'N/A'} | Phone: ${agent.PhoneNumber || 'N/A'}
-  Location: ${agent.LocationName || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `IT Support Agents (${agents.length}):
+      }
 
-${agentList}
-
-💡 These agents can be assigned to tickets and have elevated permissions`,
-          }],
-        };
+      case 'user_get_all_agents': {
+        // GET /users/agents defaults to a 200-row page (300 agents live), so read the whole list.
+        const { items, truncated } = await iiqListAll<IIQUser>(client, '/users/agents');
+        const result = formatListPage({
+          rows: items,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'IT support agents',
+          emptyText: 'No IT support agents found.',
+          render: (agent) => `• ${userName(agent)}
+  Email: ${agent.Email || 'N/A'} | Phone: ${agent.Phone || 'N/A'}
+  Location: ${agent.LocationName || 'N/A'}`,
+          truncated,
+        });
+        if (items.length > 0) result.content[0].text += '\n\n💡 These agents can be assigned to tickets and have elevated permissions';
+        return result;
       }
       
       case 'user_get_details': {
@@ -612,11 +621,11 @@ ${agentList}
           content: [{
             type: 'text',
             text: `User Details:
-Name: ${user.FullName || `${user.FirstName} ${user.LastName}`}
+Name: ${userName(user)}
 Username: ${user.Username || 'N/A'}
 Email: ${user.Email || 'N/A'}
-Type: ${user.UserTypeName || 'Unknown'}
-Role: ${user.Role || 'N/A'}
+Type: ${user.Role?.Name || 'Unknown'}
+Role: ${user.Role?.Name || 'N/A'}
 Location: ${user.LocationName || 'N/A'}
 ${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.PhoneNumber || 'N/A'}
 Mobile: ${user.MobileNumber || 'N/A'}
@@ -651,84 +660,60 @@ Last Login: ${user.LastLoginDate || 'Never'}`,
 Name: ${user.FullName || `${user.FirstName} ${user.LastName}`}
 Username: ${user.Username}
 Email: ${user.Email}
-Role: ${user.Role || 'N/A'}
+Role: ${user.Role?.Name || 'N/A'}
 Permissions: ${user.Permissions?.length || 0} permissions`,
           }],
         };
       }
       
       case 'user_statistics_grades': {
-        const url = args.locationId 
-          ? `/users/statistics/grades?locationId=${args.locationId}`
-          : '/users/statistics/grades';
-          
-        const response = await client.request<any>({
-          method: 'GET',
-          url,
-        });
-        
-        const stats = response?.Items || response || [];
-        
-        if (stats.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No grade statistics available.',
-            }],
-          };
+        // GET /users/statistics/* return 404 live; each count is a one-row filtered POST /users.
+        const [studentRoleId] = await resolveIds(client, ROLES, ['Student']);
+        const base: IIQFilter[] = [{ Facet: 'role', Id: studentRoleId }];
+        if (args.locationId) base.push({ Facet: 'location', Id: args.locationId });
+        const [total, ...counts] = await mapLimit([undefined, ...GRADE_CODES], STAT_CONCURRENCY, (grade) =>
+          countUsers(client, grade ? [...base, { Facet: 'grade', Value: grade }] : base)
+        );
+
+        if (total === 0) {
+          return { content: [{ type: 'text', text: 'No grade statistics available.' }] };
         }
-        
-        let totalStudents = 0;
-        const gradeList = stats.map((stat: any) => {
-          totalStudents += stat.Count || stat.Value || 0;
-          return `  Grade ${stat.Name || stat.Grade}: ${stat.Count || stat.Value || 0} students`;
-        }).join('\n');
-        
+
+        const lines = GRADE_CODES.flatMap((grade, i) => (counts[i] > 0 ? [`  Grade ${grade}: ${counts[i]} students`] : []));
+        const other = total - counts.reduce((sum, count) => sum + count, 0);
+        if (other > 0) lines.push(`  Other/none: ${other} students`);
         return {
           content: [{
             type: 'text',
-            text: `Student Distribution by Grade:
-
-${gradeList}
-
-Total Students: ${totalStudents}`,
+            text: `Student Distribution by Grade:\n\n${lines.join('\n')}\n\nTotal Students: ${total}`,
           }],
         };
       }
-      
+
       case 'user_statistics_locations': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/users/statistics/locations',
-        });
-        
-        const stats = response?.Items || response || [];
-        
-        if (stats.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No location statistics available.',
-            }],
-          };
+        const base: IIQFilter[] = args.userType
+          ? [{ Facet: 'role', Id: (await resolveIds(client, ROLES, [args.userType]))[0] }]
+          : [];
+        const { items: locations, truncated } = await iiqListAll<IIQLocation>(client, '/locations/all');
+        const [total, ...counts] = await mapLimit([undefined, ...locations], STAT_CONCURRENCY, (location) =>
+          countUsers(client, location ? [...base, { Facet: 'location', Id: location.LocationId }] : base)
+        );
+
+        if (total === 0 || locations.length === 0) {
+          return withTruncationNote(truncated, { content: [{ type: 'text', text: 'No location statistics available.' }] });
         }
-        
-        let totalUsers = 0;
-        const locationList = stats.map((stat: any) => {
-          totalUsers += stat.Count || stat.Value || 0;
-          return `  ${stat.Name || stat.LocationName}: ${stat.Count || stat.Value || 0} users`;
-        }).join('\n');
-        
-        return {
+
+        const lines = locations.flatMap((location, i) =>
+          counts[i] > 0 ? [`  ${location.Name || location.LocationName}: ${counts[i]} users`] : []
+        );
+        const unplaced = total - counts.reduce((sum, count) => sum + count, 0);
+        if (unplaced > 0) lines.push(`  No location: ${unplaced} users`);
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: `User Distribution by Location:
-
-${locationList}
-
-Total Users: ${totalUsers}`,
+            text: `User Distribution by Location:\n\n${lines.join('\n')}\n\nTotal Users: ${total}`,
           }],
-        };
+        });
       }
       
       case 'user_get_by_location': {
@@ -748,7 +733,7 @@ Total Users: ${totalUsers}`,
         
         const usersByType: Record<string, IIQUser[]> = {};
         response.Items.forEach((user: IIQUser) => {
-          const type = user.UserTypeName || 'Unknown';
+          const type = user.Role?.Name || 'Unknown';
           if (!usersByType[type]) usersByType[type] = [];
           usersByType[type].push(user);
         });
@@ -758,7 +743,7 @@ Total Users: ${totalUsers}`,
         for (const [type, users] of Object.entries(usersByType)) {
           output += `\n${type} (${users.length}):\n`;
           users.slice(0, 5).forEach(user => {
-            output += `  • ${user.FullName || `${user.FirstName} ${user.LastName}`}\n`;
+            output += `  • ${userName(user)}\n`;
           });
           if (users.length > 5) {
             output += `  ... and ${users.length - 5} more\n`;
@@ -791,7 +776,7 @@ Total Users: ${totalUsers}`,
         }
         
         const userList = users.map((user: IIQUser) =>
-          `• ${user.FullName || `${user.FirstName} ${user.LastName}`} (${user.UserTypeName || 'Unknown'})`
+          `• ${userName(user)} (${user.Role?.Name || 'Unknown'})`
         ).join('\n');
         
         return {

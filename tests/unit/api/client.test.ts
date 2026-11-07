@@ -165,7 +165,7 @@ describe('IncidentIQClient', () => {
         const agents = await client.getAgents();
 
         expect(agents).toHaveLength(1);
-        expect(agents[0].Role).toBe('IT Agent');
+        expect(agents[0].Role?.Name).toBe('Agent');
         expect(agents[0].FullName).toBe('Sally Technician');
       });
     });
