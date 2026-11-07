@@ -45,12 +45,12 @@ describe('ticket-search pure helpers', () => {
 
   describe('filterByStatusId', () => {
     const tickets = [
-      { TicketId: '1', TicketNumber: 1, Subject: 'A', Status: 'Open', StatusId: 's1' },
-      { TicketId: '2', TicketNumber: 2, Subject: 'B', Status: 'Closed', StatusId: 's2' },
-      { TicketId: '3', TicketNumber: 3, Subject: 'C', Status: 'Open', StatusId: 's1' },
+      { TicketId: '1', TicketNumber: 1, Subject: 'A', Status: 'Open', WorkflowStep: { StatusId: 's1' } },
+      { TicketId: '2', TicketNumber: 2, Subject: 'B', Status: 'Closed', WorkflowStep: { StatusId: 's2' } },
+      { TicketId: '3', TicketNumber: 3, Subject: 'C', Status: 'Open', WorkflowStep: { StatusId: 's1' } },
     ] as Ticket[];
 
-    it('keeps only items whose StatusId is in the wanted set', () => {
+    it('keeps only items whose WorkflowStep.StatusId is in the wanted set', () => {
       const result = filterByStatusId(tickets, new Set(['s1']));
       expect(result.map((t) => t.TicketId)).toEqual(['1', '3']);
     });

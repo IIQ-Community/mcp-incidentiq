@@ -6,6 +6,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqListAll, iiqPage, matchesText } from '../api/paging.js';
 
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
@@ -217,16 +218,10 @@ export class TeamTools {
       }
 
       case 'team_search': {
-        const payload = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: args.searchText,
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 20,
-          },
-        };
-        return await makeRequest('POST', '/teams', { data: payload });
+        // IIQ has no team search (POST /teams returns 405), so filter the full team list.
+        const { items, truncated } = await iiqListAll<{ TeamName?: string; Description?: string }>(client, '/teams/all');
+        const matched = items.filter((team) => matchesText(args.searchText, team.TeamName, team.Description));
+        return iiqPage(matched, args.pageIndex || 0, args.pageSize || 20, truncated);
       }
 
       case 'team_get': {

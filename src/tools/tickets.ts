@@ -11,7 +11,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqPagingParams } from '../api/paging.js';
+import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
 import {
   Ticket,
   TicketDetail,
@@ -25,6 +25,7 @@ import {
 import {
   buildTicketFilters,
   filterByStatusId,
+  formatTicketStatus,
   isValidEmail,
   resolveMaxPages,
 } from './ticket-search.js';
@@ -387,7 +388,7 @@ export async function handleTicketTool(name: string, args: any) {
         let truncationNote = '';
 
         if (statusFilter.length > 0) {
-          // Status facet is unreliable server-side, so filter client-side by StatusId over a
+          // The server status facet returns nothing, so filter client-side by WorkflowStep.StatusId over a
           // bounded sequential page scan (no per-ticket detail fetch, no unbounded concurrency).
           const wantedStatusIds = new Set(statusFilter);
           const maxPages = resolveMaxPages(process.env.IIQ_TICKET_FILTER_MAX_PAGES);
@@ -430,7 +431,7 @@ export async function handleTicketTool(name: string, args: any) {
             data: basePayload,
           });
           pageItems = response?.Items ?? [];
-          totalCount = response?.ItemCount ?? pageItems.length;
+          totalCount = iiqTotalRows(response);
           totalPages = response?.Paging?.PageCount ?? 1;
         }
 
@@ -445,7 +446,7 @@ export async function handleTicketTool(name: string, args: any) {
         }
 
         const ticketList = pageItems.map((ticket) =>
-          `- #${ticket.TicketNumber}: ${ticket.Subject}\n  Status: ${ticket.StatusName ?? ticket.Status ?? 'Unknown'}\n  Created: ${ticket.CreatedDate}\n  ID: ${ticket.TicketId}`
+          `- #${ticket.TicketNumber}: ${ticket.Subject}\n  Status: ${formatTicketStatus(ticket)}\n  Created: ${ticket.CreatedDate}\n  ID: ${ticket.TicketId}`
         ).join('\n\n');
 
         return {
@@ -512,15 +513,15 @@ ID: ${ticket.TicketId}`,
           };
         }
         
-        const statusList = response.Items.map((s: TicketStatus) => 
-          `- ${s.Name} (${s.StatusType})\n  ID: ${s.TicketStatusId}`
+        const statusList = response.Items.map((s: TicketStatus) =>
+          `- ${s.StepName && s.StepName !== s.StatusName ? `${s.StepName} (${s.StatusName})` : s.StatusName}${s.IsClosed ? ' [closed]' : ''}\n  ID: ${s.TicketStatusTypeId}`
         ).join('\n\n');
         
         return {
           content: [
             {
               type: 'text',
-              text: `Available Ticket Statuses (${response.ItemCount}):\n\n${statusList}`,
+              text: `Available Ticket Statuses (${iiqTotalRows(response)}):\n\n${statusList}`,
             },
           ],
         };
@@ -551,7 +552,7 @@ ID: ${ticket.TicketId}`,
           content: [
             {
               type: 'text',
-              text: `Available Ticket Priorities (${response.ItemCount}):\n\n${priorityList}`,
+              text: `Available Ticket Priorities (${iiqTotalRows(response)}):\n\n${priorityList}`,
             },
           ],
         };
@@ -583,7 +584,7 @@ ID: ${ticket.TicketId}`,
           content: [
             {
               type: 'text',
-              text: `Assets Linked to Ticket (${response.ItemCount}):\n\n${assetList}`,
+              text: `Assets Linked to Ticket (${iiqTotalRows(response)}):\n\n${assetList}`,
             },
           ],
         };
@@ -780,7 +781,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
           content: [
             {
               type: 'text',
-              text: `Available Ticket Wizards (${response.ItemCount}):\n\n${wizardList}`,
+              text: `Available Ticket Wizards (${iiqTotalRows(response)}):\n\n${wizardList}`,
             },
           ],
         };
@@ -811,7 +812,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
           content: [
             {
               type: 'text',
-              text: `Ticket Wizards for Site ${args.siteId} (${response.ItemCount}):\n\n${wizardList}`,
+              text: `Ticket Wizards for Site ${args.siteId} (${iiqTotalRows(response)}):\n\n${wizardList}`,
             },
           ],
         };

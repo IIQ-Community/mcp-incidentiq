@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqTotalRows } from '../api/paging.js';
 import { 
   IIQAsset,
   PaginatedRequest,
@@ -349,7 +350,6 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
         const payload: PaginatedRequest = {
           OnlyShowDeleted: args.includeDeleted || false,
           FilterByViewPermission: false,
-          SearchText: args.searchText,
           Filters: [],
           Paging: {
             PageIndex: args.pageIndex || 0,
@@ -357,6 +357,12 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           },
         };
         
+        // IIQ ignores a body SearchText on POST /assets; free text goes in the `keyword` facet.
+        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+        if (searchText) {
+          payload.Filters!.push({ Facet: 'keyword', Value: searchText });
+        }
+
         // Add view filter if provided (Professional tier feature)
         if (args.viewId) {
           payload.Filters!.push({
@@ -416,11 +422,11 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
         return {
           content: [{
             type: 'text',
-            text: `Found ${response.ItemCount} assets (showing ${Math.min(10, response.Items.length)}):
+            text: `Found ${iiqTotalRows(response)} assets (showing ${Math.min(10, response.Items.length)}):
 
 ${assetList}${summary}
 
-Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.pageSize || 100))}`,
+Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / (args.pageSize || 100)))}`,
           }],
         };
       }
@@ -484,7 +490,7 @@ Notes: ${asset.Notes || 'None'}`,
         return {
           content: [{
             type: 'text',
-            text: `Found ${response.ItemCount} assets matching "${args.tagPattern}":
+            text: `Found ${iiqTotalRows(response)} assets matching "${args.tagPattern}":
             
 ${assetList}`,
           }],
@@ -549,7 +555,7 @@ User: ${asset.AssignedUserName || 'Unassigned'}`,
         return {
           content: [{
             type: 'text',
-            text: `User has ${response.ItemCount} assigned device(s):
+            text: `User has ${iiqTotalRows(response)} assigned device(s):
 
 ${deviceList}`,
           }],
@@ -579,7 +585,7 @@ ${deviceList}`,
           assetsByType[type].push(asset);
         });
         
-        let output = `Room Inventory (${response.ItemCount} assets):\n`;
+        let output = `Room Inventory (${iiqTotalRows(response)} assets):\n`;
         
         for (const [type, assets] of Object.entries(assetsByType)) {
           output += `\n${type} (${assets.length}):\n`;
@@ -618,7 +624,7 @@ ${deviceList}`,
         return {
           content: [{
             type: 'text',
-            text: `Available Asset Status Types (${response.ItemCount}):
+            text: `Available Asset Status Types (${iiqTotalRows(response)}):
 
 ${statusList}`,
           }],
@@ -647,7 +653,7 @@ ${statusList}`,
         return {
           content: [{
             type: 'text',
-            text: `Available Funding Types (${response.ItemCount}):
+            text: `Available Funding Types (${iiqTotalRows(response)}):
 
 ${fundingList}
 
@@ -680,7 +686,7 @@ ${fundingList}
         return {
           content: [{
             type: 'text',
-            text: `Asset History (showing recent ${Math.min(10, response.Items.length)} of ${response.ItemCount}):
+            text: `Asset History (showing recent ${Math.min(10, response.Items.length)} of ${iiqTotalRows(response)}):
 
 ${historyList}`,
           }],
@@ -746,7 +752,7 @@ ${historyList}`,
         return {
           content: [{
             type: 'text',
-            text: `Spare Parts for ${args.assetTag} (${response.ItemCount}):
+            text: `Spare Parts for ${args.assetTag} (${iiqTotalRows(response)}):
 
 ${sparesList}`,
           }],

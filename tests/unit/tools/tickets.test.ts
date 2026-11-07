@@ -83,6 +83,21 @@ describe('Ticket Tools', () => {
         // Either shows statuses or "No ticket statuses found"
       });
 
+      it('lists status ids usable as ticket_search statusIds (TicketStatusTypeId)', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/statuses', () =>
+            HttpResponse.json({
+              ItemCount: 1,
+              Items: [{ TicketStatusTypeId: 'st-guid-1', StatusName: 'Open', StepName: 'Awaiting Agent', IsClosed: false }],
+            })
+          )
+        );
+        const text = (await handleTicketTool('ticket_get_statuses', {})).content[0].text as string;
+        expect(text).toContain('Awaiting Agent (Open)');
+        expect(text).toContain('ID: st-guid-1');
+        expect(text).not.toContain('undefined');
+      });
+
       it('should handle ticket_get_priorities', async () => {
         const result = await handleTicketTool('ticket_get_priorities', {});
         expect(result.content[0].text).toBeDefined();
@@ -206,8 +221,8 @@ describe('ticket_search facet filtering', () => {
       TicketId: `tk-${suffix}`,
       TicketNumber: 1000 + Number(suffix),
       Subject: subject,
-      StatusId: statusId,
-      StatusName: statusId,
+      // Live list items carry status only on WorkflowStep (no top-level StatusId), verified 2026-11-06.
+      WorkflowStep: { StatusId: statusId, StatusName: `Status ${statusId}`, StepName: `Step ${statusId}` },
       AssignedToId: agentId,
       CreatedDate: '2024-01-01T00:00:00Z',
     };
@@ -292,6 +307,24 @@ describe('ticket_search facet filtering', () => {
     expect(text).not.toMatch(/ID: tk-49\b/);
     expect(text).toContain('Page 2 of 3');
     expect(seen[0].body).not.toHaveProperty('Paging');
+  });
+
+  it('reports the server total (Paging.TotalRows), not the page item count', async () => {
+    const dataset = Array.from({ length: 120 }, (_, i) => mkTicket(String(i), 's1', 'a'));
+    server.use(iiqTicketsHandler(dataset));
+
+    const text = (await handleTicketTool('ticket_search', { pageSize: 5 })).content[0].text as string;
+
+    expect(text).toContain('Found 120 tickets (showing 5)');
+  });
+
+  it('shows each ticket status from WorkflowStep', async () => {
+    server.use(iiqTicketsHandler([mkTicket('1', 's1', 'a')]));
+
+    const text = (await handleTicketTool('ticket_search', {})).content[0].text as string;
+
+    expect(text).toContain('Status: Step s1 (Status s1)');
+    expect(text).not.toContain('Status: Unknown');
   });
 
   it('scans status pages via the $p/$s query, finding matches beyond the first page (#94)', async () => {

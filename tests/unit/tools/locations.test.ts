@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { handleLocationTool, locationTools } from '../../../src/tools/locations';
 import { server } from '../../mocks/server';
+import { http, HttpResponse } from 'msw';
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -161,5 +162,91 @@ describe('Location Tools', () => {
         expect(result.content[0].type).toBe('text');
       });
     });
+  });
+});
+describe('location lookups against live IIQ endpoints', () => {
+  const BASE = 'https://test.incidentiq.com/api/v1.0';
+  // Live shape of GET /locations/all items (verified 2026-11-06).
+  const liveLocations = [
+    { LocationId: 'loc-1', Name: 'Highland Elementary', Abbreviation: 'HES', LocationType: { Name: 'Elementary School' } },
+    { LocationId: 'loc-2', Name: 'Central Office', Abbreviation: 'CO', LocationType: { Name: 'District Office' } },
+    { LocationId: 'loc-3', Name: 'Pine Middle School', Abbreviation: 'PMS', LocationType: { Name: 'Middle School' } },
+  ];
+  const listHandler = http.get(`${BASE}/locations/all`, ({ request }) => {
+    const url = new URL(request.url);
+    const p = Number(url.searchParams.get('$p') ?? 0);
+    const size = Number(url.searchParams.get('$s') ?? 20);
+    const items = liveLocations.slice(p * size, p * size + size);
+    return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { PageIndex: p, PageSize: size, TotalRows: liveLocations.length } });
+  });
+
+  it('location_search_advanced filters the location list by name/code and type', async () => {
+    server.use(listHandler);
+    const byText = (await handleLocationTool('location_search_advanced', { searchText: 'pms' })).content[0].text as string;
+    expect(byText).toContain('Found 1 locations');
+    expect(byText).toContain('Pine Middle School (PMS)');
+    expect(byText).toContain('Type: Middle School');
+
+    const byType = (await handleLocationTool('location_search_advanced', { locationType: 'elementary school' })).content[0].text as string;
+    expect(byType).toContain('Highland Elementary');
+    expect(byType).not.toContain('Central Office');
+  });
+
+  it('location_search_advanced pages the filtered list', async () => {
+    server.use(listHandler);
+    const text = (await handleLocationTool('location_search_advanced', { pageSize: 2, pageIndex: 1 })).content[0].text as string;
+    expect(text).toContain('Found 3 locations (showing 1)');
+    expect(text).toContain('Pine Middle School');
+    expect(text).toContain('Page 2 of 2');
+  });
+
+  it('location_find_by_code matches the abbreviation case-insensitively', async () => {
+    server.use(listHandler);
+    const text = (await handleLocationTool('location_find_by_code', { code: 'hes' })).content[0].text as string;
+    expect(text).toContain('Name: Highland Elementary');
+    expect(text).toContain('Code: HES');
+    expect(text).toContain('ID: loc-1');
+  });
+
+  it('location_find_by_code reports a missing code', async () => {
+    server.use(listHandler);
+    const text = (await handleLocationTool('location_find_by_code', { code: 'ZZZ' })).content[0].text as string;
+    expect(text).toBe('No location found with code: ZZZ');
+  });
+
+  it('location_find_special_rooms searches room names within a building', async () => {
+    let roomsUrl = '';
+    server.use(
+      http.get(`${BASE}/locations/:locationId/rooms`, ({ request }) => {
+        roomsUrl = new URL(request.url).pathname;
+        return HttpResponse.json({
+          Items: [
+            { LocationRoomId: 'r1', Name: 'Nurse Office', LocationId: 'loc-1', LocationName: 'Highland Elementary' },
+            { LocationRoomId: 'r2', Name: 'Room 12', LocationId: 'loc-1', LocationName: 'Highland Elementary' },
+          ],
+          ItemCount: 2,
+          Paging: { TotalRows: 2 },
+        });
+      })
+    );
+    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Nurse', buildingId: 'loc-1' })).content[0].text as string;
+    expect(roomsUrl).toBe('/api/v1.0/locations/loc-1/rooms');
+    expect(text).toContain('Nurse Rooms (1)');
+    expect(text).toContain('Nurse Office - Highland Elementary');
+    expect(text).not.toContain('Room 12');
+  });
+
+  it('location_find_special_rooms searches all district rooms without a building', async () => {
+    server.use(
+      http.get(`${BASE}/locations/rooms`, () =>
+        HttpResponse.json({
+          Items: [{ LocationRoomId: 'r9', Name: 'Library', LocationId: 'loc-3', LocationName: 'Pine Middle School' }],
+          ItemCount: 1,
+          Paging: { TotalRows: 1 },
+        })
+      )
+    );
+    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Library' })).content[0].text as string;
+    expect(text).toContain('Library - Pine Middle School');
   });
 });

@@ -6,6 +6,26 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqListAll, iiqPage, matchesText } from '../api/paging.js';
+
+/** Purchase order as returned by GET /purchaseorders (live shape, verified 2026-11-06). */
+interface ListedPurchaseOrder {
+  PoNumber?: string;
+  Notes?: string;
+  IsApproved?: boolean;
+  IsClosed?: boolean;
+  CreatedDate?: string;
+}
+
+/** Maps the tool's status vocabulary onto the live IsApproved/IsClosed flags. */
+function hasStatus(po: ListedPurchaseOrder, status: string): boolean {
+  switch (status) {
+    case 'pending': return !po.IsApproved && !po.IsClosed;
+    case 'approved': return !!po.IsApproved && !po.IsClosed;
+    case 'completed': return !!po.IsClosed;
+    default: return true;
+  }
+}
 
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
@@ -62,12 +82,12 @@ export class PurchaseOrderTools {
           properties: {
             searchText: {
               type: 'string',
-              description: 'Text to search for in PO numbers, descriptions, or supplier names',
+              description: 'Text to search for in PO numbers and notes',
             },
             status: {
               type: 'string',
-              enum: ['pending', 'approved', 'completed', 'cancelled'],
-              description: 'Filter by status',
+              enum: ['pending', 'approved', 'completed'],
+              description: 'Filter by status (pending = not approved, approved = approved and open, completed = closed)',
             },
             dateFrom: {
               type: 'string',
@@ -282,20 +302,21 @@ export class PurchaseOrderTools {
       }
 
       case 'purchaseorder_search': {
-        const payload: any = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 20,
-          },
-        };
-        if (args.searchText) payload.SearchText = args.searchText;
-        if (args.status) payload.Status = args.status;
-        if (args.dateFrom) payload.DateFrom = args.dateFrom;
-        if (args.dateTo) payload.DateTo = args.dateTo;
-        
-        return await makeRequest('POST', '/purchaseorders', { data: payload });
+        // IIQ has no PO search (POST /purchaseorders returns 405), so filter the full PO list.
+        const { items, truncated } = await iiqListAll<ListedPurchaseOrder>(client, '/purchaseorders');
+        // Compare calendar dates (YYYY-MM-DD) so both bounds are inclusive whole days and no
+        // timezone is implied: IIQ CreatedDate carries no offset, and date-only inputs would parse as UTC.
+        const day = (value: string | undefined) => (value ? String(value).slice(0, 10) : undefined);
+        const from = day(args.dateFrom);
+        const to = day(args.dateTo);
+        const matched = items.filter((po) => {
+          const created = day(po.CreatedDate);
+          return matchesText(args.searchText, po.PoNumber, po.Notes) &&
+            (!args.status || hasStatus(po, args.status)) &&
+            (from === undefined || (created !== undefined && created >= from)) &&
+            (to === undefined || (created !== undefined && created <= to));
+        });
+        return iiqPage(matched, args.pageIndex || 0, args.pageSize || 20, truncated);
       }
 
       case 'purchaseorder_get_pending': {

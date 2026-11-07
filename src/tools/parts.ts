@@ -8,10 +8,12 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { 
-  PaginatedRequest,
-  PaginatedResponse 
-} from '../types/common.js';
+import { iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+
+/** IIQ has no parts search (POST /parts returns 405, verified 2026-11-06): read GET /parts and filter. */
+async function listParts(client: IncidentIQClient): Promise<{ items: Part[]; truncated: boolean }> {
+  return iiqListAll<Part>(client, '/parts');
+}
 
 // Parts specific types
 export interface Part {
@@ -595,71 +597,45 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
       }
       
       case 'parts_search': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: args.includeDeleted || false,
-          FilterByViewPermission: false,
-          SearchText: args.searchText,
-          Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 50,
-          },
-        };
-        
-        if (args.category) {
-          payload.Filters!.push({
-            Facet: 'Category',
-            Id: args.category,
-          });
-        }
-        
-        if (args.deviceType) {
-          payload.Filters!.push({
-            Facet: 'DeviceType',
-            Id: args.deviceType,
-          });
-        }
-        
-        if (args.supplierId) {
-          payload.Filters!.push({
-            Facet: 'Supplier',
-            Id: args.supplierId,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<Part>>({
-          method: 'POST',
-          url: '/parts',
-          data: payload,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
+        // Live parts carry only Name/cost/stock/supplier; Category/DeviceType/Description are matched when present.
+        const { items, truncated } = await listParts(client);
+        const matched = items.filter((part) =>
+          matchesText(args.searchText, part.Name, part.PartNumber, part.Description) &&
+          matchesText(args.category, part.Category, part.Name) &&
+          matchesText(args.deviceType, part.DeviceType, part.Name) &&
+          (!args.supplierId || part.StandardSupplierId === args.supplierId)
+        );
+        const pageSize = args.pageSize || 50;
+        const pageIndex = args.pageIndex || 0;
+        const page = matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+
+        if (page.length === 0) {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: 'No parts found matching your criteria.',
             }],
-          };
+          });
         }
-        
-        const partsList = response.Items.slice(0, 10).map((part: Part) =>
+
+        const partsList = page.slice(0, 10).map((part: Part) =>
           `• ${part.Name || part.PartNumber}${part.Category ? ` (${part.Category})` : ''}
-  Stock: ${part.QuantityOnHand || 0} | Available: ${part.QuantityAvailable || 0} | Cost: $${part.StandardCostEach || 'N/A'}
-  ${part.Description || 'No description'}`
+  Stock: ${part.QuantityOnHand || 0} | Cost: $${part.StandardCostEach ?? 'N/A'} | Supplier: ${part.StandardSupplier?.Name || 'N/A'}
+  ID: ${part.PartId}`
         ).join('\n\n');
-        
-        return {
+
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: `Found ${response.ItemCount} parts (showing ${Math.min(10, response.Items.length)}):
+            text: `Found ${matched.length} parts (showing ${Math.min(10, page.length)}):
 
-${partsList}
+${partsList}${page.length > 10 ? `\n\n...and ${page.length - 10} more parts on this page` : ''}
 
-${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more parts` : ''}`,
+Page ${pageIndex + 1} of ${Math.max(1, Math.ceil(matched.length / pageSize))}`,
           }],
-        };
+        });
       }
-      
+
       case 'parts_get_suppliers': {
         const response = await client.request<any>({
           method: 'GET',
@@ -737,45 +713,22 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more part
       }
       
       case 'parts_get_chromebook_parts': {
-        // Search for Chromebook parts
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: `chromebook ${args.model || ''} ${args.category || ''}`.trim(),
-          Filters: [{
-            Facet: 'DeviceType',
-            Id: 'Chromebook',
-          }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        if (args.category) {
-          payload.Filters!.push({
-            Facet: 'Category',
-            Id: args.category,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<Part>>({
-          method: 'POST',
-          url: '/parts',
-          data: payload,
-        });
-        
-        const chromebookParts = response?.Items || [];
-        
+        const { items, truncated } = await listParts(client);
+        const chromebookParts = items.filter((part) =>
+          matchesText('chromebook', part.DeviceType, part.Name) &&
+          matchesText(args.model, part.Name, part.Description) &&
+          matchesText(args.category, part.Category, part.Name)
+        );
+
         if (chromebookParts.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: 'No Chromebook parts found.',
             }],
-          };
+          });
         }
-        
+
         // Group by category
         const categories: Record<string, Part[]> = {};
         chromebookParts.forEach((part: Part) => {
@@ -795,12 +748,12 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more part
           });
         }
         
-        return {
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: output,
           }],
-        };
+        });
       }
       
       case 'parts_get_low_stock': {
@@ -844,42 +797,29 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more part
       }
       
       case 'parts_find_by_number': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: args.partNumber,
-          Paging: {
-            PageIndex: 0,
-            PageSize: 10,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<Part>>({
-          method: 'POST',
-          url: '/parts',
-          data: payload,
-        });
-        
-        const parts = response?.Items?.filter((p: Part) => 
-          p.PartNumber === args.partNumber
-        ) || [];
-        
+        // Live parts have no PartNumber field; the part's Name is its identifier there.
+        const wanted = String(args.partNumber ?? '').trim().toLowerCase();
+        const { items, truncated } = await listParts(client);
+        const parts = items.filter((p: Part) =>
+          p.PartNumber?.toLowerCase() === wanted || p.Name?.toLowerCase() === wanted
+        );
+
         if (parts.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: `No part found with number: ${args.partNumber}`,
             }],
-          };
+          });
         }
         
         const part = parts[0];
-        return {
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: `Part Found:
 Name: ${part.Name}
-Part Number: ${part.PartNumber}
+Part Number: ${part.PartNumber || 'N/A'}
 Category: ${part.Category || 'N/A'}
 Stock: ${part.QuantityOnHand || 0}
 Available: ${part.QuantityAvailable || 0}
@@ -887,7 +827,7 @@ Cost: $${part.StandardCostEach}
 Supplier: ${part.StandardSupplier?.Name || 'N/A'}
 ID: ${part.PartId}`,
           }],
-        };
+        });
       }
       
       default:

@@ -23,9 +23,19 @@ export function buildTicketFilters(input: TicketFilterInput): IIQFilter[] {
   return filters;
 }
 
-/** Keeps only tickets whose StatusId is in wantedStatusIds. List items carry StatusId, so matching by id avoids name resolution and the unreliable server-side status facet. */
+/** Keeps only tickets whose WorkflowStep.StatusId is in wantedStatusIds. List items carry the status id on WorkflowStep (it matches `TicketStatusTypeId` from GET /tickets/statuses); the server-side status facet returns nothing, so status is filtered here. */
 export function filterByStatusId(items: Ticket[], wantedStatusIds: Set<string>): Ticket[] {
-  return items.filter((ticket) => ticket.StatusId !== undefined && wantedStatusIds.has(ticket.StatusId));
+  return items.filter((ticket) => {
+    const statusId = ticket.WorkflowStep?.StatusId;
+    return statusId !== undefined && wantedStatusIds.has(statusId);
+  });
+}
+
+/** Display label for a list ticket's status, e.g. "Awaiting Agent (Open)". */
+export function formatTicketStatus(ticket: Ticket): string {
+  const step = ticket.WorkflowStep;
+  if (step?.StepName && step.StatusName && step.StepName !== step.StatusName) return `${step.StepName} (${step.StatusName})`;
+  return step?.StepName ?? step?.StatusName ?? ticket.StatusName ?? 'Unknown';
 }
 
 const DEFAULT_MAX_PAGES = 5;

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
+import { iiqListAll, matchesText } from './paging.js';
 import {
   IIQApiResponse,
   IIQItemResponse,
@@ -259,22 +260,23 @@ export class IncidentIQClient {
   }
 
   async searchAssetByTag(assetTag: string): Promise<IIQAsset | null> {
-    // Based on validation report, this endpoint may not exist
-    // Use the search endpoint with asset tag filter instead
+    // IIQ ignores a body SearchText on POST /assets; the `keyword` facet does the text match.
+    // Keyword matches are fuzzy (several assets can match), so return only an exact tag match.
     const searchParams = {
-      SearchText: assetTag,
-      PageSize: 1,
+      Filters: [{ Facet: 'keyword', Value: assetTag }],
       OnlyShowDeleted: false,
       FilterByViewPermission: false
     };
-    
+
     const response = await this.request<IIQPagedResult<IIQAsset>>({
       method: 'POST',
       url: '/assets',
+      params: { $s: 50 },
       data: searchParams
     });
-    
-    return (response && response.Items && response.Items.length > 0) ? response.Items[0] : null;
+
+    const wanted = assetTag.trim().toLowerCase();
+    return response?.Items?.find((asset) => asset.AssetTag?.toLowerCase() === wanted) ?? null;
   }
 
   async getAssetCounts(): Promise<Record<string, number>> {
@@ -305,21 +307,19 @@ export class IncidentIQClient {
   }
 
   async searchLocations(params: IIQSearchParams): Promise<IIQPagedResult<IIQLocation>> {
-    // PowerShell module pattern for location search
-    const payload = {
-      OnlyShowDeleted: false,
-      FilterByViewPermission: false,
-      ...params
+    // IIQ has no location search (POST /locations returns 400, verified 2026-11-06): read the
+    // full location list and match SearchText against name/abbreviation client-side.
+    const { items, truncated } = await iiqListAll<IIQLocation>(this, '/locations/all');
+    const matched = items.filter((loc) => matchesText(params.SearchText, loc.Name, loc.LocationName, loc.Abbreviation));
+    const pageIndex = params.PageIndex ?? 0;
+    const pageSize = params.PageSize ?? 20;
+    return {
+      Items: matched.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize),
+      TotalCount: matched.length,
+      PageIndex: pageIndex,
+      PageSize: pageSize,
+      ...(truncated ? { Truncated: true } : {}),
     };
-    
-    const response = await this.request<IIQPagedResult<IIQLocation>>({
-      method: 'POST',
-      url: '/locations',
-      data: payload
-    });
-    
-    // API returns paginated data directly, not wrapped in Data property
-    return response || { Items: [], TotalCount: 0, PageIndex: 0, PageSize: 0 };
   }
 
   // Parts inventory for repairs
