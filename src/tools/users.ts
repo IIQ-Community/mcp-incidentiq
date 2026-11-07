@@ -8,12 +8,17 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
-import { 
+import { formatListPage, iiqPagingParams, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
+import {
   IIQUser,
   PaginatedRequest,
-  PaginatedResponse 
+  PaginatedResponse
 } from '../types/common.js';
+
+/** Display name: IIQ sends `Name` (there is no `FullName`); first + last is the fallback. */
+function userName(user: IIQUser): string {
+  return user.Name || `${user.FirstName} ${user.LastName}`;
+}
 
 // User-specific types
 export interface UserStatistics {
@@ -89,7 +94,7 @@ export const enhancedUserTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100, max: 1000)',
+          description: 'Results per page (default: 25, max: 1000)',
         },
         pageIndex: {
           type: 'number',
@@ -380,21 +385,22 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         }
         
         const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
-        const pageSize = args.pageSize || 100;
+        const pageSize = args.pageSize || 25;
         // IIQ ignores a body SearchText on POST /users; GET /users/search/{term} is its text search.
         // That endpoint takes no facet filters, so text search and the facet filters are exclusive.
-        const response = searchText
-          ? await client.request<PaginatedResponse<IIQUser>>({
+        const readPage = (pageIndex: number) => searchText
+          ? client.request<PaginatedResponse<IIQUser>>({
             method: 'GET',
             url: `/users/search/${encodeURIComponent(searchText)}`,
-            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+            params: iiqPagingParams(pageIndex, pageSize),
           })
-          : await client.request<PaginatedResponse<IIQUser>>({
+          : client.request<PaginatedResponse<IIQUser>>({
             method: 'POST',
             url: '/users',
-            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+            params: iiqPagingParams(pageIndex, pageSize),
             data: payload,
           });
+        const response = await readPage(args.pageIndex || 0);
         const ignoredFilters = searchText
           ? ['viewId', 'userType', 'grade', 'locationId', 'includeDeleted'].filter((key) => args[key])
           : [];
@@ -402,36 +408,22 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           ? `\n\nNote: ${ignoredFilters.join(', ')} not applied - IIQ text search does not combine with filters.`
           : '';
         
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No users found matching your criteria.',
-            }],
-          };
-        }
-        
-        const userList = response.Items.slice(0, 10).map((user: IIQUser) =>
-          `• ${user.FullName || `${user.FirstName} ${user.LastName}`}
+        // IIQ returns exactly the requested page, so every row is rendered (#96).
+        const result = formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, args.pageIndex || 0, readPage),
+          pageIndex: args.pageIndex || 0,
+          pageSize,
+          noun: 'users',
+          emptyText: 'No users found matching your criteria.',
+          render: (user: IIQUser) =>
+            `• ${userName(user)}
   Type: ${user.UserTypeName || 'Unknown'} | Email: ${user.Email || 'N/A'}
   Location: ${user.LocationName || 'N/A'}${user.Grade ? ` | Grade: ${user.Grade}` : ''}
-  Username: ${user.Username || 'N/A'} | Status: ${user.IsActive ? 'Active' : 'Inactive'}`
-        ).join('\n\n');
-        
-        const summary = response.Items.length > 10 
-          ? `\n\n...and ${response.Items.length - 10} more users`
-          : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${iiqTotalRows(response)} users (showing ${Math.min(10, response.Items.length)}):
-
-${userList}${summary}
-
-Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / pageSize))}${filterNote}`,
-          }],
-        };
+  Username: ${user.Username || 'N/A'} | Status: ${user.IsActive ? 'Active' : 'Inactive'}`,
+        });
+        result.content[0].text += filterNote;
+        return result;
       }
       
       case 'user_get_students': {

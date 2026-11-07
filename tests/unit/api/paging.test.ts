@@ -103,3 +103,33 @@ describe('formatListPage', () => {
     expect(text({ rows: [1], pageIndex: 3, truncated: true })).toBe(`Page 4 is past the end: 1 widgets match (1 page).${TRUNCATION_NOTE}`);
   });
 });
+
+describe('formatListPage with a server total (rows are already the page)', () => {
+  const base = { pageSize: 2, noun: 'widgets', emptyText: 'No widgets found.', render: (n: number) => `• w${n}` };
+  const text = (opts: Partial<Parameters<typeof formatListPage<number>>[0]> & { rows: number[] }) =>
+    formatListPage<number>({ ...base, ...opts }).content[0].text;
+
+  it('renders every given row, counts from the total and pages by the total', () => {
+    expect(text({ rows: [5, 6, 7], pageSize: 3, pageIndex: 1, total: 10 })).toBe(
+      'Found 10 widgets (showing 3):\n\n• w5\n\n• w6\n\n• w7\n\nPage 2 of 4'
+    );
+  });
+
+  it('does not slice the page by pageIndex a second time', () => {
+    expect(text({ rows: [9], pageSize: 1, pageIndex: 8, total: 9 })).toBe('Found 9 widgets (showing 1):\n\n• w9\n\nPage 9 of 9');
+  });
+
+  it('reports an empty page with a non-zero total as past the end', () => {
+    expect(text({ rows: [], pageIndex: 5, total: 3 })).toBe('Page 6 is past the end: 3 widgets match (2 pages).');
+  });
+
+  it('uses emptyText when the total is zero', () => {
+    expect(text({ rows: [], total: 0 })).toBe('No widgets found.');
+  });
+
+  it('can render the page through a custom page renderer', () => {
+    expect(text({ rows: [1, 2], total: 2, renderPage: (rows) => `rows=${rows.join('+')}` })).toBe(
+      'Found 2 widgets (showing 2):\n\nrows=1+2\n\nPage 1 of 1'
+    );
+  });
+});

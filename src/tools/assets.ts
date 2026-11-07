@@ -8,7 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { iiqTotalRows } from '../api/paging.js';
+import { formatListPage, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
 import { 
   IIQAsset,
   PaginatedRequest,
@@ -41,6 +41,14 @@ export interface AssetActivity {
   UserName?: string;
   OldValue?: string;
   NewValue?: string;
+}
+
+/** One asset as a list row, from the nested objects POST /assets returns. */
+export function renderAssetRow(asset: IIQAsset): string {
+  return `• ${asset.AssetTag} - ${asset.AssetTypeName || 'Unknown Type'}
+  Model: ${asset.Model?.Name || 'N/A'} | Serial: ${asset.SerialNumber || 'N/A'}
+  Status: ${asset.Status?.Name || 'Unknown'} | Location: ${asset.Location?.Name || 'N/A'}
+  User: ${asset.Owner?.Name || 'Unassigned'}`;
 }
 
 // Initialize client lazily
@@ -99,7 +107,7 @@ export const enhancedAssetTools = [
         },
         pageSize: {
           type: 'number',
-          description: 'Results per page (default: 100, max: 1000)',
+          description: 'Results per page (default: 25, max: 1000)',
         },
         pageIndex: {
           type: 'number',
@@ -353,7 +361,7 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           Filters: [],
           Paging: {
             PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 100, // Optimized default
+            PageSize: args.pageSize || 25,
           },
         };
         
@@ -393,42 +401,23 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
+        const readPage = (pageIndex: number) => client.request<PaginatedResponse<IIQAsset>>({
           method: 'POST',
           url: '/assets',
-          data: payload,
+          data: { ...payload, Paging: { ...payload.Paging!, PageIndex: pageIndex } },
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No assets found matching your criteria.',
-            }],
-          };
-        }
-        
-        const assetList = response.Items.slice(0, 10).map((asset: IIQAsset) =>
-          `• ${asset.AssetTag} - ${asset.AssetTypeName || 'Unknown Type'}
-  Model: ${asset.ModelName || 'N/A'} | Serial: ${asset.SerialNumber || 'N/A'}
-  Status: ${asset.StatusName || 'Unknown'} | Location: ${asset.LocationName || 'N/A'}
-  User: ${asset.AssignedUserName || 'Unassigned'}`
-        ).join('\n\n');
-        
-        const summary = response.Items.length > 10 
-          ? `\n\n...and ${response.Items.length - 10} more assets`
-          : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${iiqTotalRows(response)} assets (showing ${Math.min(10, response.Items.length)}):
+        const response = await readPage(payload.Paging!.PageIndex);
 
-${assetList}${summary}
-
-Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / (args.pageSize || 100)))}`,
-          }],
-        };
+        // IIQ returns exactly the requested page, so every row is rendered (#96).
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, payload.Paging!.PageIndex, readPage),
+          pageIndex: payload.Paging!.PageIndex,
+          pageSize: payload.Paging!.PageSize,
+          noun: 'assets',
+          emptyText: 'No assets found matching your criteria.',
+          render: renderAssetRow,
+        });
       }
       
       case 'asset_find_by_tag': {

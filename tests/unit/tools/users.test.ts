@@ -141,7 +141,7 @@ describe('User Tools', () => {
 describe('IIQ paging via the $p/$s query (#94)', () => {
   // Models live IIQ POST /users (verified 2026-11-06): body Paging is ignored and the
   // default page is index 0 with 20 rows; only the $p/$s query pages.
-  const users = Array.from({ length: 250 }, (_, i) => ({ UserId: `u-${i}`, FullName: `User ${i}`, IsActive: true }));
+  const users = Array.from({ length: 250 }, (_, i) => ({ UserId: `u-${i}`, Name: `User ${i}`, IsActive: true }));
   beforeEach(() => {
     server.use(
       http.post('https://test.incidentiq.com/api/v1.0/users', ({ request }) => {
@@ -188,11 +188,11 @@ describe('user_search_advanced text search', () => {
     const seen: URL[] = [];
     server.use(
       http.post('https://test.incidentiq.com/api/v1.0/users', () =>
-        HttpResponse.json({ Items: [{ UserId: 'wrong', FullName: 'Unfiltered Person' }], ItemCount: 1, Paging: { TotalRows: 20000 } })
+        HttpResponse.json({ Items: [{ UserId: 'wrong', Name: 'Unfiltered Person' }], ItemCount: 1, Paging: { TotalRows: 20000 } })
       ),
       http.get('https://test.incidentiq.com/api/v1.0/users/search/:term', ({ request, params }) => {
         seen.push(new URL(request.url));
-        const items = params.term === 'Rivera' ? [{ UserId: 'u-1', FullName: 'Sam Rivera', IsActive: true }] : [];
+        const items = params.term === 'Rivera' ? [{ UserId: 'u-1', Name: 'Sam Rivera', IsActive: true }] : [];
         return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { PageIndex: 0, PageSize: 25, PageCount: 1, TotalRows: items.length } });
       })
     );
