@@ -8,14 +8,81 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { pathSegment } from '../api/path.js';
 import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { day } from './purchaseorders.js';
 
 /** IIQ has no parts search (POST /parts returns 405, verified 2026-11-06): read GET /parts and filter. */
 async function listParts(client: IncidentIQClient): Promise<{ items: Part[]; truncated: boolean }> {
   return iiqListAll<Part>(client, '/parts');
 }
 
-// Parts specific types
+/** A part counts as low stock below this many on hand (IIQ parts carry no reorder point). */
+const LOW_STOCK_BELOW = 5;
+
+function isLowStock(part: Part): boolean {
+  return typeof part.QuantityOnHand === 'number' && part.QuantityOnHand < LOW_STOCK_BELOW;
+}
+
+/** One part as a list row: name, stock, cost, supplier, ID (the fields GET /parts sends). */
+function renderPart(part: Part): string {
+  return `• ${part.Name || part.PartNumber}
+  Stock: ${part.QuantityOnHand || 0} | Cost: $${part.StandardCostEach ?? 'N/A'} | Supplier: ${part.StandardSupplier?.Name || 'N/A'}
+  ID: ${part.PartId}`;
+}
+
+/** GET detail endpoints return `{ Item }`; tolerate a bare object. */
+async function getItem<T>(client: IncidentIQClient, url: string): Promise<T> {
+  const response = await client.request<{ Item?: T } & T>({ method: 'GET', url });
+  return (response?.Item ?? response) as T;
+}
+
+/**
+ * Validates an optional YYYY-MM-DD bound and returns its calendar day, or an error message.
+ * Rejects other formats and impossible dates (e.g. 2026-02-30).
+ */
+function dayBound(name: string, value: unknown): { day?: string; error?: string } {
+  if (value === undefined || value === null || value === '') return {};
+  const text = String(value);
+  // getTime() is NaN for an out-of-range month/day, where toISOString() would throw.
+  const parsed = new Date(`${text}T00:00:00Z`);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(text);
+  return valid ? { day: day(text) } : { error: `Error: ${name} must be a date in YYYY-MM-DD form (got "${text}").` };
+}
+
+/** Parts for one device family, matched by name (live parts carry no DeviceType/Category). */
+async function deviceParts(client: IncidentIQClient, device: 'chromebook' | 'ipad', label: string, args: any) {
+  const { items, truncated } = await listParts(client);
+  const deviceMatches = items.filter((part) =>
+    matchesText(device, part.DeviceType, part.Name) &&
+    matchesText(args.model, part.Name, part.Description) &&
+    matchesText(args.category, part.Category, part.Name)
+  );
+
+  if (deviceMatches.length === 0) {
+    return withTruncationNote(truncated, {
+      content: [{
+        type: 'text',
+        text: `No ${label} parts found.`,
+      }],
+    });
+  }
+
+  // No category heading: live parts carry no Category, so every part would land under "Other".
+  const rows = deviceMatches.map((part) =>
+    `• ${part.Name || part.PartNumber} - Stock: ${part.QuantityOnHand || 0} - $${part.StandardCostEach ?? 'N/A'}`
+  );
+  const output = `${label} Parts (${deviceMatches.length}):\n\n${rows.join('\n')}`;
+
+  return withTruncationNote(truncated, {
+    content: [{
+      type: 'text',
+      text: output,
+    }],
+  });
+}
+
+// Parts specific types (GET /parts item; PartNumber/Description/Category/DeviceType are matched when a district sends them)
 export interface Part {
   PartId: string;
   SiteId: string;
@@ -28,40 +95,17 @@ export interface Part {
   StandardSupplier?: PartSupplier;
   Category?: string;
   DeviceType?: string;
-  Manufacturer?: string;
   QuantityOnHand?: number;
-  QuantityAllocated?: number;
   QuantityAvailable?: number;
-  ReorderPoint?: number;
-  ReorderQuantity?: number;
-  LocationId?: string;
-  WarrantyEligible?: boolean;
-  IsActive?: boolean;
   CreatedDate: string;
   ModifiedDate: string;
-  Notes?: string;
 }
 
 export interface PartSupplier {
   PartSupplierId: string;
   Name: string;
-  ContactName?: string;
-  Phone?: string;
-  Email?: string;
-  Website?: string;
-  AccountNumber?: string;
-  Address?: {
-    Street: string;
-    City: string;
-    State: string;
-    Zip: string;
-  };
-  IsPreferred?: boolean;
-  PaymentTerms?: string;
-  ShippingTerms?: string;
-  MinimumOrder?: number;
-  LeadTimeDays?: number;
-  Notes?: string;
+  CreatedDate?: string;
+  ModifiedDate?: string;
 }
 
 /** Purchase order as returned by GET /purchaseorders (live shape, verified 2026-11-07). */
@@ -81,19 +125,6 @@ function orderStatus(order: PurchaseOrder): 'Closed' | 'Approved' | 'Open' {
   return order.IsApproved ? 'Approved' : 'Open';
 }
 
-export interface PartUsage {
-  TicketId: string;
-  PartId: string;
-  Quantity: number;
-  UsedDate: string;
-  UsedBy: string;
-  AssetId?: string;
-  Cost?: number;
-  WarrantyClaim?: boolean;
-  StudentDamage?: boolean;
-  Notes?: string;
-}
-
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
 
@@ -104,56 +135,54 @@ function getClient(): IncidentIQClient {
   return client;
 }
 
+const PAGE_PROPS = {
+  pageSize: {
+    type: 'number',
+    description: 'Results per page (default: 25)',
+  },
+  pageIndex: {
+    type: 'number',
+    description: 'Page number (0-based)',
+  },
+};
+
 export const enhancedPartsTools = [
   // Core Operations
   {
     name: 'parts_get_all',
-    description: 'Get all parts in inventory (GET /parts)',
+    description: 'List every part in inventory with stock, cost and supplier (reads all of GET /parts, 25 per page by default)',
     inputSchema: {
       type: 'object',
-      properties: {
-        includeInactive: {
-          type: 'boolean',
-          description: 'Include inactive parts',
-        },
-      },
+      properties: { ...PAGE_PROPS },
       required: [],
     },
   },
   {
     name: 'parts_search',
-    description: 'Search parts with filters (POST /parts)',
+    description: 'Search parts (IIQ has no parts search, so the full GET /parts list is filtered client-side)',
     inputSchema: {
       type: 'object',
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in part names, numbers, descriptions',
+          description: 'Text matched against part names',
         },
         category: {
           type: 'string',
-          description: 'Filter by category (Screen, Keyboard, Battery, etc.)',
+          description: 'Text matched against part names (Screen, Keyboard, Battery, etc.)',
         },
         deviceType: {
           type: 'string',
           enum: ['Chromebook', 'iPad', 'Laptop', 'Desktop', 'Projector'],
-          description: 'Filter by device type',
+          description: 'Device type matched against part names',
         },
         supplierId: {
           type: 'string',
-          description: 'Filter by supplier',
-        },
-        locationId: {
-          type: 'string',
-          description: 'Filter by storage location',
+          description: 'Filter by standard supplier ID (GUID)',
         },
         lowStock: {
           type: 'boolean',
-          description: 'Only show low stock items',
-        },
-        includeDeleted: {
-          type: 'boolean',
-          description: 'Include deleted parts',
+          description: `Only parts with fewer than ${LOW_STOCK_BELOW} on hand (same rule as parts_get_low_stock)`,
         },
         pageSize: {
           type: 'number',
@@ -181,57 +210,49 @@ export const enhancedPartsTools = [
       required: ['partId'],
     },
   },
-  
+
   // Inventory Management
   {
     name: 'parts_check_stock',
-    description: 'Check current stock levels',
+    description: 'Check quantity on hand: one part (GET /parts/{id}) or every part (all of GET /parts, 25 per page by default)',
     inputSchema: {
       type: 'object',
       properties: {
         partId: {
           type: 'string',
-          description: 'Part ID to check',
+          description: 'Part ID (GUID); omit to list the stock of every part',
         },
-        locationId: {
-          type: 'string',
-          description: 'Check at specific location',
-        },
+        ...PAGE_PROPS,
       },
       required: [],
     },
   },
   {
     name: 'parts_get_low_stock',
-    description: 'Get parts below reorder point',
+    description: `Get parts with fewer than ${LOW_STOCK_BELOW} on hand (IIQ parts have no reorder point)`,
     inputSchema: {
       type: 'object',
       properties: {
         category: {
           type: 'string',
-          description: 'Filter by category',
+          description: 'Text matched against part names',
         },
         critical: {
           type: 'boolean',
-          description: 'Only critical parts',
+          description: 'Only parts with none on hand',
         },
       },
       required: [],
     },
   },
-  
+
   // Supplier Management
   {
     name: 'parts_get_suppliers',
     description: 'Get all part suppliers (GET /parts/suppliers)',
     inputSchema: {
       type: 'object',
-      properties: {
-        preferred: {
-          type: 'boolean',
-          description: 'Only preferred suppliers',
-        },
-      },
+      properties: {},
       required: [],
     },
   },
@@ -253,7 +274,7 @@ export const enhancedPartsTools = [
   // Purchase Orders
   {
     name: 'parts_get_orders',
-    description: 'Get purchase orders (GET /purchaseorders)',
+    description: 'Get purchase orders (reads all of GET /purchaseorders, 25 per page by default)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -262,74 +283,35 @@ export const enhancedPartsTools = [
           enum: ['Open', 'Approved', 'Closed'],
           description: 'Filter by order status (derived from IIQ approval/closed flags)',
         },
-        supplierId: {
-          type: 'string',
-          description: 'Filter by supplier',
-        },
         dateFrom: {
           type: 'string',
-          description: 'Orders after date (YYYY-MM-DD)',
+          description: 'Orders created on or after this day (YYYY-MM-DD, inclusive)',
         },
         dateTo: {
           type: 'string',
-          description: 'Orders before date (YYYY-MM-DD)',
+          description: 'Orders created on or before this day (YYYY-MM-DD, inclusive)',
         },
-        pageSize: {
-          type: 'number',
-          description: 'Results per page (default: 25)',
-        },
-        pageIndex: {
-          type: 'number',
-          description: 'Page number (0-based)',
-        },
+        ...PAGE_PROPS,
       },
       required: [],
     },
   },
-  {
-    name: 'parts_get_order_details',
-    description: 'Get purchase order details (GET /purchaseorders/{id})',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        orderId: {
-          type: 'string',
-          description: 'Purchase order ID (GUID)',
-        },
-      },
-      required: ['orderId'],
-    },
-  },
-  {
-    name: 'parts_get_pending_orders',
-    description: 'Get pending purchase orders',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        overdue: {
-          type: 'boolean',
-          description: 'Only overdue orders',
-        },
-      },
-      required: [],
-    },
-  },
-  
+
   // Device-Specific Parts
   {
     name: 'parts_get_chromebook_parts',
-    description: 'Get Chromebook-specific parts',
+    description: 'Get Chromebook parts (part names containing "chromebook", from GET /parts)',
     inputSchema: {
       type: 'object',
       properties: {
         model: {
           type: 'string',
-          description: 'Chromebook model',
+          description: 'Chromebook model, matched against part names',
         },
         category: {
           type: 'string',
           enum: ['Screen', 'Keyboard', 'Battery', 'Charger', 'Trackpad', 'Hinge'],
-          description: 'Part category',
+          description: 'Part category, matched against part names',
         },
       },
       required: [],
@@ -337,190 +319,23 @@ export const enhancedPartsTools = [
   },
   {
     name: 'parts_get_ipad_parts',
-    description: 'Get iPad-specific parts',
+    description: 'Get iPad parts (part names containing "ipad", from GET /parts)',
     inputSchema: {
       type: 'object',
       properties: {
         model: {
           type: 'string',
-          description: 'iPad model',
+          description: 'iPad model, matched against part names',
         },
         category: {
           type: 'string',
           enum: ['Screen', 'Digitizer', 'Battery', 'Charging Port', 'Home Button'],
-          description: 'Part category',
+          description: 'Part category, matched against part names',
         },
       },
       required: [],
     },
   },
-  {
-    name: 'parts_get_compatible',
-    description: 'Get parts compatible with specific asset',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        assetId: {
-          type: 'string',
-          description: 'Asset ID (GUID)',
-        },
-        category: {
-          type: 'string',
-          description: 'Part category filter',
-        },
-      },
-      required: ['assetId'],
-    },
-  },
-  
-  // Repair Operations
-  {
-    name: 'parts_record_usage',
-    description: 'Record part used in repair',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        partId: {
-          type: 'string',
-          description: 'Part ID used',
-        },
-        ticketId: {
-          type: 'string',
-          description: 'Repair ticket ID',
-        },
-        quantity: {
-          type: 'number',
-          description: 'Quantity used',
-        },
-        assetId: {
-          type: 'string',
-          description: 'Asset being repaired',
-        },
-        warrantyRepair: {
-          type: 'boolean',
-          description: 'Is warranty repair',
-        },
-        studentDamage: {
-          type: 'boolean',
-          description: 'Student caused damage',
-        },
-        notes: {
-          type: 'string',
-          description: 'Usage notes',
-        },
-      },
-      required: ['partId', 'ticketId', 'quantity'],
-    },
-  },
-  {
-    name: 'parts_get_ticket_parts',
-    description: 'Get parts used in specific ticket',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        ticketId: {
-          type: 'string',
-          description: 'Ticket ID (GUID)',
-        },
-      },
-      required: ['ticketId'],
-    },
-  },
-  {
-    name: 'parts_get_common_repairs',
-    description: 'Get frequently used repair parts',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        deviceType: {
-          type: 'string',
-          description: 'Device type filter',
-        },
-        timeframe: {
-          type: 'string',
-          enum: ['week', 'month', 'quarter', 'year'],
-          description: 'Time period',
-        },
-      },
-      required: [],
-    },
-  },
-  
-  // Cost Analysis
-  {
-    name: 'parts_get_repair_costs',
-    description: 'Get repair cost analysis',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        dateFrom: {
-          type: 'string',
-          description: 'Start date (YYYY-MM-DD)',
-        },
-        dateTo: {
-          type: 'string',
-          description: 'End date (YYYY-MM-DD)',
-        },
-        groupBy: {
-          type: 'string',
-          enum: ['device', 'building', 'category', 'student'],
-          description: 'Group costs by',
-        },
-      },
-      required: [],
-    },
-  },
-  
-  // Multi-Building
-  {
-    name: 'parts_get_by_location',
-    description: 'Get parts at specific location',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        locationId: {
-          type: 'string',
-          description: 'Location/building ID',
-        },
-        lowStockOnly: {
-          type: 'boolean',
-          description: 'Only low stock items',
-        },
-      },
-      required: ['locationId'],
-    },
-  },
-  {
-    name: 'parts_transfer',
-    description: 'Transfer parts between locations',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        partId: {
-          type: 'string',
-          description: 'Part to transfer',
-        },
-        fromLocationId: {
-          type: 'string',
-          description: 'Source location',
-        },
-        toLocationId: {
-          type: 'string',
-          description: 'Destination location',
-        },
-        quantity: {
-          type: 'number',
-          description: 'Quantity to transfer',
-        },
-        reason: {
-          type: 'string',
-          description: 'Transfer reason',
-        },
-      },
-      required: ['partId', 'fromLocationId', 'toLocationId', 'quantity'],
-    },
-  },
-  
   // Quick Lookups
   {
     name: 'parts_find_by_number',
@@ -544,58 +359,18 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
   try {
     switch (name) {
       case 'parts_get_all': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/parts',
+        const { items, truncated } = await listParts(client);
+        return formatListPage({
+          rows: items,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'parts',
+          emptyText: 'No parts found in inventory.',
+          render: renderPart,
+          truncated,
         });
-        
-        // Handle different response formats
-        const parts = Array.isArray(response) ? response : response?.Items || [];
-        
-        if (parts.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No parts found in inventory.',
-            }],
-          };
-        }
-        
-        // Group by category or device type
-        const partsByCategory: Record<string, any[]> = {};
-        parts.forEach((part: Part) => {
-          const category = part.Category || part.DeviceType || 'Uncategorized';
-          if (!partsByCategory[category]) partsByCategory[category] = [];
-          partsByCategory[category].push(part);
-        });
-        
-        let output = `Parts Inventory (${parts.length} total):\n`;
-        
-        for (const [category, categoryParts] of Object.entries(partsByCategory)) {
-          output += `\n${category} (${categoryParts.length} parts):\n`;
-          categoryParts.slice(0, 5).forEach(part => {
-            output += `  • ${part.Name || part.PartNumber}`;
-            if (part.QuantityOnHand !== undefined) {
-              output += ` - Stock: ${part.QuantityOnHand}`;
-            }
-            if (part.StandardCostEach) {
-              output += ` - $${part.StandardCostEach}`;
-            }
-            output += '\n';
-          });
-          if (categoryParts.length > 5) {
-            output += `  ... and ${categoryParts.length - 5} more\n`;
-          }
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
       }
-      
+
       case 'parts_search': {
         // Live parts carry only Name/cost/stock/supplier; Category/DeviceType/Description are matched when present.
         const { items, truncated } = await listParts(client);
@@ -603,7 +378,8 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           matchesText(args.searchText, part.Name, part.PartNumber, part.Description) &&
           matchesText(args.category, part.Category, part.Name) &&
           matchesText(args.deviceType, part.DeviceType, part.Name) &&
-          (!args.supplierId || part.StandardSupplierId === args.supplierId)
+          (!args.supplierId || part.StandardSupplierId === args.supplierId) &&
+          (!args.lowStock || isLowStock(part))
         );
         return formatListPage({
           rows: matched,
@@ -611,10 +387,60 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           pageSize: args.pageSize || 50,
           noun: 'parts',
           emptyText: 'No parts found matching your criteria.',
-          render: (part: Part) =>
-            `• ${part.Name || part.PartNumber}${part.Category ? ` (${part.Category})` : ''}
-  Stock: ${part.QuantityOnHand || 0} | Cost: $${part.StandardCostEach ?? 'N/A'} | Supplier: ${part.StandardSupplier?.Name || 'N/A'}
-  ID: ${part.PartId}`,
+          render: renderPart,
+          truncated,
+        });
+      }
+
+      case 'parts_get_details': {
+        const part = await getItem<Part>(client, `/parts/${pathSegment(args.partId)}`);
+        return {
+          content: [{
+            type: 'text',
+            text: `Part Details:
+Name: ${part.Name}
+Stock: ${part.QuantityOnHand ?? 0}
+Cost: $${part.StandardCostEach ?? 'N/A'}
+Supplier: ${part.StandardSupplier?.Name || 'N/A'}
+Created: ${part.CreatedDate || 'N/A'}
+Modified: ${part.ModifiedDate || 'N/A'}
+ID: ${part.PartId}`,
+          }],
+        };
+      }
+
+      case 'parts_get_supplier_details': {
+        const supplier = await getItem<PartSupplier>(client, `/parts/suppliers/${pathSegment(args.supplierId)}`);
+        return {
+          content: [{
+            type: 'text',
+            text: `Supplier Details:
+Name: ${supplier.Name}
+Created: ${supplier.CreatedDate || 'N/A'}
+Modified: ${supplier.ModifiedDate || 'N/A'}
+ID: ${supplier.PartSupplierId}`,
+          }],
+        };
+      }
+
+      case 'parts_check_stock': {
+        if (args.partId) {
+          const part = await getItem<Part>(client, `/parts/${pathSegment(args.partId)}`);
+          return {
+            content: [{
+              type: 'text',
+              text: `Stock for ${part.Name}: ${part.QuantityOnHand ?? 0} on hand (ID: ${part.PartId})`,
+            }],
+          };
+        }
+        const { items, truncated } = await listParts(client);
+        return formatListPage({
+          rows: items,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'parts',
+          emptyText: 'No parts found in inventory.',
+          render: (part: Part) => `• ${part.Name}: ${part.QuantityOnHand ?? 0} on hand`,
           truncated,
         });
       }
@@ -636,31 +462,32 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           };
         }
         
-        // Filter for preferred if requested
-        let filteredSuppliers = suppliers;
-        if (args.preferred) {
-          filteredSuppliers = suppliers.filter((s: PartSupplier) => s.IsPreferred);
-        }
-        
-        const supplierList = filteredSuppliers.map((supplier: PartSupplier) =>
-          `• ${supplier.Name}${supplier.IsPreferred ? ' ⭐ (Preferred)' : ''}
-  Contact: ${supplier.ContactName || 'N/A'} | ${supplier.Phone || 'No phone'}
-  ${supplier.Email || 'No email'}
-  ${supplier.LeadTimeDays ? `Lead Time: ${supplier.LeadTimeDays} days` : ''}`
+        // Live suppliers carry only Name, PartSupplierId and dates (verified 2026-11-07): no contact fields.
+        const supplierList = suppliers.map((supplier: PartSupplier) =>
+          `• ${supplier.Name}\n  ID: ${supplier.PartSupplierId}`
         ).join('\n\n');
         
         return {
           content: [{
             type: 'text',
-            text: `Suppliers (${filteredSuppliers.length}):\n\n${supplierList}`,
+            text: `Suppliers (${suppliers.length}):\n\n${supplierList}`,
           }],
         };
       }
       
       case 'parts_get_orders': {
+        const from = dayBound('dateFrom', args.dateFrom);
+        const to = dayBound('dateTo', args.dateTo);
+        const invalid = from.error ?? to.error;
+        if (invalid) return { content: [{ type: 'text', text: invalid }] };
         const { items, truncated } = await iiqListAll<PurchaseOrder>(client, '/purchaseorders');
         const status = typeof args.status === 'string' ? args.status.trim().toLowerCase() : '';
-        const orders = status ? items.filter((order) => orderStatus(order).toLowerCase() === status) : items;
+        const orders = items.filter((order) => {
+          const created = day(order.CreatedDate);
+          return (!status || orderStatus(order).toLowerCase() === status) &&
+            (from.day === undefined || (created !== undefined && created >= from.day)) &&
+            (to.day === undefined || (created !== undefined && created <= to.day));
+        });
         return formatListPage({
           rows: orders,
           pageIndex: args.pageIndex,
@@ -673,91 +500,38 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           truncated,
         });
       }
-      
-      case 'parts_get_chromebook_parts': {
+
+      case 'parts_get_chromebook_parts':
+        return deviceParts(client, 'chromebook', 'Chromebook', args);
+
+      case 'parts_get_ipad_parts':
+        return deviceParts(client, 'ipad', 'iPad', args);
+
+      case 'parts_get_low_stock': {
         const { items, truncated } = await listParts(client);
-        const chromebookParts = items.filter((part) =>
-          matchesText('chromebook', part.DeviceType, part.Name) &&
-          matchesText(args.model, part.Name, part.Description) &&
-          matchesText(args.category, part.Category, part.Name)
+        const lowStockParts = items.filter((part) =>
+          isLowStock(part) &&
+          matchesText(args.category, part.Name) &&
+          (!args.critical || part.QuantityOnHand === 0)
         );
 
-        if (chromebookParts.length === 0) {
-          return withTruncationNote(truncated, {
-            content: [{
-              type: 'text',
-              text: 'No Chromebook parts found.',
-            }],
-          });
-        }
-
-        // Group by category
-        const categories: Record<string, Part[]> = {};
-        chromebookParts.forEach((part: Part) => {
-          const cat = part.Category || 'Other';
-          if (!categories[cat]) categories[cat] = [];
-          categories[cat].push(part);
-        });
-        
-        let output = 'Chromebook Parts:\n';
-        
-        for (const [category, parts] of Object.entries(categories)) {
-          output += `\n${category}:\n`;
-          parts.forEach(part => {
-            output += `  • ${part.Name || part.PartNumber}`;
-            output += ` - Stock: ${part.QuantityOnHand || 0}`;
-            output += ` - $${part.StandardCostEach || 'N/A'}\n`;
-          });
-        }
-        
-        return withTruncationNote(truncated, {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        });
-      }
-      
-      case 'parts_get_low_stock': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/parts',
-        });
-        
-        const allParts = Array.isArray(response) ? response : response?.Items || [];
-        
-        // Filter for low stock
-        const lowStockParts = allParts.filter((part: Part) => {
-          if (part.ReorderPoint && part.QuantityOnHand !== undefined) {
-            return part.QuantityOnHand <= part.ReorderPoint;
-          }
-          // Default: consider low if less than 5
-          return part.QuantityOnHand !== undefined && part.QuantityOnHand < 5;
-        });
-        
         if (lowStockParts.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: 'No parts are currently low on stock.',
             }],
-          };
+          });
         }
-        
-        const partsList = lowStockParts.map((part: Part) =>
-          `• ${part.Name || part.PartNumber}
-  Current: ${part.QuantityOnHand} | Reorder Point: ${part.ReorderPoint || 5}
-  Suggested Order: ${part.ReorderQuantity || 10} units`
-        ).join('\n\n');
-        
-        return {
+
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: `Low Stock Parts (${lowStockParts.length}):\n\n${partsList}`,
+            text: `Low Stock Parts (${lowStockParts.length}):\n\n${lowStockParts.map(renderPart).join('\n\n')}`,
           }],
-        };
+        });
       }
-      
+
       case 'parts_find_by_number': {
         // Live parts have no PartNumber field; the part's Name is its identifier there.
         const wanted = String(args.partNumber ?? '').trim().toLowerCase();
@@ -780,11 +554,8 @@ export async function handleEnhancedPartsTool(name: string, args: any) {
           content: [{
             type: 'text',
             text: `Part Found:
-Name: ${part.Name}
-Part Number: ${part.PartNumber || 'N/A'}
-Category: ${part.Category || 'N/A'}
+Name: ${part.Name}${part.PartNumber ? `\nPart Number: ${part.PartNumber}` : ''}
 Stock: ${part.QuantityOnHand || 0}
-Available: ${part.QuantityAvailable || 0}
 Cost: $${part.StandardCostEach}
 Supplier: ${part.StandardSupplier?.Name || 'N/A'}
 ID: ${part.PartId}`,
