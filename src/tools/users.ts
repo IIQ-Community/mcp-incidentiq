@@ -9,8 +9,10 @@
 
 import { IncidentIQClient } from '../api/client.js';
 import { ROLES, resolveIds } from '../api/lookups.js';
-import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
+import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows, withTruncationNote } from '../api/paging.js';
 import {
+  IIQFilter,
+  IIQLocation,
   IIQUser,
   PaginatedRequest,
   PaginatedResponse
@@ -19,6 +21,53 @@ import {
 /** Display name: IIQ sends `Name` (there is no `FullName`); first + last is the fallback. */
 function userName(user: IIQUser): string {
   return user.Name || `${user.FirstName} ${user.LastName}`;
+}
+
+/** Most statistics count requests in flight at once (one request per grade or location). */
+const STAT_CONCURRENCY = 4;
+
+/** IIQ grade codes, in school order. */
+const GRADE_CODES = ['PK', 'KG', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+/**
+ * Maps a grade as a person types it ("8", "K", "Pre-K", "Grade 9") to the IIQ grade code the
+ * `grade` filter matches exactly; anything else is sent as typed.
+ * SHORTCUT: assumes the SIS codes seen on a production district (2026-11-07): '01'-'12', 'KG',
+ * 'PK'. A district whose SIS stores grades differently (e.g. '8', 'K') needs its own mapping;
+ * revisit when a second district's grade codes are observed.
+ */
+function gradeCode(input: string): string {
+  const grade = input.trim().toUpperCase().replace(/^GRADE\s*/, '');
+  const number = Number(grade);
+  if (/^\d{1,2}$/.test(grade) && number >= 1 && number <= 12) return String(number).padStart(2, '0');
+  if (['K', 'KG', 'KINDERGARTEN'].includes(grade)) return 'KG';
+  if (['PK', 'PRE-K', 'PREK', 'PRE K', 'PRE-KINDERGARTEN', 'PRESCHOOL'].includes(grade)) return 'PK';
+  return input.trim();
+}
+
+/** Users matching `filters` (Paging.TotalRows of a one-row POST /users page). */
+async function countUsers(client: IncidentIQClient, filters: IIQFilter[]): Promise<number> {
+  const response = await client.request<PaginatedResponse<IIQUser>>({
+    method: 'POST',
+    url: '/users',
+    params: iiqPagingParams(0, 1),
+    data: { OnlyShowDeleted: false, FilterByViewPermission: false, Filters: filters },
+  });
+  return iiqTotalRows(response);
+}
+
+/** Maps `items` through `fn` with at most `limit` calls in flight, keeping input order. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 // User-specific types
@@ -71,15 +120,11 @@ export const enhancedUserTools = [
         },
         grade: {
           type: 'string',
-          description: 'Grade level (K-12, or specific like "8")',
+          description: 'Grade level: 1-12, K or Pre-K (sent as the IIQ codes 01-12, KG, PK)',
         },
         locationId: {
           type: 'string',
           description: 'Building/school ID',
-        },
-        homeroom: {
-          type: 'string',
-          description: 'Homeroom/classroom assignment',
         },
         isActive: {
           type: 'boolean',
@@ -109,13 +154,13 @@ export const enhancedUserTools = [
   // User Types
   {
     name: 'user_get_students',
-    description: 'Get all student users with grade/homeroom info',
+    description: 'Get student users, grouped by grade',
     inputSchema: {
       type: 'object',
       properties: {
         grade: {
           type: 'string',
-          description: 'Filter by grade level',
+          description: 'Filter by grade level: 1-12, K or Pre-K (sent as the IIQ codes 01-12, KG, PK)',
         },
         locationId: {
           type: 'string',
@@ -256,7 +301,7 @@ export const enhancedUserTools = [
   // Statistics
   {
     name: 'user_statistics_grades',
-    description: 'Get user distribution by grade level (GET /users/statistics/grades)',
+    description: 'Get student counts per grade level (counted with filtered POST /users requests)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -270,13 +315,13 @@ export const enhancedUserTools = [
   },
   {
     name: 'user_statistics_locations',
-    description: 'Get user distribution by building/location (GET /users/statistics/locations)',
+    description: 'Get user counts per building/location (counted with filtered POST /users requests)',
     inputSchema: {
       type: 'object',
       properties: {
         userType: {
           type: 'string',
-          description: 'Filter by user type (optional)',
+          description: 'Filter by user type / role name, e.g. Student, Staff (optional)',
         },
       },
       required: [],
@@ -393,10 +438,8 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         }
 
         if (args.grade) {
-          payload.Filters!.push({
-            Facet: 'Grade',
-            Id: args.grade,
-          });
+          // IIQ matches a grade by Value (an Id grade filter matches only ungraded users).
+          payload.Filters!.push({ Facet: 'grade', Value: gradeCode(args.grade) });
         }
 
         if (args.locationId) {
@@ -456,10 +499,8 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         };
         
         if (args.grade) {
-          payload.Filters!.push({
-            Facet: 'Grade',
-            Id: args.grade,
-          });
+          // IIQ matches a grade by Value (an Id grade filter matches only ungraded users).
+          payload.Filters!.push({ Facet: 'grade', Value: gradeCode(args.grade) });
         }
         
         if (args.locationId) {
@@ -479,7 +520,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         });
         const response = await readPage(pageIndex);
 
-        const studentRow = (student: IIQUser) => `  • ${userName(student)}${student.Homeroom ? ` - Room ${student.Homeroom}` : ''}`;
+        const studentRow = (student: IIQUser) => `  • ${userName(student)}`;
         return formatListPage({
           rows: response?.Items ?? [],
           total: await iiqServerTotal(response, pageIndex, readPage),
@@ -619,84 +660,60 @@ Last Login: ${user.LastLoginDate || 'Never'}`,
 Name: ${user.FullName || `${user.FirstName} ${user.LastName}`}
 Username: ${user.Username}
 Email: ${user.Email}
-Role: ${user.Role || 'N/A'}
+Role: ${user.Role?.Name || 'N/A'}
 Permissions: ${user.Permissions?.length || 0} permissions`,
           }],
         };
       }
       
       case 'user_statistics_grades': {
-        const url = args.locationId 
-          ? `/users/statistics/grades?locationId=${args.locationId}`
-          : '/users/statistics/grades';
-          
-        const response = await client.request<any>({
-          method: 'GET',
-          url,
-        });
-        
-        const stats = response?.Items || response || [];
-        
-        if (stats.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No grade statistics available.',
-            }],
-          };
+        // GET /users/statistics/* return 404 live; each count is a one-row filtered POST /users.
+        const [studentRoleId] = await resolveIds(client, ROLES, ['Student']);
+        const base: IIQFilter[] = [{ Facet: 'role', Id: studentRoleId }];
+        if (args.locationId) base.push({ Facet: 'location', Id: args.locationId });
+        const [total, ...counts] = await mapLimit([undefined, ...GRADE_CODES], STAT_CONCURRENCY, (grade) =>
+          countUsers(client, grade ? [...base, { Facet: 'grade', Value: grade }] : base)
+        );
+
+        if (total === 0) {
+          return { content: [{ type: 'text', text: 'No grade statistics available.' }] };
         }
-        
-        let totalStudents = 0;
-        const gradeList = stats.map((stat: any) => {
-          totalStudents += stat.Count || stat.Value || 0;
-          return `  Grade ${stat.Name || stat.Grade}: ${stat.Count || stat.Value || 0} students`;
-        }).join('\n');
-        
+
+        const lines = GRADE_CODES.flatMap((grade, i) => (counts[i] > 0 ? [`  Grade ${grade}: ${counts[i]} students`] : []));
+        const other = total - counts.reduce((sum, count) => sum + count, 0);
+        if (other > 0) lines.push(`  Other/none: ${other} students`);
         return {
           content: [{
             type: 'text',
-            text: `Student Distribution by Grade:
-
-${gradeList}
-
-Total Students: ${totalStudents}`,
+            text: `Student Distribution by Grade:\n\n${lines.join('\n')}\n\nTotal Students: ${total}`,
           }],
         };
       }
-      
+
       case 'user_statistics_locations': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/users/statistics/locations',
-        });
-        
-        const stats = response?.Items || response || [];
-        
-        if (stats.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No location statistics available.',
-            }],
-          };
+        const base: IIQFilter[] = args.userType
+          ? [{ Facet: 'role', Id: (await resolveIds(client, ROLES, [args.userType]))[0] }]
+          : [];
+        const { items: locations, truncated } = await iiqListAll<IIQLocation>(client, '/locations/all');
+        const [total, ...counts] = await mapLimit([undefined, ...locations], STAT_CONCURRENCY, (location) =>
+          countUsers(client, location ? [...base, { Facet: 'location', Id: location.LocationId }] : base)
+        );
+
+        if (total === 0 || locations.length === 0) {
+          return withTruncationNote(truncated, { content: [{ type: 'text', text: 'No location statistics available.' }] });
         }
-        
-        let totalUsers = 0;
-        const locationList = stats.map((stat: any) => {
-          totalUsers += stat.Count || stat.Value || 0;
-          return `  ${stat.Name || stat.LocationName}: ${stat.Count || stat.Value || 0} users`;
-        }).join('\n');
-        
-        return {
+
+        const lines = locations.flatMap((location, i) =>
+          counts[i] > 0 ? [`  ${location.Name || location.LocationName}: ${counts[i]} users`] : []
+        );
+        const unplaced = total - counts.reduce((sum, count) => sum + count, 0);
+        if (unplaced > 0) lines.push(`  No location: ${unplaced} users`);
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
-            text: `User Distribution by Location:
-
-${locationList}
-
-Total Users: ${totalUsers}`,
+            text: `User Distribution by Location:\n\n${lines.join('\n')}\n\nTotal Users: ${total}`,
           }],
-        };
+        });
       }
       
       case 'user_get_by_location': {
