@@ -8,7 +8,10 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { IIQ_LIST_BODY, formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { pathSegment } from '../api/path.js';
+import {
+  IIQ_LIST_BODY, formatListPage, iiqListAll, mapLimit, matchesText, normalizePageIndex, normalizePageSize, withTruncationNote,
+} from '../api/paging.js';
 
 /**
  * Reads every issue type. POST /issues/types ignores body SearchText, the keyword facet and body
@@ -27,6 +30,27 @@ function nameHasAny(issue: { Name?: string }, words: string[]): boolean {
   return words.some((word) => matchesText(word, issue.Name));
 }
 
+/**
+ * One page of issue types, grouped on the page: rows are ordered by `groups` (stable within a
+ * group) so a group's rows stay together across pages, then each group gets a `Heading:` line.
+ */
+function groupedIssuePage(
+  rows: IssueType[], groupOf: (issue: IssueType) => string, groups: string[],
+  args: { pageIndex?: number; pageSize?: number }, noun: string, emptyText: string, truncated: boolean
+) {
+  const order = (issue: IssueType) => groups.indexOf(groupOf(issue));
+  const sorted = rows.map((issue, i) => ({ issue, i })).sort((a, b) => order(a.issue) - order(b.issue) || a.i - b.i).map((x) => x.issue);
+  return formatListPage({
+    rows: sorted, pageIndex: args.pageIndex, pageSize: args.pageSize || 25, noun, emptyText, truncated,
+    render: (issue) => `  • ${issue.Name}`,
+    renderPage: (page) => groups
+      .map((group) => ({ group, items: page.filter((issue) => groupOf(issue) === group) }))
+      .filter(({ items }) => items.length > 0)
+      .map(({ group, items }) => `${group}:\n${items.map((issue) => `  • ${issue.Name}`).join('\n')}`)
+      .join('\n\n'),
+  });
+}
+
 // Issues specific types
 export interface Issue {
   IssueId: string;
@@ -38,16 +62,6 @@ export interface Issue {
   Priority?: string;
   Scope?: string;
   IsActive?: boolean;
-  IsCommon?: boolean;
-  Resolution?: {
-    Steps: string[];
-    EstimatedTime: number;
-    RequiredSkills: string[];
-  };
-  Template?: {
-    Fields: any[];
-    Defaults: any;
-  };
   CreatedDate: string;
   ModifiedDate: string;
   CreatedBy?: string;
@@ -84,38 +98,32 @@ export interface IssueType {
   };
 }
 
-export interface IssueCategory {
-  CategoryId: string;
-  ParentId?: string;
-  Name: string;
-  Description?: string;
-  Path?: string;
-  Level?: number;
-  Icon?: string;
-  Color?: string;
-  SortOrder?: number;
-  IsActive?: boolean;
-  IssueTypes?: string[];
-  Children?: IssueCategory[];
+/** A GET /issues/site row: only the issue id (EnabledRoles/DisabledRoles are empty live). */
+interface SiteIssue {
+  IssueId: string;
 }
 
-export interface IssuePriority {
-  PriorityId: string;
-  Name: string;
-  Level: number;
-  Description?: string;
-  Color?: string;
-  Icon?: string;
-  SLA?: {
-    ResponseMinutes: number;
-    ResolutionMinutes: number;
-  };
-  EscalationRules?: {
-    AfterMinutes: number;
-    NotifyUsers: string[];
-    NotifyTeams: string[];
-  };
-  Examples?: string[];
+/** GET /issues/{IssueId} fields used for a site issue line. */
+interface IssueDetail {
+  IssueId?: string;
+  Name?: string;
+  IssueCategoryName?: string;
+}
+
+/** Most GET /issues/{IssueId} lookups in flight for one page of site issues. */
+const SITE_ISSUE_LOOKUPS_IN_FLIGHT = 4;
+
+/** `• Name (Category)` for one site issue; falls back to the IssueId when the lookup fails or has no Name. */
+async function siteIssueLine(client: IncidentIQClient, issueId: string): Promise<{ line: string; named: boolean }> {
+  try {
+    const response = await client.request<{ Item?: IssueDetail } & IssueDetail>({ method: 'GET', url: `/issues/${pathSegment(issueId)}` });
+    const issue = response?.Item ?? response;
+    if (issue?.Name) return { line: `• ${issue.Name}${issue.IssueCategoryName ? ` (${issue.IssueCategoryName})` : ''}`, named: true };
+  } catch {
+    // One failed lookup must not fail the page; the IssueId still identifies the row, and the
+    // page footer counts the misses so a systemic failure (e.g. 401) is not silent.
+  }
+  return { line: `• ${issueId}`, named: false };
 }
 
 // Initialize client lazily
@@ -132,13 +140,17 @@ export const enhancedIssuesTools = [
   // Core Operations
   {
     name: 'issues_get_site_issues',
-    description: 'Get all available issues for site (GET /issues/site)',
+    description: 'List the issues enabled for this site, 25 per page by default: reads GET /issues/site (issue IDs only) and, for the rows on the requested page, GET /issues/{IssueId} for each name and category',
     inputSchema: {
       type: 'object',
       properties: {
-        includeInactive: {
-          type: 'boolean',
-          description: 'Include inactive issues',
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -146,18 +158,22 @@ export const enhancedIssuesTools = [
   },
   {
     name: 'issues_get_types',
-    description: 'Get all issue types (GET /issues/types)',
+    description: 'List every issue type with its scope (reads all of POST /issues/types, 25 per page by default)',
     inputSchema: {
       type: 'object',
       properties: {
         scope: {
           type: 'string',
-          enum: ['Tickets', 'Assets', 'Users', 'All'],
-          description: 'Filter by scope',
+          enum: ['Global', 'Site', 'All'],
+          description: 'Filter by the issue type Scope IIQ sends (default: All)',
         },
-        includeInactive: {
-          type: 'boolean',
-          description: 'Include inactive types',
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -175,20 +191,12 @@ export const enhancedIssuesTools = [
         },
         scope: {
           type: 'string',
-          enum: ['Tickets', 'Assets', 'Users', 'All'],
-          description: 'Filter by scope',
-        },
-        category: {
-          type: 'string',
-          description: 'Filter by category',
-        },
-        isCommon: {
-          type: 'boolean',
-          description: 'Only common issue types',
+          enum: ['Global', 'Site', 'All'],
+          description: 'Filter by the issue type Scope IIQ sends (default: All)',
         },
         includeDeleted: {
           type: 'boolean',
-          description: 'Include deleted types',
+          description: 'Show only deleted types (sent as OnlyShowDeleted; default: false)',
         },
         pageSize: {
           type: 'number',
@@ -217,90 +225,13 @@ export const enhancedIssuesTools = [
     },
   },
   
-  // Categories & Classification
-  {
-    name: 'issues_get_categories',
-    description: 'Get issue categories',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        parentId: {
-          type: 'string',
-          description: 'Parent category ID for subcategories',
-        },
-        includeInactive: {
-          type: 'boolean',
-          description: 'Include inactive categories',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_category_hierarchy',
-    description: 'Get category tree structure',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        maxDepth: {
-          type: 'number',
-          description: 'Maximum tree depth',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_common_categories',
-    description: 'Get frequently used categories',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        limit: {
-          type: 'number',
-          description: 'Number of categories to return',
-        },
-      },
-      required: [],
-    },
-  },
-  
-  // Priority Management
-  {
-    name: 'issues_get_priorities',
-    description: 'Get all priority levels',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeSLA: {
-          type: 'boolean',
-          description: 'Include SLA information',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_priority_sla',
-    description: 'Get SLA times by priority',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  
   // K-12 Specific Issues
   {
     name: 'issues_get_classroom_tech',
-    description: 'Get classroom technology issues',
+    description: 'Get classroom technology issue types (projector, board, audio), matched by name in the full POST /issues/types list; paged (default: 25), grouped by kind',
     inputSchema: {
       type: 'object',
       properties: {
-        buildingId: {
-          type: 'string',
-          description: 'Filter by school building',
-        },
         includeProjector: {
           type: 'boolean',
           description: 'Include projector issues',
@@ -313,188 +244,39 @@ export const enhancedIssuesTools = [
           type: 'boolean',
           description: 'Include audio system issues',
         },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number, 0-based (default: 0)',
+        },
       },
       required: [],
     },
   },
   {
     name: 'issues_get_student_devices',
-    description: 'Get student device issues',
+    description: 'Get student device issue types, matched by device name in the full POST /issues/types list; paged (default: 25), grouped by device',
     inputSchema: {
       type: 'object',
       properties: {
         deviceType: {
           type: 'string',
           enum: ['Chromebook', 'iPad', 'Laptop', 'Hotspot', 'All'],
-          description: 'Filter by device type',
+          description: 'Device name matched against issue type names (default: All)',
         },
-        gradeLevel: {
-          type: 'string',
-          description: 'Filter by grade',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_chromebook_issues',
-    description: 'Get Chromebook-specific issues',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueType: {
-          type: 'string',
-          enum: ['Screen', 'Keyboard', 'Battery', 'Charging', 'Software', 'All'],
-          description: 'Type of Chromebook issue',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_network_issues',
-    description: 'Get network and WiFi issues',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        buildingId: {
-          type: 'string',
-          description: 'Filter by building',
-        },
-        issueType: {
-          type: 'string',
-          enum: ['WiFi', 'Internet', 'VPN', 'Printing', 'All'],
-          description: 'Type of network issue',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_parent_portal',
-    description: 'Get parent portal access issues',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueType: {
-          type: 'string',
-          enum: ['Login', 'Password', 'Access', 'Data', 'All'],
-          description: 'Type of parent portal issue',
-        },
-      },
-      required: [],
-    },
-  },
-  
-  // Templates & Quick Create
-  {
-    name: 'issues_get_templates',
-    description: 'Get issue templates',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        category: {
-          type: 'string',
-          description: 'Filter by category',
-        },
-        scope: {
-          type: 'string',
-          description: 'Filter by scope',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_common_issues',
-    description: 'Get frequently reported issues',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        timeframe: {
-          type: 'string',
-          enum: ['day', 'week', 'month', 'year'],
-          description: 'Time period',
-        },
-        limit: {
+        pageSize: {
           type: 'number',
-          description: 'Number of issues to return',
+          description: 'Results per page (default: 25)',
         },
-      },
-      required: [],
-    },
-  },
-  
-  // Analytics & Reporting
-  {
-    name: 'issues_get_by_building',
-    description: 'Get issues grouped by school building',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        timeframe: {
-          type: 'string',
-          enum: ['day', 'week', 'month', 'year'],
-          description: 'Time period',
-        },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'issues_get_recurring',
-    description: 'Get frequently recurring issues',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        threshold: {
+        pageIndex: {
           type: 'number',
-          description: 'Minimum occurrences',
-        },
-        timeframe: {
-          type: 'string',
-          enum: ['week', 'month', 'quarter'],
-          description: 'Time period',
+          description: 'Page number, 0-based (default: 0)',
         },
       },
       required: [],
-    },
-  },
-  
-  // Seasonal Support
-  {
-    name: 'issues_get_seasonal',
-    description: 'Get seasonal issue types',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        season: {
-          type: 'string',
-          enum: ['enrollment', 'yearend', 'summer', 'testing', 'current'],
-          description: 'School season',
-        },
-      },
-      required: [],
-    },
-  },
-  
-  // Quick Lookups
-  {
-    name: 'issues_find_by_keyword',
-    description: 'Find issues by keyword',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        keyword: {
-          type: 'string',
-          description: 'Keyword to search (password, chromebook, wifi, etc.)',
-        },
-        exactMatch: {
-          type: 'boolean',
-          description: 'Require exact keyword match',
-        },
-      },
-      required: ['keyword'],
     },
   },
 ];
@@ -505,111 +287,69 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
   try {
     switch (name) {
       case 'issues_get_site_issues': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/issues/site',
+        // GET /issues/site lists only IssueIds (no names, no Paging), so page client-side and look
+        // up just the requested page's issues, a few at a time.
+        const response = await client.request<SiteIssue[] | { Items?: SiteIssue[] }>({ method: 'GET', url: '/issues/site' });
+        const siteIssues = (Array.isArray(response) ? response : response?.Items) ?? [];
+        const pageSize = normalizePageSize(args.pageSize || 25);
+        const pageIndex = normalizePageIndex(args.pageIndex);
+        const page = siteIssues.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+        const lines = await mapLimit(page, SITE_ISSUE_LOOKUPS_IN_FLIGHT, (row) => siteIssueLine(client, row.IssueId));
+        const unnamed = lines.filter((l) => !l.named).length;
+        const result = formatListPage({
+          rows: lines.map((l) => l.line),
+          total: siteIssues.length,
+          pageIndex,
+          pageSize,
+          noun: 'site issues',
+          emptyText: 'No issues found for this site.',
+          render: (line) => line,
         });
-        
-        // Handle different response formats
-        const issues = Array.isArray(response) ? response : response?.Items || [];
-        
-        if (issues.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No issues found for this site.',
-            }],
-          };
+        if (unnamed > 0 && result.content[0]) {
+          result.content[0].text += `\n\nNote: ${unnamed} of ${lines.length} issue names could not be read; those rows show the IssueId.`;
         }
-        
-        // Group by category or scope
-        const issuesByCategory: Record<string, any[]> = {};
-        issues.forEach((issue: Issue) => {
-          const category = issue.Category || issue.Scope || 'Uncategorized';
-          if (!issuesByCategory[category]) issuesByCategory[category] = [];
-          issuesByCategory[category].push(issue);
-        });
-        
-        let output = `Site Issues (${issues.length} total):\n`;
-        
-        for (const [category, categoryIssues] of Object.entries(issuesByCategory)) {
-          output += `\n${category} (${categoryIssues.length} issues):\n`;
-          categoryIssues.slice(0, 5).forEach(issue => {
-            output += `  • ${issue.Name}\n`;
-            if (issue.Description) {
-              output += `    ${issue.Description.substring(0, 50)}...\n`;
-            }
-          });
-          if (categoryIssues.length > 5) {
-            output += `  ... and ${categoryIssues.length - 5} more\n`;
-          }
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
+        return result;
       }
       
       case 'issues_get_types': {
-        const response = await client.request<any>({
+        // GET /issues/types returns only the first 50 types, so read the whole paged POST list.
+        const { items, truncated } = await listIssueTypes(client);
+        const scope = typeof args.scope === 'string' && args.scope !== 'All' ? args.scope.toLowerCase() : '';
+        const filtered = scope ? items.filter((type) => type.Scope?.toLowerCase() === scope) : items;
+        return formatListPage({
+          rows: filtered,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 25,
+          noun: 'issue types',
+          emptyText: 'No issue types found.',
+          render: (type: IssueType) => `• ${type.Name}\n  Scope: ${type.Scope || 'N/A'} | ID: ${type.IssueTypeId}`,
+          truncated,
+        });
+      }
+
+      case 'issues_get_type_details': {
+        const response = await client.request<{ Item?: IssueType } & IssueType>({
           method: 'GET',
-          url: '/issues/types',
+          url: `/issues/types/${pathSegment(args.typeId)}`,
         });
-        
-        const types = Array.isArray(response) ? response : response?.Items || [];
-        
-        if (types.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No issue types found.',
-            }],
-          };
-        }
-        
-        // Filter by scope if requested
-        let filteredTypes = types;
-        if (args.scope && args.scope !== 'All') {
-          filteredTypes = types.filter((t: IssueType) => t.Scope === args.scope);
-        }
-        
-        // Group by category
-        const typesByCategory: Record<string, IssueType[]> = {};
-        filteredTypes.forEach((type: IssueType) => {
-          const category = type.Category || 'General';
-          if (!typesByCategory[category]) typesByCategory[category] = [];
-          typesByCategory[category].push(type);
-        });
-        
-        let output = `Issue Types (${filteredTypes.length}):\n`;
-        
-        for (const [category, categoryTypes] of Object.entries(typesByCategory)) {
-          output += `\n${category}:\n`;
-          categoryTypes.forEach(type => {
-            output += `  • ${type.Name}`;
-            if (type.Scope) output += ` (${type.Scope})`;
-            if (type.IsDefault) output += ' ⭐';
-            output += '\n';
-          });
-        }
-        
+        const type = (response?.Item ?? response) as IssueType;
         return {
           content: [{
             type: 'text',
-            text: output,
+            text: `Issue Type Details:
+Name: ${type.Name}
+Scope: ${type.Scope || 'N/A'}
+Product ID: ${type.ProductId || 'N/A'}
+ID: ${type.IssueTypeId}`,
           }],
         };
       }
-      
+
       case 'issues_search_types': {
         const { items, truncated } = await listIssueTypes(client, args.includeDeleted || false);
         const matched = items.filter((type) =>
           matchesText(args.searchText, type.Name) &&
-          (!args.scope || args.scope === 'All' || type.Scope?.toLowerCase() === String(args.scope).toLowerCase()) &&
-          matchesText(args.category, type.Category, type.Name)
+          (!args.scope || args.scope === 'All' || type.Scope?.toLowerCase() === String(args.scope).toLowerCase())
         );
         return formatListPage({
           rows: matched,
@@ -618,9 +358,7 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
           noun: 'issue types',
           emptyText: 'No issue types found matching your criteria.',
           render: (type: IssueType) =>
-            `• ${type.Name}${type.Category ? ` (${type.Category})` : ''}
-  Scope: ${type.Scope} | Active: ${type.IsActive ? 'Yes' : 'No'}
-  ${type.Metadata ? `Usage: ${type.Metadata.UsageCount || 0} times` : ''}`,
+            `• ${type.Name}\n  Scope: ${type.Scope || 'N/A'} | ID: ${type.IssueTypeId}`,
           truncated,
         });
       }
@@ -643,59 +381,18 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
           });
         }
         
-        // Categorize classroom issues
-        const categories = {
-          projector: classroomIssues.filter((i: IssueType) => 
-            i.Name.toLowerCase().includes('projector')),
-          board: classroomIssues.filter((i: IssueType) => 
-            i.Name.toLowerCase().includes('board') || 
-            i.Name.toLowerCase().includes('smart')),
-          audio: classroomIssues.filter((i: IssueType) => nameHasAny(i, CLASSROOM_AUDIO_WORDS)),
-          other: classroomIssues.filter((i: IssueType) =>
-            !i.Name.toLowerCase().includes('projector') &&
-            !i.Name.toLowerCase().includes('board') &&
-            !i.Name.toLowerCase().includes('smart') &&
-            !nameHasAny(i, CLASSROOM_AUDIO_WORDS)),
-        };
-        
-        let output = 'Classroom Technology Issues:\n';
-        
-        if (categories.projector.length > 0) {
-          output += '\nProjector Issues:\n';
-          categories.projector.forEach((i: IssueType) => {
-            output += `  • ${i.Name}\n`;
-          });
-        }
-        
-        if (categories.board.length > 0) {
-          output += '\nInteractive Board Issues:\n';
-          categories.board.forEach((i: IssueType) => {
-            output += `  • ${i.Name}\n`;
-          });
-        }
-        
-        if (categories.audio.length > 0) {
-          output += '\nAudio System Issues:\n';
-          categories.audio.forEach((i: IssueType) => {
-            output += `  • ${i.Name}\n`;
-          });
-        }
-        
-        if (categories.other.length > 0) {
-          output += '\nOther Classroom Issues:\n';
-          categories.other.slice(0, 5).forEach((i: IssueType) => {
-            output += `  • ${i.Name}\n`;
-          });
-        }
-        
-        return withTruncationNote(truncated, {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        });
+        const classroomGroup = (i: IssueType) =>
+          i.Name.toLowerCase().includes('projector') ? 'Projector Issues'
+            : /board|smart/i.test(i.Name) ? 'Interactive Board Issues'
+              : nameHasAny(i, CLASSROOM_AUDIO_WORDS) ? 'Audio System Issues'
+                : 'Other Classroom Issues';
+        return groupedIssuePage(
+          classroomIssues, classroomGroup,
+          ['Projector Issues', 'Interactive Board Issues', 'Audio System Issues', 'Other Classroom Issues'],
+          args, 'classroom technology issue types', 'No classroom technology issues found.', truncated
+        );
       }
-      
+
       case 'issues_get_student_devices': {
         // Student device issue types, matched by name (the server ignores SearchText).
         const words = args.deviceType && args.deviceType !== 'All'
@@ -713,133 +410,14 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
           });
         }
         
-        // Group by device type
-        const issuesByDevice: Record<string, IssueType[]> = {};
-        deviceIssues.forEach((issue: IssueType) => {
-          let device = 'Other';
-          if (issue.Name.toLowerCase().includes('chromebook')) device = 'Chromebook';
-          else if (issue.Name.toLowerCase().includes('ipad')) device = 'iPad';
-          else if (issue.Name.toLowerCase().includes('laptop')) device = 'Laptop';
-          else if (issue.Name.toLowerCase().includes('hotspot')) device = 'Hotspot';
-          
-          if (!issuesByDevice[device]) issuesByDevice[device] = [];
-          issuesByDevice[device].push(issue);
-        });
-        
-        let output = `Student Device Issues (${deviceIssues.length} total):\n`;
-        
-        for (const [device, issues] of Object.entries(issuesByDevice)) {
-          output += `\n${device} (${issues.length}):\n`;
-          issues.slice(0, 5).forEach(issue => {
-            output += `  • ${issue.Name}\n`;
-          });
-          if (issues.length > 5) {
-            output += `  ... and ${issues.length - 5} more\n`;
-          }
-        }
-        
-        return withTruncationNote(truncated, {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        });
+        const deviceGroup = (i: IssueType) =>
+          ['Chromebook', 'iPad', 'Laptop', 'Hotspot'].find((d) => i.Name.toLowerCase().includes(d.toLowerCase())) ?? 'Other';
+        return groupedIssuePage(
+          deviceIssues, deviceGroup, ['Chromebook', 'iPad', 'Laptop', 'Hotspot', 'Other'],
+          args, 'student device issue types', 'No student device issues found.', truncated
+        );
       }
-      
-      case 'issues_get_common_issues': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: '/issues/common',
-        });
-        
-        const commonIssues = Array.isArray(response) ? response : response?.Items || [];
-        
-        if (commonIssues.length === 0) {
-          // Return common K-12 issues based on experience
-          return {
-            content: [{
-              type: 'text',
-              text: `Common K-12 Issues (Based on Patterns):
 
-Password Reset:
-  • Student password reset
-  • Parent portal password
-  • Staff account locked
-
-Device Issues:
-  • Chromebook won't turn on
-  • Broken screen
-  • Lost charger
-  • Keyboard not working
-
-Network Problems:
-  • Can't connect to WiFi
-  • Internet is slow
-  • Blocked website
-
-Classroom Technology:
-  • Projector not working
-  • No sound from speakers
-  • Interactive board frozen
-
-Account Access:
-  • Can't login to Google
-  • Missing from class roster
-  • Parent can't see grades`,
-            }],
-          };
-        }
-        
-        const limit = args.limit || 10;
-        const limitedIssues = commonIssues.slice(0, limit);
-        
-        const issueList = limitedIssues.map((issue: Issue, index: number) =>
-          `${index + 1}. ${issue.Name}
-   ${issue.Description || 'No description'}
-   ${issue.Resolution ? `Resolution: ${issue.Resolution.Steps[0] || 'See details'}` : ''}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Top ${limitedIssues.length} Common Issues:
-
-${issueList}`,
-          }],
-        };
-      }
-      
-      case 'issues_find_by_keyword': {
-        const keyword = args.keyword.toLowerCase();
-        
-        // Map common keywords to issue types
-        const keywordMap: Record<string, string[]> = {
-          'password': ['Password Reset', 'Account Locked', 'Can\'t Login'],
-          'chromebook': ['Chromebook Won\'t Turn On', 'Broken Screen', 'Keyboard Issue'],
-          'wifi': ['Can\'t Connect to WiFi', 'WiFi Slow', 'Network Error'],
-          'projector': ['Projector No Display', 'No Signal', 'Remote Not Working'],
-          'printer': ['Can\'t Print', 'Paper Jam', 'Out of Toner'],
-          'google': ['Google Login Failed', 'Google Drive Full', 'Classroom Sync'],
-          'parent': ['Parent Portal Access', 'Parent Can\'t Login', 'Missing Student'],
-          'screen': ['Broken Screen', 'Screen Flickering', 'Touch Not Working'],
-          'sound': ['No Audio', 'Microphone Not Working', 'Speaker Issues'],
-          'charger': ['Lost Charger', 'Charger Not Working', 'Wrong Charger'],
-        };
-        
-        const relatedIssues = keywordMap[keyword] || [`${args.keyword} Issue`];
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Issues related to "${args.keyword}":
-
-${relatedIssues.map(issue => `• ${issue}`).join('\n')}
-
-To create a ticket for any of these issues, use the appropriate template or provide more details.`,
-          }],
-        };
-      }
-      
       default:
         return {
           content: [{

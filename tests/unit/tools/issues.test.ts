@@ -10,12 +10,12 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 const issueTypes = [
-  { IssueTypeId: 'i1', Name: 'Projector not displaying', Scope: 'Tickets' },
-  { IssueTypeId: 'i2', Name: 'Chromebook cracked screen', Scope: 'Tickets' },
-  { IssueTypeId: 'i3', Name: 'Interactive board calibration', Scope: 'Tickets' },
-  { IssueTypeId: 'i4', Name: 'Password reset', Scope: 'Users' },
-  { IssueTypeId: 'i5', Name: 'iPad will not charge', Scope: 'Assets' },
-  { IssueTypeId: 'i6', Name: 'Classroom speaker static', Scope: 'Tickets' },
+  { IssueTypeId: 'i1', Name: 'Projector not displaying', Scope: 'Global' },
+  { IssueTypeId: 'i2', Name: 'Chromebook cracked screen', Scope: 'Global' },
+  { IssueTypeId: 'i3', Name: 'Interactive board calibration', Scope: 'Global' },
+  { IssueTypeId: 'i4', Name: 'Password reset', Scope: 'Site' },
+  { IssueTypeId: 'i5', Name: 'iPad will not charge', Scope: 'Global' },
+  { IssueTypeId: 'i6', Name: 'Classroom speaker static', Scope: 'Global' },
 ];
 
 /**
@@ -48,7 +48,7 @@ describe('issues_search_types', () => {
   });
 
   it('filters by scope', async () => {
-    const text = await textOf('issues_search_types', { scope: 'Users' });
+    const text = await textOf('issues_search_types', { scope: 'Site' });
     expect(text).toContain('Password reset');
     expect(text).not.toContain('Projector');
   });

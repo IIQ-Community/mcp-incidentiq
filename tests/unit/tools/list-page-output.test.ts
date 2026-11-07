@@ -63,8 +63,8 @@ describe('customfield_search output', () => {
 
 describe('issues_search_types output', () => {
   const types = [
-    { IssueTypeId: 'i1', Name: 'Projector bulb', Scope: 'Tickets', IsActive: true },
-    { IssueTypeId: 'i2', Name: 'Projector remote', Scope: 'Tickets', IsActive: false, Category: 'AV', Metadata: { UsageCount: 3 } },
+    { IssueTypeId: 'i1', Name: 'Projector bulb', Scope: 'Global' },
+    { IssueTypeId: 'i2', Name: 'Projector remote', Scope: 'Site', Category: 'AV' }, // Category is not a live field; rows must not show it
   ];
   const use = () => server.use(http.post(`${BASE}/issues/types`, paged(types)));
   const run = (args: object) => textOf(handleEnhancedIssuesTool as Handler, 'issues_search_types', args);
@@ -73,8 +73,8 @@ describe('issues_search_types output', () => {
     use();
     expect(await run({ searchText: 'projector' })).toBe(
       'Found 2 issue types (showing 2):\n\n' +
-      '• Projector bulb\n  Scope: Tickets | Active: Yes\n  \n\n' +
-      '• Projector remote (AV)\n  Scope: Tickets | Active: No\n  Usage: 3 times\n\n' +
+      '• Projector bulb\n  Scope: Global | ID: i1\n\n' +
+      '• Projector remote\n  Scope: Site | ID: i2\n\n' +
       'Page 1 of 1'
     );
   });
@@ -82,7 +82,7 @@ describe('issues_search_types output', () => {
   it('renders a later page exactly', async () => {
     use();
     expect(await run({ searchText: 'projector', pageSize: 1, pageIndex: 1 })).toBe(
-      'Found 2 issue types (showing 1):\n\n• Projector remote (AV)\n  Scope: Tickets | Active: No\n  Usage: 3 times\n\nPage 2 of 2'
+      'Found 2 issue types (showing 1):\n\n• Projector remote\n  Scope: Site | ID: i2\n\nPage 2 of 2'
     );
   });
 
@@ -167,7 +167,7 @@ const TOOLS: Array<{
   {
     tool: 'issues_search_types', noun: 'issue types', handler: handleEnhancedIssuesTool as Handler,
     use: (rows) => server.use(http.post(`${BASE}/issues/types`, paged(rows))),
-    row: (i) => ({ IssueTypeId: `i${i}`, Name: `Match ${i}`, Scope: 'Tickets', IsActive: true }),
+    row: (i) => ({ IssueTypeId: `i${i}`, Name: `Match ${i}`, Scope: 'Global' }),
     bullet: (i) => `• Match ${i}\n`,
   },
   {
