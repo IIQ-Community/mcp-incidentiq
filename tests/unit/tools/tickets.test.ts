@@ -83,6 +83,21 @@ describe('Ticket Tools', () => {
         // Either shows statuses or "No ticket statuses found"
       });
 
+      it('lists status ids usable as ticket_search statusIds (TicketStatusTypeId)', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/statuses', () =>
+            HttpResponse.json({
+              ItemCount: 1,
+              Items: [{ TicketStatusTypeId: 'st-guid-1', StatusName: 'Open', StepName: 'Awaiting Agent', IsClosed: false }],
+            })
+          )
+        );
+        const text = (await handleTicketTool('ticket_get_statuses', {})).content[0].text as string;
+        expect(text).toContain('Awaiting Agent (Open)');
+        expect(text).toContain('ID: st-guid-1');
+        expect(text).not.toContain('undefined');
+      });
+
       it('should handle ticket_get_priorities', async () => {
         const result = await handleTicketTool('ticket_get_priorities', {});
         expect(result.content[0].text).toBeDefined();
@@ -92,6 +107,87 @@ describe('Ticket Tools', () => {
       it('should handle ticket_get_categories gracefully', async () => {
         const result = await handleTicketTool('ticket_get_categories', {});
         expect(result.content[0].text).toContain('Unknown ticket tool');
+      });
+    });
+
+    describe('ticket_get', () => {
+      const ticketId = '9a1b2c3d-0000-4000-8000-000000000001';
+
+      // Shaped like IIQ's real GET /tickets/{TicketId} response (ItemGetResponseOfTicket):
+      // the ticket sits under `Item`, with nested user/step/location objects.
+      const realEnvelope = {
+        RequestDate: '2026-11-05T16:00:00Z',
+        ExecutionTime: 42,
+        StatusCode: 200,
+        ProcessId: 'proc-1',
+        Properties: {},
+        Item: {
+          TicketId: ticketId,
+          TicketNumber: '104233',
+          Subject: 'Chromebook screen cracked',
+          IssueDescription: 'Student dropped device in hallway.',
+          CreatedDate: '2026-11-04T15:30:00Z',
+          WorkflowStep: { StepName: 'In Progress', StatusName: 'Open' },
+          PriorityLevel: { Name: 'High' },
+          For: { UserId: 'u-1', Name: 'Jordan Rivera' },
+          AssignedToUser: { UserId: 'u-2', Name: 'Alex Kim' },
+          AssignedToTeam: { TeamName: 'Tier 1 Support' },
+          Location: { Name: 'Highline High School' },
+          IsUrgent: true,
+          HasSensitiveInformation: false,
+        },
+      };
+
+      it('reads the ticket from the Item envelope and maps nested fields', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json(realEnvelope)),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).not.toContain('undefined');
+        expect(text).toContain('Ticket #104233');
+        expect(text).toContain('Subject: Chromebook screen cracked');
+        expect(text).toContain('Status: In Progress');
+        expect(text).toContain('Priority: High');
+        expect(text).toContain('Created: 2026-11-04T15:30:00Z');
+        expect(text).toContain('Description: Student dropped device in hallway.');
+        expect(text).toContain('Requestor: Jordan Rivera');
+        expect(text).toContain('Assigned To: Alex Kim (Tier 1 Support)');
+        expect(text).toContain('Location: Highline High School');
+        expect(text).toContain('Urgent: Yes');
+        expect(text).toContain('Sensitive: No');
+        expect(text).toContain(`ID: ${ticketId}`);
+      });
+
+      it('falls back to defaults when optional nested fields are absent', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json({
+              Item: { TicketId: ticketId, TicketNumber: '7', Subject: 'Bare ticket', CreatedDate: '2026-11-01' },
+            })),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).not.toContain('undefined');
+        expect(text).toContain('Status: Unknown');
+        expect(text).toContain('Priority: Normal');
+        expect(text).toContain('Requestor: Unknown');
+        expect(text).toContain('Assigned To: Unassigned');
+        expect(text).toContain('Location: Not specified');
+      });
+
+      it('reports not found when the envelope has no Item', async () => {
+        server.use(
+          http.get('https://test.incidentiq.com/api/v1.0/tickets/:ticketId', () =>
+            HttpResponse.json({ StatusCode: 200, Item: null })),
+        );
+
+        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+
+        expect(text).toBe('Ticket not found.');
       });
     });
 
@@ -120,13 +216,13 @@ describe('Ticket Tools', () => {
 describe('ticket_search facet filtering', () => {
   const BASE = 'https://test.incidentiq.com/api/v1.0';
 
-  function mkTicket(suffix: string, statusId: string, agentId: string) {
+  function mkTicket(suffix: string, statusId: string, agentId: string, subject = `Subject ${suffix}`) {
     return {
       TicketId: `tk-${suffix}`,
       TicketNumber: 1000 + Number(suffix),
-      Subject: `Subject ${suffix}`,
-      StatusId: statusId,
-      StatusName: statusId,
+      Subject: subject,
+      // Live list items carry status only on WorkflowStep (no top-level StatusId), verified 2026-11-06.
+      WorkflowStep: { StatusId: statusId, StatusName: `Status ${statusId}`, StepName: `Step ${statusId}` },
       AssignedToId: agentId,
       CreatedDate: '2024-01-01T00:00:00Z',
     };
@@ -171,19 +267,119 @@ describe('ticket_search facet filtering', () => {
     expect(text).toContain('ID: tk-3');
   });
 
+  /**
+   * Models live IIQ POST /tickets (verified 2026-11-06): pages ONLY by the $p/$s query
+   * (body Paging is ignored; default page size 20), filters by agent and keyword facets,
+   * and ignores body SearchText.
+   */
+  function iiqTicketsHandler(dataset: ReturnType<typeof mkTicket>[], seen: Array<{ url: URL; body: any }> = []) {
+    return http.post(`${BASE}/tickets`, async ({ request }) => {
+      const url = new URL(request.url);
+      const body = (await request.json()) as any;
+      seen.push({ url, body });
+      const filters: Array<{ Facet: string; Id?: string; Value?: string }> = body.Filters ?? [];
+      const agentIds = filters.filter((f) => f.Facet === 'agent').map((f) => f.Id);
+      const keywords = filters.filter((f) => f.Facet === 'keyword').map((f) => String(f.Value).toLowerCase());
+      const matched = dataset.filter((t) =>
+        (agentIds.length === 0 || agentIds.includes(t.AssignedToId)) &&
+        keywords.every((k) => `${t.TicketNumber} ${t.Subject}`.toLowerCase().includes(k)));
+      const p = Number(url.searchParams.get('$p') ?? 0);
+      const s = Number(url.searchParams.get('$s') ?? 20);
+      const items = matched.slice(p * s, p * s + s);
+      return HttpResponse.json({
+        Items: items,
+        ItemCount: items.length,
+        Paging: { PageIndex: p, PageSize: s, PageCount: Math.ceil(matched.length / s), TotalRows: matched.length },
+      });
+    });
+  }
+
+  it('returns the requested page and page size, paging via the $p/$s query (#94)', async () => {
+    const dataset = Array.from({ length: 120 }, (_, i) => mkTicket(String(i), 's1', 'a'));
+    const seen: Array<{ url: URL; body: any }> = [];
+    server.use(iiqTicketsHandler(dataset, seen));
+
+    const text = (await handleTicketTool('ticket_search', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+
+    expect(text.match(/ID: tk-\d+/g)).toHaveLength(50);
+    expect(text).toMatch(/ID: tk-50\b/);
+    expect(text).toMatch(/ID: tk-99\b/);
+    expect(text).not.toMatch(/ID: tk-49\b/);
+    expect(text).toContain('Page 2 of 3');
+    expect(seen[0].body).not.toHaveProperty('Paging');
+  });
+
+  it('reports the server total (Paging.TotalRows), not the page item count', async () => {
+    const dataset = Array.from({ length: 120 }, (_, i) => mkTicket(String(i), 's1', 'a'));
+    server.use(iiqTicketsHandler(dataset));
+
+    const text = (await handleTicketTool('ticket_search', { pageSize: 5 })).content[0].text as string;
+
+    expect(text).toContain('Found 120 tickets (showing 5)');
+  });
+
+  it('shows each ticket status from WorkflowStep', async () => {
+    server.use(iiqTicketsHandler([mkTicket('1', 's1', 'a')]));
+
+    const text = (await handleTicketTool('ticket_search', {})).content[0].text as string;
+
+    expect(text).toContain('Status: Step s1 (Status s1)');
+    expect(text).not.toContain('Status: Unknown');
+  });
+
+  it('scans status pages via the $p/$s query, finding matches beyond the first page (#94)', async () => {
+    const dataset = Array.from({ length: 250 }, (_, i) => mkTicket(String(i), i === 230 ? 's1' : 's2', 'a'));
+    const seen: Array<{ url: URL; body: any }> = [];
+    server.use(iiqTicketsHandler(dataset, seen));
+
+    const text = (await handleTicketTool('ticket_search', { statusIds: ['s1'] })).content[0].text as string;
+
+    expect(text).toMatch(/ID: tk-230\b/);
+    expect(seen.map((r) => r.url.searchParams.get('$p'))).toEqual(['0', '1', '2']);
+    expect(seen.every((r) => r.url.searchParams.get('$s') === '100')).toBe(true);
+  });
+
+  it('sends searchText as a keyword facet, ANDed with the other facets (#92)', async () => {
+    const dataset = [
+      mkTicket('1', 's1', 'a1', 'Projector will not turn on'),
+      mkTicket('2', 's1', 'a2', 'Projector bulb out'),
+      mkTicket('3', 's1', 'a1', 'Chromebook screen cracked'),
+    ];
+    const seen: Array<{ url: URL; body: any }> = [];
+    server.use(iiqTicketsHandler(dataset, seen));
+
+    const text = (await handleTicketTool('ticket_search', { searchText: 'projector', agentIds: ['a1'] })).content[0].text as string;
+
+    expect(text).toMatch(/ID: tk-1\b/);
+    expect(text).not.toMatch(/ID: tk-2\b/);
+    expect(text).not.toMatch(/ID: tk-3\b/);
+    expect(seen[0].body.Filters).toEqual(
+      expect.arrayContaining([{ Facet: 'keyword', Value: 'projector' }, { Facet: 'agent', Id: 'a1' }])
+    );
+    expect(seen[0].body).not.toHaveProperty('SearchText');
+  });
+
   it('resolves an agent email (any domain) to a user GUID and filters by it', async () => {
     let capturedFilters: Array<{ Facet: string; Id: string }> | undefined;
+    // Models live IIQ POST /users (#93): body SearchText is ignored (returns an unrelated first
+    // page); only the `email` facet narrows to the user, matching case-insensitively.
+    const unrelated = Array.from({ length: 20 }, (_, i) => ({ UserId: `u-${i}`, Email: `user${i}@example.org` }));
     server.use(
-      http.post(`${BASE}/users`, () =>
-        HttpResponse.json({ Items: [{ UserId: 'agent-42', Email: 'agent@example.org' }], ItemCount: 1, Paging: { PageIndex: 0, PageCount: 1, PageSize: 100 } })
-      ),
+      http.post(`${BASE}/users`, async ({ request }) => {
+        const body = (await request.json()) as { Filters?: Array<{ Facet: string; Value?: string }> };
+        const emailFacet = (body.Filters ?? []).find((f) => f.Facet === 'email');
+        const items = emailFacet
+          ? [{ UserId: 'agent-42', Email: 'agent@example.org' }].filter((u) => u.Email === emailFacet.Value?.toLowerCase())
+          : unrelated;
+        return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { PageIndex: 0, PageCount: 1, PageSize: 20 } });
+      }),
       http.post(`${BASE}/tickets`, async ({ request }) => {
         const body = (await request.json()) as { Filters?: Array<{ Facet: string; Id: string }> };
         capturedFilters = body.Filters;
         return HttpResponse.json({ Items: [mkTicket('1', 's1', 'agent-42')], ItemCount: 1, Paging: { PageIndex: 0, PageCount: 1, PageSize: 20 } });
       })
     );
-    const result = await handleTicketTool('ticket_search', { agentEmails: ['agent@example.org'] });
+    const result = await handleTicketTool('ticket_search', { agentEmails: ['Agent@Example.org'] });
     const text = result.content[0].text as string;
     expect(text).toContain('ID: tk-1');
     expect(capturedFilters).toEqual([{ Facet: 'agent', Id: 'agent-42' }]);

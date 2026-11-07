@@ -8,11 +8,24 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { 
-  IIQLocation,
-  PaginatedRequest,
-  PaginatedResponse 
-} from '../types/common.js';
+import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+import { IIQLocation } from '../types/common.js';
+
+/** Location as returned by GET /locations/all (live shape) plus the legacy flat fields. */
+type ListedLocation = IIQLocation & { Description?: string; LocationType?: { Name?: string }; IsDeleted?: boolean };
+
+/** Room as returned by GET /locations/rooms and GET /locations/{id}/rooms (live shape, verified 2026-11-06). */
+interface ListedRoom {
+  LocationRoomId: string;
+  Name?: string;
+  Description?: string;
+  LocationRoomTypeName?: string;
+  LocationId?: string;
+  LocationName?: string;
+}
+
+const locationName = (loc: ListedLocation): string => loc.Name || loc.LocationName || 'Unnamed';
+const locationTypeName = (loc: ListedLocation): string | undefined => loc.LocationType?.Name || loc.LocationTypeName;
 
 // Location-specific types
 export interface LocationRoom {
@@ -70,34 +83,17 @@ export const enhancedLocationTools = [
   },
   {
     name: 'location_search_advanced',
-    description: 'Advanced location search with filters (POST /locations)',
+    description: 'Search district locations by name/code/description and type (filters GET /locations/all; IIQ has no location search endpoint)',
     inputSchema: {
       type: 'object',
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in name, code, room number',
+          description: 'Text matched against location name, abbreviation/code and description',
         },
         locationType: {
           type: 'string',
-          enum: ['Building', 'Room', 'Campus', 'Classroom', 'Lab', 'Office', 'Common'],
-          description: 'Filter by location type',
-        },
-        buildingId: {
-          type: 'string',
-          description: 'Filter by parent building ID',
-        },
-        floor: {
-          type: 'number',
-          description: 'Filter by floor number',
-        },
-        hasAssets: {
-          type: 'boolean',
-          description: 'Only locations with assets',
-        },
-        isAvailable: {
-          type: 'boolean',
-          description: 'Only available locations',
+          description: 'Location type name, e.g. "Elementary School" (see location_get_types)',
         },
         includeDeleted: {
           type: 'boolean',
@@ -420,62 +416,25 @@ export async function handleEnhancedLocationTool(name: string, args: any) {
       }
       
       case 'location_search_advanced': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: args.includeDeleted || false,
-          FilterByViewPermission: false,
-          SearchText: args.searchText,
-          Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 100,
-          },
-        };
-        
-        if (args.locationType) {
-          payload.Filters!.push({
-            Facet: 'LocationType',
-            Id: args.locationType,
-          });
-        }
-        
-        if (args.buildingId) {
-          payload.Filters!.push({
-            Facet: 'ParentLocation',
-            Id: args.buildingId,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<IIQLocation>>({
-          method: 'POST',
-          url: '/locations',
-          data: payload,
+        // IIQ has no location search (POST /locations returns 400), so filter the full list.
+        const { items, truncated } = await iiqListAll<ListedLocation>(client, '/locations/all');
+        const matched = items.filter((loc) =>
+          (args.includeDeleted || !loc.IsDeleted) &&
+          matchesText(args.searchText, locationName(loc), loc.Abbreviation, loc.Description) &&
+          (!args.locationType || locationTypeName(loc)?.toLowerCase() === String(args.locationType).trim().toLowerCase())
+        );
+
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 100,
+          noun: 'locations',
+          emptyText: 'No locations found matching your criteria.',
+          render: (loc: ListedLocation) =>
+            `• ${locationName(loc)}${loc.Abbreviation ? ` (${loc.Abbreviation})` : ''}
+  Type: ${locationTypeName(loc) || 'Unknown'} | ID: ${loc.LocationId}`,
+          truncated,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No locations found matching your criteria.',
-            }],
-          };
-        }
-        
-        const locationList = response.Items.slice(0, 10).map((loc: IIQLocation) =>
-          `• ${loc.LocationName || loc.Name}${loc.Abbreviation ? ` (${loc.Abbreviation})` : ''}
-  Type: ${loc.LocationTypeName || 'Unknown'}${loc.BuildingName ? ` | Building: ${loc.BuildingName}` : ''}
-  ${loc.RoomNumber ? `Room: ${loc.RoomNumber}` : ''}${loc.Floor ? ` | Floor: ${loc.Floor}` : ''}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${response.ItemCount} locations (showing ${Math.min(10, response.Items.length)}):
-
-${locationList}
-
-${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more locations` : ''}`,
-          }],
-        };
       }
       
       case 'location_get_details': {
@@ -689,57 +648,36 @@ ${typeList}`,
       }
       
       case 'location_find_special_rooms': {
-        // Search for special purpose rooms
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: args.roomType,
-          Filters: [{
-            Facet: 'LocationType',
-            Id: 'Room',
-          }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        if (args.buildingId) {
-          payload.Filters!.push({
-            Facet: 'ParentLocation',
-            Id: args.buildingId,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<IIQLocation>>({
-          method: 'POST',
-          url: '/locations',
-          data: payload,
-        });
-        
-        const specialRooms = response?.Items || [];
+        // IIQ has no room search (POST /locations returns 400): list rooms and match by name.
+        const roomsUrl = args.buildingId
+          ? `/locations/${encodeURIComponent(args.buildingId)}/rooms`
+          : '/locations/rooms';
+        const { items, truncated } = await iiqListAll<ListedRoom>(client, roomsUrl, { pageSize: 5000 });
+        const specialRooms = items.filter((room) =>
+          matchesText(args.roomType, room.Name, room.Description, room.LocationRoomTypeName)
+        );
         
         if (specialRooms.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: `No ${args.roomType} rooms found.`,
             }],
-          };
+          });
         }
         
-        const roomList = specialRooms.map((room: IIQLocation) =>
-          `• ${room.LocationName || room.Name} - ${room.BuildingName || 'Unknown Building'}`
+        const roomList = specialRooms.map((room) =>
+          `• ${room.Name || 'Unnamed room'} - ${room.LocationName || 'Unknown Building'}`
         ).join('\n');
         
-        return {
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: `${args.roomType} Rooms (${specialRooms.length}):
 
 ${roomList}`,
           }],
-        };
+        });
       }
       
       case 'location_get_assets': {
@@ -776,62 +714,31 @@ ${assets.length > 10 ? `\n...and ${assets.length - 10} more assets` : ''}`,
       }
       
       case 'location_find_by_code': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: `/locations/code/${args.code}`,
-        });
-        
-        const location = response?.Item || response;
-        
+        // GET /locations/code/{code} returns 404 even for real codes (verified 2026-11-06), so
+        // match the abbreviation against the location list.
+        const code = String(args.code ?? '').trim();
+        const { items, truncated } = await iiqListAll<ListedLocation>(client, '/locations/all');
+        const location = items.find((loc) => loc.Abbreviation?.toLowerCase() === code.toLowerCase());
+
         if (!location) {
-          // Fallback to search
-          const searchResponse = await client.request<PaginatedResponse<IIQLocation>>({
-            method: 'POST',
-            url: '/locations',
-            data: {
-              SearchText: args.code,
-              OnlyShowDeleted: false,
-              FilterByViewPermission: false,
-              Paging: { PageIndex: 0, PageSize: 10 },
-            },
-          });
-          
-          const matches = searchResponse?.Items?.filter((loc: IIQLocation) =>
-            loc.Abbreviation === args.code
-          ) || [];
-          
-          if (matches.length === 0) {
-            return {
-              content: [{
-                type: 'text',
-                text: `No location found with code: ${args.code}`,
-              }],
-            };
-          }
-          
-          const location = matches[0];
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
-              text: `Location Found:
-Name: ${location.LocationName || location.Name}
-Code: ${location.Abbreviation}
-Type: ${location.LocationTypeName || 'Unknown'}
-ID: ${location.LocationId}`,
+              text: `No location found with code: ${code}`,
             }],
-          };
+          });
         }
-        
-        return {
+
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: `Location Found:
-Name: ${location.LocationName || location.Name}
-Code: ${args.code}
-Type: ${location.LocationTypeName || 'Unknown'}
+Name: ${locationName(location)}
+Code: ${location.Abbreviation}
+Type: ${locationTypeName(location) || 'Unknown'}
 ID: ${location.LocationId}`,
           }],
-        };
+        });
       }
       
       default:

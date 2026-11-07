@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { IncidentIQClient } from '../../../src/api/client';
 import { server } from '../../mocks/server';
+import { http, HttpResponse } from 'msw';
 
 // Enable API mocking before tests
 beforeAll(() => server.listen());
@@ -123,13 +124,22 @@ describe('IncidentIQClient', () => {
   describe('User Operations', () => {
     describe('searchUsers', () => {
       it('should search users with filters', async () => {
-        const result = await client.searchUsers({
-          SearchText: 'staff',
-          PageIndex: 0,
-          PageSize: 10,
-        });
+        // IIQ ignores body SearchText on POST /users; filters go in facets (e.g. email).
+        let body: any;
+        server.use(
+          http.post('https://test.incidentiq.com/api/v1.0/users', async ({ request }) => {
+            body = await request.json();
+            return HttpResponse.json({ Items: [{ UserId: 'user-2', FullName: 'Jane Staff' }], ItemCount: 1 });
+          })
+        );
 
-        expect(result.Items).toHaveLength(1);
+        const result = await client.searchUsers({ Filters: [{ Facet: 'email', Value: 'jane.staff@example.test' }] });
+
+        expect(body).toEqual({
+          OnlyShowDeleted: false,
+          FilterByViewPermission: false,
+          Filters: [{ Facet: 'email', Value: 'jane.staff@example.test' }],
+        });
         expect(result.Items[0].FullName).toBe('Jane Staff');
       });
     });
@@ -164,11 +174,8 @@ describe('IncidentIQClient', () => {
   describe('Asset Operations', () => {
     describe('searchAssets', () => {
       it('should search assets with filters', async () => {
-        const result = await client.searchAssets({
-          SearchText: 'CHR',
-          PageIndex: 0,
-          PageSize: 10,
-        });
+        // IIQ ignores body SearchText on POST /assets; free text goes in the keyword facet.
+        const result = await client.searchAssets({ Filters: [{ Facet: 'keyword', Value: 'CHR' }] });
 
         expect(result.Items).toHaveLength(2);
         expect(result.Items[0].AssetTypeName).toBe('Chromebook');
@@ -243,14 +250,14 @@ describe('IncidentIQClient', () => {
 
     describe('searchLocations', () => {
       it('should search locations with filters', async () => {
+        // POST /locations returns 400 live; the search filters GET /locations/all instead.
         const result = await client.searchLocations({
-          SearchText: 'building',
+          SearchText: 'main',
           PageSize: 5
         });
 
-        expect(result).toBeDefined();
-        expect(result.Items).toBeDefined();
-        expect(Array.isArray(result.Items)).toBe(true);
+        expect(result.Items.map((loc) => loc.LocationName)).toEqual(['Main Building']);
+        expect(result.TotalCount).toBe(1);
       });
     });
   });

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { handleAssetTool, assetTools } from '../../../src/tools/assets';
 import { server } from '../../mocks/server';
+import { http, HttpResponse } from 'msw';
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -128,5 +129,37 @@ describe('Asset Tools', () => {
         expect(result.content[0].text).toContain('Unknown');
       });
     });
+  });
+});
+describe('asset_search_advanced against live IIQ semantics', () => {
+  const BASE = 'https://test.incidentiq.com/api/v1.0';
+
+  it('sends searchText as a keyword facet, not an ignored body SearchText', async () => {
+    let body: any;
+    server.use(
+      http.post(`${BASE}/assets`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ Items: [], ItemCount: 0, Paging: { TotalRows: 0 } });
+      })
+    );
+
+    await handleAssetTool('asset_search_advanced', { searchText: ' CHR-12345 ' });
+
+    expect(body.Filters).toContainEqual({ Facet: 'keyword', Value: 'CHR-12345' });
+    expect(body).not.toHaveProperty('SearchText');
+  });
+
+  it('reports the server total (Paging.TotalRows), not the page item count', async () => {
+    const items = Array.from({ length: 5 }, (_, i) => ({ AssetId: `a-${i}`, AssetTag: `TAG-${i}` }));
+    server.use(
+      http.post(`${BASE}/assets`, () =>
+        HttpResponse.json({ Items: items, ItemCount: 5, Paging: { PageIndex: 0, PageSize: 5, PageCount: 200, TotalRows: 1000 } })
+      )
+    );
+
+    const text = (await handleAssetTool('asset_search_advanced', { pageSize: 5 })).content[0].text as string;
+
+    expect(text).toContain('Found 1000 assets');
+    expect(text).toContain('Page 1 of 200');
   });
 });

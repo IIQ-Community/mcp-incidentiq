@@ -6,11 +6,10 @@ export interface IIQApiResponse<T> {
   ErrorCode?: string;
 }
 
-export interface IIQFilter {
-  Facet: string;
-  Id: string;
-  Negative?: boolean;
-}
+/** IIQ search facet: entity facets (agent, team, ...) take an `Id`; text facets (keyword, email) take a `Value`. */
+export type IIQFilter =
+  | { Facet: string; Id: string; Negative?: boolean }
+  | { Facet: string; Value: string; Negative?: boolean };
 
 export interface IIQPaginationParams {
   PageIndex?: number;
@@ -29,6 +28,8 @@ export interface IIQPagedResult<T> {
   TotalCount: number;
   PageIndex: number;
   PageSize: number;
+  /** Set when the source list was too large to read completely (TotalCount may undercount). */
+  Truncated?: boolean;
 }
 
 export interface PaginatedRequest {
@@ -49,6 +50,8 @@ export interface PaginatedResponse<T> {
     PageIndex: number;
     PageCount: number;
     PageSize: number;
+    /** Total matching rows across all pages; `ItemCount` is only this page's count. */
+    TotalRows?: number;
   };
 }
 
@@ -145,6 +148,8 @@ export interface Ticket {
   Status: string;
   StatusId?: string;
   StatusName?: string;
+  /** Live search-list items carry their status here, not in a top-level StatusId. */
+  WorkflowStep?: TicketWorkflowStep;
   Priority?: string;
   CreatedDate: string;
   ModifiedDate?: string;
@@ -155,6 +160,35 @@ export interface Ticket {
   IsSensitive?: boolean;
   DueDate?: string;
   ClosedDate?: string;
+}
+
+/** A ticket's workflow position; `StatusId` matches `TicketStatusTypeId` from GET /tickets/statuses. */
+export interface TicketWorkflowStep {
+  StatusId?: string;
+  StatusName?: string;
+  StepName?: string;
+}
+
+/** Full ticket from GET /tickets/{TicketId} (Swagger `Ticket`); display fields are nested objects, unlike the flat search-list Ticket. */
+export interface TicketDetail {
+  TicketId: string;
+  TicketNumber: string;
+  Subject?: string;
+  IssueDescription?: string;
+  CreatedDate?: string;
+  WorkflowStep?: { StepName?: string; StatusName?: string };
+  PriorityLevel?: { Name?: string };
+  For?: { Name?: string };
+  AssignedToUser?: { Name?: string };
+  AssignedToTeam?: { TeamName?: string };
+  Location?: { Name?: string };
+  IsUrgent?: boolean;
+  HasSensitiveInformation?: boolean;
+}
+
+/** Single-item envelope IIQ wraps GET-by-id responses in (Swagger `ItemGetResponseOf*`). */
+export interface IIQItemResponse<T> {
+  Item?: T | null;
 }
 
 export interface IIQTicketCreate {
@@ -190,13 +224,13 @@ export interface IIQTicketStatus {
   IsClosed?: boolean;
 }
 
+/** Item from GET /tickets/statuses (live shape verified 2026-11-06). */
 export interface TicketStatus {
-  TicketStatusId: string;
-  Name: string;
-  StatusType: string;
-  IsDefault?: boolean;
-  IsResolved?: boolean;
+  TicketStatusTypeId: string;
+  StatusName: string;
+  StepName?: string;
   IsClosed?: boolean;
+  IsDeleted?: boolean;
 }
 
 export interface IIQTicketCategory {

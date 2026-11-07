@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { handleUserTool, userTools } from '../../../src/tools/users';
 import { server } from '../../mocks/server';
 
@@ -135,5 +136,72 @@ describe('User Tools', () => {
         expect(result.content[0].type).toBe('text');
       });
     });
+  });
+});
+describe('IIQ paging via the $p/$s query (#94)', () => {
+  // Models live IIQ POST /users (verified 2026-11-06): body Paging is ignored and the
+  // default page is index 0 with 20 rows; only the $p/$s query pages.
+  const users = Array.from({ length: 250 }, (_, i) => ({ UserId: `u-${i}`, FullName: `User ${i}`, IsActive: true }));
+  beforeEach(() => {
+    server.use(
+      http.post('https://test.incidentiq.com/api/v1.0/users', ({ request }) => {
+        const url = new URL(request.url);
+        const p = Number(url.searchParams.get('$p') ?? 0);
+        const s = Number(url.searchParams.get('$s') ?? 20);
+        const items = users.slice(p * s, p * s + s);
+        return HttpResponse.json({
+          Items: items,
+          ItemCount: items.length,
+          Paging: { PageIndex: p, PageSize: s, PageCount: Math.ceil(users.length / s), TotalRows: users.length },
+        });
+      })
+    );
+  });
+
+  it('user_search_advanced returns the requested page', async () => {
+    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+    expect(text).toMatch(/• User 50\n/);
+    expect(text).not.toMatch(/• User 0\n/);
+  });
+
+  it('user_search_advanced reports the server total (Paging.TotalRows) and page count', async () => {
+    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+    expect(text).toContain('Found 250 users');
+    expect(text).toContain('Page 2 of 5');
+  });
+
+  it('user_get_students returns the requested page size and the server total', async () => {
+    const text = (await handleUserTool('user_get_students', { pageSize: 100 })).content[0].text as string;
+    expect(text).toContain('Student Directory (250 students, showing 100)');
+  });
+
+  it('user_get_staff returns a 100-row page and the server total', async () => {
+    const text = (await handleUserTool('user_get_staff', {})).content[0].text as string;
+    expect(text).toContain('Staff Directory (250 members, showing 100)');
+  });
+});
+
+describe('user_search_advanced text search', () => {
+  // Live IIQ ignores body SearchText on POST /users; GET /users/search/{term} is the text
+  // search (matches last name, email or username), paged by $p/$s. Verified 2026-11-06.
+  it('searches via GET /users/search/{term}, not an ignored body SearchText', async () => {
+    const seen: URL[] = [];
+    server.use(
+      http.post('https://test.incidentiq.com/api/v1.0/users', () =>
+        HttpResponse.json({ Items: [{ UserId: 'wrong', FullName: 'Unfiltered Person' }], ItemCount: 1, Paging: { TotalRows: 20000 } })
+      ),
+      http.get('https://test.incidentiq.com/api/v1.0/users/search/:term', ({ request, params }) => {
+        seen.push(new URL(request.url));
+        const items = params.term === 'Rivera' ? [{ UserId: 'u-1', FullName: 'Sam Rivera', IsActive: true }] : [];
+        return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { PageIndex: 0, PageSize: 25, PageCount: 1, TotalRows: items.length } });
+      })
+    );
+
+    const text = (await handleUserTool('user_search_advanced', { searchText: 'Rivera', pageSize: 25 })).content[0].text as string;
+
+    expect(text).toContain('Sam Rivera');
+    expect(text).not.toContain('Unfiltered Person');
+    expect(text).toContain('Found 1 users');
+    expect(seen[0].searchParams.get('$s')).toBe('25');
   });
 });

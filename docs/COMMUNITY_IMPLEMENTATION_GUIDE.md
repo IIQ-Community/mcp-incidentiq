@@ -10,11 +10,11 @@ const payload = {
   Filters: [{
     Facet: "View",
     Id: "your-view-guid-here"
-  }],
-  Paging: {
-    PageSize: 1000  // Use large page sizes
-  }
+  }]
 };
+// Page via the query string ($p = page index, $s = page size).
+// IIQ ignores a body `Paging` object on POST /tickets and POST /users.
+const params = { $s: 1000 };  // Use large page sizes
 ```
 
 **Why this matters:**
@@ -188,14 +188,12 @@ async function searchTicketsOptimized(viewId: string) {
   const response = await client.request({
     method: 'POST',
     url: '/tickets',
+    params: { $s: 1000 },  // Optimal size; body `Paging` is ignored
     data: {
       Filters: [{
         Facet: 'View',
         Id: viewId
-      }],
-      Paging: {
-        PageSize: 1000  // Optimal size
-      }
+      }]
     }
   });
   
@@ -214,12 +212,8 @@ async function* bulkExportTickets(modifiedSince?: Date) {
     const response = await client.request({
       method: 'POST',
       url: '/tickets',
-      data: {
-        Paging: {
-          PageIndex: pageIndex,
-          PageSize: 1000
-        }
-      }
+      params: { $p: pageIndex, $s: 1000 },  // body `Paging` is ignored
+      data: {}
     });
     
     yield response.Items;

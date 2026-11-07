@@ -109,11 +109,11 @@ export const handlers = [
       return new HttpResponse(null, { status: 405 }); // Method not allowed for empty ID
     }
     
+    // Real IIQ shape: ItemGetResponseOfTicket envelope with the ticket under `Item`.
     const ticket = mockTickets.find(t => t.TicketId === params.ticketId);
     return HttpResponse.json({
-      Success: !!ticket,
-      Data: ticket || null,
-      ErrorMessage: ticket ? undefined : 'Ticket not found',
+      StatusCode: 200,
+      Item: ticket || null,
     });
   }),
 
@@ -155,11 +155,10 @@ export const handlers = [
   }),
 
   // User endpoints - PowerShell module shows direct response with Items and Paging
+  // Live IIQ ignores a body SearchText on POST /users (verified 2026-11-06); text search is GET /users/search/{term}.
   http.post('https://test.incidentiq.com/api/v1.0/users', async ({ request }) => {
     const body = await request.json() as any;
-    const filteredUsers = mockUsers.filter(u => 
-      !body?.SearchText || u.FullName?.toLowerCase().includes(body.SearchText.toLowerCase())
-    );
+    const filteredUsers = mockUsers;
     return HttpResponse.json({
       Items: filteredUsers,
       ItemCount: filteredUsers.length,
@@ -171,6 +170,18 @@ export const handlers = [
         PageCount: Math.ceil(filteredUsers.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
       },
+    });
+  }),
+
+  http.get('https://test.incidentiq.com/api/v1.0/users/search/:term', ({ params }) => {
+    const term = String(params.term).toLowerCase();
+    const matches = mockUsers.filter((u: any) =>
+      [u.LastName, u.Email, u.Username].some((field) => String(field ?? '').toLowerCase().includes(term))
+    );
+    return HttpResponse.json({
+      Items: matches,
+      ItemCount: matches.length,
+      Paging: { PageIndex: 0, PageCount: 1, PageSize: 20, TotalRows: matches.length },
     });
   }),
 
@@ -198,10 +209,14 @@ export const handlers = [
   }),
 
   // Asset endpoints - PowerShell module shows direct response with Items and Paging
+  // Live IIQ ignores body SearchText on POST /assets; free text goes in the `keyword` facet (verified 2026-11-06).
   http.post('https://test.incidentiq.com/api/v1.0/assets', async ({ request }) => {
     const body = await request.json() as any;
-    const filteredAssets = mockAssets.filter(a => 
-      !body?.SearchText || a.AssetTag.toLowerCase().includes(body.SearchText.toLowerCase())
+    const keywords: string[] = (body?.Filters ?? [])
+      .filter((f: any) => f.Facet === 'keyword')
+      .map((f: any) => String(f.Value).toLowerCase());
+    const filteredAssets = mockAssets.filter(a =>
+      keywords.every((k) => `${a.AssetTag} ${a.SerialNumber ?? ''}`.toLowerCase().includes(k))
     );
     return HttpResponse.json({
       Items: filteredAssets,
@@ -213,6 +228,7 @@ export const handlers = [
         PageIndex: body?.PageIndex || 0,
         PageCount: Math.ceil(filteredAssets.length / (body?.PageSize || 20)),
         PageSize: body?.PageSize || 20,
+        TotalRows: filteredAssets.length,
       },
     });
   }),
@@ -247,41 +263,20 @@ export const handlers = [
     });
   }),
 
-  // Location endpoints - PowerShell module shows direct response with Items and Paging
-  http.post('https://test.incidentiq.com/api/v1.0/locations', async ({ request }) => {
-    const body = await request.json() as any;
-    let filtered = mockLocations;
-    
-    if (body?.SearchText) {
-      filtered = filtered.filter(l => 
-        l.LocationName.toLowerCase().includes(body.SearchText.toLowerCase())
-      );
-    }
-    
-    if (body?.Filters?.length > 0) {
-      body.Filters.forEach((filter: any) => {
-        if (filter.Facet === 'locationType' && filter.Id) {
-          filtered = filtered.filter(l => l.LocationTypeName === filter.Id);
-        }
-      });
-    }
-    
-    return HttpResponse.json({
-      Items: filtered,
-      ItemCount: filtered.length,
-      Paging: {
-        PageIndex: body?.PageIndex || 0,
-        PageCount: Math.ceil(filtered.length / (body?.PageSize || 20)),
-        PageSize: body?.PageSize || 20,
-      },
-    });
-  }),
+  // Live IIQ has no location search: POST /locations returns 400 and GET /locations/code/{code}
+  // returns 404 (verified 2026-11-06). GET /locations/all pages via $p/$s with Paging.TotalRows.
+  http.post('https://test.incidentiq.com/api/v1.0/locations', () => new HttpResponse(null, { status: 400 })),
+  http.get('https://test.incidentiq.com/api/v1.0/locations/code/:code', () => new HttpResponse(null, { status: 404 })),
 
-  http.get('https://test.incidentiq.com/api/v1.0/locations/all', () => {
-    // GET endpoints return paginated object with Items array
+  http.get('https://test.incidentiq.com/api/v1.0/locations/all', ({ request }) => {
+    const url = new URL(request.url);
+    const p = Number(url.searchParams.get('$p') ?? 0);
+    const size = Number(url.searchParams.get('$s') ?? 20);
+    const items = mockLocations.slice(p * size, p * size + size);
     return HttpResponse.json({
-      ItemCount: mockLocations.length,
-      Items: mockLocations,
+      ItemCount: items.length,
+      Items: items,
+      Paging: { PageIndex: p, PageSize: size, PageCount: Math.ceil(mockLocations.length / size), TotalRows: mockLocations.length },
     });
   }),
 

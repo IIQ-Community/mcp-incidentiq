@@ -11,8 +11,11 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
 import {
   Ticket,
+  TicketDetail,
+  IIQItemResponse,
   TicketStatus,
   TicketPriority,
   PaginatedRequest,
@@ -22,6 +25,7 @@ import {
 import {
   buildTicketFilters,
   filterByStatusId,
+  formatTicketStatus,
   isValidEmail,
   resolveMaxPages,
 } from './ticket-search.js';
@@ -34,6 +38,14 @@ function getClient(): IncidentIQClient {
     client = new IncidentIQClient();
   }
   return client;
+}
+
+/** "Agent (Team)", whichever parts are set, or "Unassigned". */
+function formatAssignee(ticket: TicketDetail): string {
+  const agent = ticket.AssignedToUser?.Name;
+  const team = ticket.AssignedToTeam?.TeamName;
+  if (agent && team) return `${agent} (${team})`;
+  return agent || team || 'Unassigned';
 }
 
 export const ticketTools = [
@@ -332,7 +344,8 @@ export async function handleTicketTool(name: string, args: any) {
           }
           const unresolved: string[] = [];
           for (const email of searchArgs.agentEmails) {
-            const userResult = await client.searchUsers({ SearchText: email, PageSize: 100 });
+            // IIQ ignores SearchText on POST /users; the `email` facet is the lookup that narrows.
+            const userResult = await client.searchUsers({ Filters: [{ Facet: 'email', Value: email }] });
             const match = userResult.Items.find(
               (user) => (user.Email ?? '').toLowerCase() === email.toLowerCase()
             );
@@ -353,6 +366,7 @@ export async function handleTicketTool(name: string, args: any) {
         }
 
         const filters = buildTicketFilters({
+          keyword: searchArgs.searchText,
           agentIds: resolvedAgentIds,
           teamIds: searchArgs.teamIds,
           locationIds: searchArgs.locationIds,
@@ -363,7 +377,6 @@ export async function handleTicketTool(name: string, args: any) {
           FilterByViewPermission: false,
         };
         if (filters.length > 0) basePayload.Filters = filters;
-        if (searchArgs.searchText) basePayload.SearchText = searchArgs.searchText;
 
         const pageSize = searchArgs.pageSize ?? 20;
         const pageIndex = searchArgs.pageIndex ?? 0;
@@ -375,7 +388,7 @@ export async function handleTicketTool(name: string, args: any) {
         let truncationNote = '';
 
         if (statusFilter.length > 0) {
-          // Status facet is unreliable server-side, so filter client-side by StatusId over a
+          // The server status facet returns nothing, so filter client-side by WorkflowStep.StatusId over a
           // bounded sequential page scan (no per-ticket detail fetch, no unbounded concurrency).
           const wantedStatusIds = new Set(statusFilter);
           const maxPages = resolveMaxPages(process.env.IIQ_TICKET_FILTER_MAX_PAGES);
@@ -384,7 +397,8 @@ export async function handleTicketTool(name: string, args: any) {
           const firstPage = await client.request<PaginatedResponse<Ticket>>({
             method: 'POST',
             url: '/tickets',
-            data: { ...basePayload, Paging: { PageIndex: 0, PageSize: scanPageSize } },
+            params: iiqPagingParams(0, scanPageSize),
+            data: basePayload,
           });
           const accumulated: Ticket[] = [...(firstPage?.Items ?? [])];
           const serverPageCount = firstPage?.Paging?.PageCount ?? 1;
@@ -393,7 +407,8 @@ export async function handleTicketTool(name: string, args: any) {
             const next = await client.request<PaginatedResponse<Ticket>>({
               method: 'POST',
               url: '/tickets',
-              data: { ...basePayload, Paging: { PageIndex: page, PageSize: scanPageSize } },
+              params: iiqPagingParams(page, scanPageSize),
+              data: basePayload,
             });
             accumulated.push(...(next?.Items ?? []));
           }
@@ -412,10 +427,11 @@ export async function handleTicketTool(name: string, args: any) {
           const response = await client.request<PaginatedResponse<Ticket>>({
             method: 'POST',
             url: '/tickets',
-            data: { ...basePayload, Paging: { PageIndex: pageIndex, PageSize: pageSize } },
+            params: iiqPagingParams(pageIndex, pageSize),
+            data: basePayload,
           });
           pageItems = response?.Items ?? [];
-          totalCount = response?.ItemCount ?? pageItems.length;
+          totalCount = iiqTotalRows(response);
           totalPages = response?.Paging?.PageCount ?? 1;
         }
 
@@ -430,7 +446,7 @@ export async function handleTicketTool(name: string, args: any) {
         }
 
         const ticketList = pageItems.map((ticket) =>
-          `- #${ticket.TicketNumber}: ${ticket.Subject}\n  Status: ${ticket.StatusName ?? ticket.Status ?? 'Unknown'}\n  Created: ${ticket.CreatedDate}\n  ID: ${ticket.TicketId}`
+          `- #${ticket.TicketNumber}: ${ticket.Subject}\n  Status: ${formatTicketStatus(ticket)}\n  Created: ${ticket.CreatedDate}\n  ID: ${ticket.TicketId}`
         ).join('\n\n');
 
         return {
@@ -442,12 +458,13 @@ export async function handleTicketTool(name: string, args: any) {
       }
       
       case 'ticket_get': {
-        const response = await client.request<Ticket>({
+        const response = await client.request<IIQItemResponse<TicketDetail>>({
           method: 'GET',
           url: `/tickets/${args.ticketId}`,
         });
-        
-        if (!response) {
+        const ticket = response?.Item;
+
+        if (!ticket) {
           return {
             content: [
               {
@@ -462,18 +479,18 @@ export async function handleTicketTool(name: string, args: any) {
           content: [
             {
               type: 'text',
-              text: `Ticket #${response.TicketNumber}:
-Subject: ${response.Subject}
-Status: ${response.Status}
-Priority: ${response.Priority || 'Normal'}
-Created: ${response.CreatedDate}
-Description: ${response.Description || 'No description'}
-Requestor: ${response.RequestorName || 'Unknown'}
-Assigned To: ${response.AssignedToName || 'Unassigned'}
-Location: ${response.LocationName || 'Not specified'}
-Urgent: ${response.IsUrgent ? 'Yes' : 'No'}
-Sensitive: ${response.IsSensitive ? 'Yes' : 'No'}
-ID: ${response.TicketId}`,
+              text: `Ticket #${ticket.TicketNumber}:
+Subject: ${ticket.Subject || 'No subject'}
+Status: ${ticket.WorkflowStep?.StepName || ticket.WorkflowStep?.StatusName || 'Unknown'}
+Priority: ${ticket.PriorityLevel?.Name || 'Normal'}
+Created: ${ticket.CreatedDate || 'Unknown'}
+Description: ${ticket.IssueDescription || 'No description'}
+Requestor: ${ticket.For?.Name || 'Unknown'}
+Assigned To: ${formatAssignee(ticket)}
+Location: ${ticket.Location?.Name || 'Not specified'}
+Urgent: ${ticket.IsUrgent ? 'Yes' : 'No'}
+Sensitive: ${ticket.HasSensitiveInformation ? 'Yes' : 'No'}
+ID: ${ticket.TicketId}`,
             },
           ],
         };
@@ -496,15 +513,15 @@ ID: ${response.TicketId}`,
           };
         }
         
-        const statusList = response.Items.map((s: TicketStatus) => 
-          `- ${s.Name} (${s.StatusType})\n  ID: ${s.TicketStatusId}`
+        const statusList = response.Items.map((s: TicketStatus) =>
+          `- ${s.StepName && s.StepName !== s.StatusName ? `${s.StepName} (${s.StatusName})` : s.StatusName}${s.IsClosed ? ' [closed]' : ''}\n  ID: ${s.TicketStatusTypeId}`
         ).join('\n\n');
         
         return {
           content: [
             {
               type: 'text',
-              text: `Available Ticket Statuses (${response.ItemCount}):\n\n${statusList}`,
+              text: `Available Ticket Statuses (${iiqTotalRows(response)}):\n\n${statusList}`,
             },
           ],
         };
@@ -535,7 +552,7 @@ ID: ${response.TicketId}`,
           content: [
             {
               type: 'text',
-              text: `Available Ticket Priorities (${response.ItemCount}):\n\n${priorityList}`,
+              text: `Available Ticket Priorities (${iiqTotalRows(response)}):\n\n${priorityList}`,
             },
           ],
         };
@@ -567,7 +584,7 @@ ID: ${response.TicketId}`,
           content: [
             {
               type: 'text',
-              text: `Assets Linked to Ticket (${response.ItemCount}):\n\n${assetList}`,
+              text: `Assets Linked to Ticket (${iiqTotalRows(response)}):\n\n${assetList}`,
             },
           ],
         };
@@ -764,7 +781,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
           content: [
             {
               type: 'text',
-              text: `Available Ticket Wizards (${response.ItemCount}):\n\n${wizardList}`,
+              text: `Available Ticket Wizards (${iiqTotalRows(response)}):\n\n${wizardList}`,
             },
           ],
         };
@@ -795,7 +812,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
           content: [
             {
               type: 'text',
-              text: `Ticket Wizards for Site ${args.siteId} (${response.ItemCount}):\n\n${wizardList}`,
+              text: `Ticket Wizards for Site ${args.siteId} (${iiqTotalRows(response)}):\n\n${wizardList}`,
             },
           ],
         };

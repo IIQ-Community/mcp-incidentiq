@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
 import { 
   IIQUser,
   PaginatedRequest,
@@ -55,7 +56,7 @@ export const enhancedUserTools = [
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in name, email, username',
+          description: 'Text search by last name, email or username (uses GET /users/search; not combined with the other filters)',
         },
         userType: {
           type: 'string',
@@ -345,12 +346,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         const payload: PaginatedRequest = {
           OnlyShowDeleted: args.includeDeleted || false,
           FilterByViewPermission: false,
-          SearchText: args.searchText,
           Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 100, // Optimized default
-          },
         };
         
         // Add view filter if provided
@@ -383,11 +379,28 @@ export async function handleEnhancedUserTool(name: string, args: any) {
           });
         }
         
-        const response = await client.request<PaginatedResponse<IIQUser>>({
-          method: 'POST',
-          url: '/users',
-          data: payload,
-        });
+        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+        const pageSize = args.pageSize || 100;
+        // IIQ ignores a body SearchText on POST /users; GET /users/search/{term} is its text search.
+        // That endpoint takes no facet filters, so text search and the facet filters are exclusive.
+        const response = searchText
+          ? await client.request<PaginatedResponse<IIQUser>>({
+            method: 'GET',
+            url: `/users/search/${encodeURIComponent(searchText)}`,
+            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+          })
+          : await client.request<PaginatedResponse<IIQUser>>({
+            method: 'POST',
+            url: '/users',
+            params: iiqPagingParams(args.pageIndex || 0, pageSize),
+            data: payload,
+          });
+        const ignoredFilters = searchText
+          ? ['viewId', 'userType', 'grade', 'locationId', 'includeDeleted'].filter((key) => args[key])
+          : [];
+        const filterNote = ignoredFilters.length > 0
+          ? `\n\nNote: ${ignoredFilters.join(', ')} not applied - IIQ text search does not combine with filters.`
+          : '';
         
         if (!response?.Items || response.Items.length === 0) {
           return {
@@ -412,11 +425,11 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         return {
           content: [{
             type: 'text',
-            text: `Found ${response.ItemCount} users (showing ${Math.min(10, response.Items.length)}):
+            text: `Found ${iiqTotalRows(response)} users (showing ${Math.min(10, response.Items.length)}):
 
 ${userList}${summary}
 
-Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.pageSize || 100))}`,
+Page ${(args.pageIndex || 0) + 1} of ${Math.max(1, Math.ceil(iiqTotalRows(response) / pageSize))}${filterNote}`,
           }],
         };
       }
@@ -429,10 +442,6 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
             Facet: 'UserType',
             Id: 'Student',
           }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: args.pageSize || 100,
-          },
         };
         
         if (args.grade) {
@@ -452,6 +461,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
         const response = await client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
+          params: iiqPagingParams(0, args.pageSize || 100),
           data: payload,
         });
         
@@ -472,7 +482,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
           studentsByGrade[grade].push(student);
         });
         
-        let output = `Student Directory (${response.ItemCount} students):\n`;
+        let output = `Student Directory (${iiqTotalRows(response)} students, showing ${response.Items.length}):\n`;
         
         for (const [grade, students] of Object.entries(studentsByGrade)) {
           output += `\nGrade ${grade} (${students.length}):\n`;
@@ -502,10 +512,6 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
             Facet: 'UserType',
             Id: 'Staff',
           }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
         };
         
         if (args.locationId) {
@@ -518,6 +524,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
         const response = await client.request<PaginatedResponse<IIQUser>>({
           method: 'POST',
           url: '/users',
+          params: iiqPagingParams(0, 100),
           data: payload,
         });
         
@@ -539,7 +546,7 @@ Page ${(args.pageIndex || 0) + 1} of ${Math.ceil(response.ItemCount / (args.page
         return {
           content: [{
             type: 'text',
-            text: `Staff Directory (${response.ItemCount} members):
+            text: `Staff Directory (${iiqTotalRows(response)} members, showing ${response.Items.length}):
 
 ${staffList}
 
@@ -746,7 +753,7 @@ Total Users: ${totalUsers}`,
           usersByType[type].push(user);
         });
         
-        let output = `Users at Location (${response.ItemCount} total):\n`;
+        let output = `Users at Location (${iiqTotalRows(response)} total):\n`;
         
         for (const [type, users] of Object.entries(usersByType)) {
           output += `\n${type} (${users.length}):\n`;

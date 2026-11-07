@@ -8,17 +8,64 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { 
-  PaginatedRequest,
-  PaginatedResponse 
-} from '../types/common.js';
+import { IIQ_LIST_BODY, formatListPage, matchesText } from '../api/paging.js';
+
+/**
+ * IIQ entity-type GUIDs are global constants. Ticket is confirmed by the IIQ API docs; User by live
+ * custom-field values (2026-11-06); Asset by the live district's asset fields. Other entity
+ * types can be passed as their EntityTypeId GUID.
+ */
+const ENTITY_TYPE_IDS: Record<string, string> = {
+  ticket: '888891ac-91aa-e711-80c2-100dffa00001',
+  asset: '888891ac-91aa-e711-80c2-100dffa00003',
+  user: '888891ac-91aa-e711-80c2-100dffa00004',
+};
+
+/** Resolves an entity type name (Ticket/Asset/User) or a raw EntityTypeId GUID to a lower-case GUID. */
+function entityTypeId(entityType: string): string {
+  const key = entityType.trim().toLowerCase();
+  return ENTITY_TYPE_IDS[key] ?? key;
+}
+
+/** Display name for an EntityTypeId GUID. */
+function entityTypeName(id: string | undefined): string {
+  const match = Object.entries(ENTITY_TYPE_IDS).find(([, guid]) => guid === id?.toLowerCase());
+  return match ? match[0][0].toUpperCase() + match[0].slice(1) : (id || 'Unknown');
+}
+
+/** A field's display name; live items carry it on CustomFieldType, not a top-level Name. */
+function fieldName(field: CustomField): string {
+  return field.Name ?? field.CustomFieldType?.Name ?? 'Unnamed field';
+}
+
+/**
+ * Reads every custom field definition. POST /custom-fields ignores SearchText and the IsRequired
+ * facet, and returns nothing for an EntityType facet (verified 2026-11-06), so callers filter
+ * the full list client-side with `fieldMatches`.
+ */
+async function listCustomFields(client: IncidentIQClient, includeDeleted = false): Promise<CustomField[]> {
+  const response = await client.request<{ Items?: CustomField[] }>({
+    method: 'POST',
+    url: '/custom-fields',
+    data: { ...IIQ_LIST_BODY, OnlyShowDeleted: includeDeleted },
+  });
+  return response?.Items ?? [];
+}
+
+/** True when the field belongs to the entity type (when given) and its name contains the text (when given). */
+function fieldMatches(field: CustomField, { text, entityType }: { text?: string; entityType?: string }): boolean {
+  return matchesText(text, fieldName(field)) &&
+    (!entityType || field.EntityTypeId?.toLowerCase() === entityTypeId(entityType));
+}
 
 // Custom Field specific types
 export interface CustomField {
   CustomFieldId: string;
   CustomFieldTypeId: string;
   EntityTypeId: string;
-  Name: string;
+  /** Not present on live items; the name lives on CustomFieldType.Name (see fieldName()). */
+  Name?: string;
+  CustomFieldType?: { Name?: string };
   Description?: string;
   IsRequired: boolean;
   IsActive: boolean;
@@ -90,18 +137,17 @@ export const enhancedCustomFieldTools = [
   // Core Operations
   {
     name: 'customfield_search',
-    description: 'Search custom fields with filters (POST /custom-fields)',
+    description: 'Search custom field definitions by name, entity type and required flag (filters the full list client-side)',
     inputSchema: {
       type: 'object',
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in field names and descriptions',
+          description: 'Text matched against field names',
         },
         entityType: {
           type: 'string',
-          enum: ['Ticket', 'Asset', 'User', 'Location'],
-          description: 'Filter by entity type',
+          description: 'Entity type: Ticket, Asset, User, or an EntityTypeId GUID',
         },
         isRequired: {
           type: 'boolean',
@@ -113,7 +159,7 @@ export const enhancedCustomFieldTools = [
         },
         fieldType: {
           type: 'string',
-          description: 'Filter by field type (Text, Number, Date, etc.)',
+          description: 'Filter by CustomFieldTypeId (the GUID shown as "Type ID" in results)',
         },
         includeDeleted: {
           type: 'boolean',
@@ -330,8 +376,7 @@ export const enhancedCustomFieldTools = [
       properties: {
         entityType: {
           type: 'string',
-          enum: ['Ticket', 'Asset', 'User', 'Location'],
-          description: 'Entity type to check',
+          description: 'Entity type to check: Ticket, Asset, User, or an EntityTypeId GUID',
         },
       },
       required: ['entityType'],
@@ -440,64 +485,23 @@ export async function handleEnhancedCustomFieldTool(name: string, args: any) {
   try {
     switch (name) {
       case 'customfield_search': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: args.includeDeleted || false,
-          FilterByViewPermission: false,
-          SearchText: args.searchText,
-          Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 50,
-          },
-        };
-        
-        if (args.entityType) {
-          payload.Filters!.push({
-            Facet: 'EntityType',
-            Id: args.entityType,
-          });
-        }
-        
-        if (args.fieldType) {
-          payload.Filters!.push({
-            Facet: 'FieldType',
-            Id: args.fieldType,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<CustomField>>({
-          method: 'POST',
-          url: '/custom-fields',
-          data: payload,
+        const matched = (await listCustomFields(client, args.includeDeleted || false)).filter((field) =>
+          fieldMatches(field, { text: args.searchText, entityType: args.entityType }) &&
+          (args.isRequired === undefined || !!field.IsRequired === !!args.isRequired) &&
+          (!args.fieldType || field.CustomFieldTypeId?.toLowerCase() === String(args.fieldType).trim().toLowerCase())
+        );
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 50,
+          noun: 'custom fields',
+          emptyText: 'No custom fields found matching your criteria.',
+          render: (field: CustomField) =>
+            `• ${fieldName(field)}${field.IsRequired ? ' (Required)' : ''}
+  Entity: ${entityTypeName(field.EntityTypeId)} | Type ID: ${field.CustomFieldTypeId} | ID: ${field.CustomFieldId}`,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No custom fields found matching your criteria.',
-            }],
-          };
-        }
-        
-        const fieldList = response.Items.slice(0, 10).map((field: CustomField) =>
-          `• ${field.Name}${field.IsRequired ? ' (Required)' : ''}
-  Type: ${field.CustomFieldTypeId} | Entity: ${field.EntityTypeId}
-  ${field.Description || 'No description'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${response.ItemCount} custom fields (showing ${Math.min(10, response.Items.length)}):
-
-${fieldList}
-
-${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fields` : ''}`,
-          }],
-        };
       }
-      
+
       case 'customfield_get_all': {
         const response = await client.request<any>({
           method: 'GET',
@@ -518,7 +522,7 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
         // Group by entity type
         const fieldsByEntity: Record<string, any[]> = {};
         fields.forEach((field: CustomField) => {
-          const entity = field.EntityTypeId || 'Unknown';
+          const entity = entityTypeName(field.EntityTypeId);
           if (!fieldsByEntity[entity]) fieldsByEntity[entity] = [];
           fieldsByEntity[entity].push(field);
         });
@@ -528,7 +532,7 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
         for (const [entity, entityFields] of Object.entries(fieldsByEntity)) {
           output += `\n${entity} (${entityFields.length} fields):\n`;
           entityFields.slice(0, 5).forEach(field => {
-            output += `  • ${field.Name}${field.IsRequired ? ' *' : ''}\n`;
+            output += `  • ${fieldName(field)}${field.IsRequired ? ' *' : ''}\n`;
           });
           if (entityFields.length > 5) {
             output += `  ... and ${entityFields.length - 5} more\n`;
@@ -604,29 +608,12 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
       }
       
       case 'customfield_get_student_fields': {
-        // Search for student-related fields
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: 'student grade graduation enrollment IEP 504',
-          Filters: [{
-            Facet: 'EntityType',
-            Id: 'User',
-          }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<CustomField>>({
-          method: 'POST',
-          url: '/custom-fields',
-          data: payload,
-        });
-        
-        const studentFields = response?.Items || [];
-        
+        // Student-related fields on the User entity, matched by name.
+        const words = ['student', 'grade', 'graduation', 'enrollment', 'iep', '504', 'parent', 'guardian', 'id', 'number'];
+        const studentFields = (await listCustomFields(client)).filter((field) =>
+          fieldMatches(field, { entityType: 'User' }) && words.some((word) => matchesText(word, fieldName(field)))
+        );
+
         if (studentFields.length === 0) {
           return {
             content: [{
@@ -639,17 +626,17 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
         // Categorize student fields
         const categories = {
           identification: studentFields.filter((f: CustomField) => 
-            f.Name.toLowerCase().includes('id') || 
-            f.Name.toLowerCase().includes('number')),
+            fieldName(f).toLowerCase().includes('id') || 
+            fieldName(f).toLowerCase().includes('number')),
           academic: studentFields.filter((f: CustomField) => 
-            f.Name.toLowerCase().includes('grade') || 
-            f.Name.toLowerCase().includes('graduation')),
+            fieldName(f).toLowerCase().includes('grade') || 
+            fieldName(f).toLowerCase().includes('graduation')),
           special: studentFields.filter((f: CustomField) => 
-            f.Name.toLowerCase().includes('iep') || 
-            f.Name.toLowerCase().includes('504')),
+            fieldName(f).toLowerCase().includes('iep') || 
+            fieldName(f).toLowerCase().includes('504')),
           guardian: studentFields.filter((f: CustomField) => 
-            f.Name.toLowerCase().includes('parent') || 
-            f.Name.toLowerCase().includes('guardian')),
+            fieldName(f).toLowerCase().includes('parent') || 
+            fieldName(f).toLowerCase().includes('guardian')),
         };
         
         let output = 'Student Custom Fields:\n';
@@ -657,28 +644,28 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
         if (categories.identification.length > 0) {
           output += '\nIdentification:\n';
           categories.identification.forEach((f: CustomField) => {
-            output += `  • ${f.Name}${f.IsRequired ? ' *' : ''}\n`;
+            output += `  • ${fieldName(f)}${f.IsRequired ? ' *' : ''}\n`;
           });
         }
         
         if (categories.academic.length > 0) {
           output += '\nAcademic:\n';
           categories.academic.forEach((f: CustomField) => {
-            output += `  • ${f.Name}${f.IsRequired ? ' *' : ''}\n`;
+            output += `  • ${fieldName(f)}${f.IsRequired ? ' *' : ''}\n`;
           });
         }
         
         if (categories.special.length > 0) {
           output += '\nSpecial Education:\n';
           categories.special.forEach((f: CustomField) => {
-            output += `  • ${f.Name}${f.IsRequired ? ' *' : ''}\n`;
+            output += `  • ${fieldName(f)}${f.IsRequired ? ' *' : ''}\n`;
           });
         }
         
         if (categories.guardian.length > 0) {
           output += '\nParent/Guardian:\n';
           categories.guardian.forEach((f: CustomField) => {
-            output += `  • ${f.Name}${f.IsRequired ? ' *' : ''}\n`;
+            output += `  • ${fieldName(f)}${f.IsRequired ? ' *' : ''}\n`;
           });
         }
         
@@ -691,30 +678,10 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
       }
       
       case 'customfield_get_required': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          Filters: [{
-            Facet: 'EntityType',
-            Id: args.entityType,
-          }, {
-            Facet: 'IsRequired',
-            Id: 'true',
-          }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<CustomField>>({
-          method: 'POST',
-          url: '/custom-fields',
-          data: payload,
-        });
-        
-        const requiredFields = response?.Items || [];
-        
+        const requiredFields = (await listCustomFields(client)).filter((field) =>
+          field.IsRequired && fieldMatches(field, { entityType: args.entityType })
+        );
+
         if (requiredFields.length === 0) {
           return {
             content: [{
@@ -725,7 +692,7 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
         }
         
         const fieldList = requiredFields.map((field: CustomField) =>
-          `• ${field.Name}
+          `• ${fieldName(field)}
   Type: ${field.CustomFieldTypeId}
   ${field.ValidationRules ? 'Has validation rules' : ''}`
         ).join('\n\n');
@@ -739,32 +706,12 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
       }
       
       case 'customfield_find_by_name': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: args.fieldName,
-          Paging: {
-            PageIndex: 0,
-            PageSize: 10,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<CustomField>>({
-          method: 'POST',
-          url: '/custom-fields',
-          data: payload,
-        });
-        
-        const fields = response?.Items || [];
-        
-        // Filter for exact match if requested
-        let matches = fields;
-        if (args.exactMatch) {
-          matches = fields.filter((f: CustomField) => 
-            f.Name.toLowerCase() === args.fieldName.toLowerCase()
-          );
-        }
-        
+        const wanted = String(args.fieldName ?? '').trim().toLowerCase();
+        const fields = (await listCustomFields(client)).filter((field) => fieldMatches(field, { text: wanted }));
+        const matches = args.exactMatch
+          ? fields.filter((field) => fieldName(field).toLowerCase() === wanted)
+          : fields;
+
         if (matches.length === 0) {
           return {
             content: [{
@@ -779,9 +726,9 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more fiel
           content: [{
             type: 'text',
             text: `Custom Field Found:
-Name: ${field.Name}
+Name: ${fieldName(field)}
 ID: ${field.CustomFieldId}
-Entity Type: ${field.EntityTypeId}
+Entity Type: ${entityTypeName(field.EntityTypeId)}
 Required: ${field.IsRequired ? 'Yes' : 'No'}
 Active: ${field.IsActive ? 'Yes' : 'No'}
 ${field.Description ? `Description: ${field.Description}` : ''}`,

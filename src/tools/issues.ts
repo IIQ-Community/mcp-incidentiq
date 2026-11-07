@@ -8,10 +8,24 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
-import { 
-  PaginatedRequest,
-  PaginatedResponse 
-} from '../types/common.js';
+import { IIQ_LIST_BODY, formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
+
+/**
+ * Reads every issue type. POST /issues/types ignores body SearchText, the keyword facet and body
+ * PageIndex (verified 2026-11-06), so issue types are paged via $p/$s and filtered client-side.
+ */
+async function listIssueTypes(client: IncidentIQClient, includeDeleted = false): Promise<{ items: IssueType[]; truncated: boolean }> {
+  const body = { ...IIQ_LIST_BODY, OnlyShowDeleted: includeDeleted };
+  return iiqListAll<IssueType>(client, '/issues/types', { pageSize: 2000, body });
+}
+
+/** Words that put a classroom issue type in the audio group (shared by the filter and the grouping). */
+const CLASSROOM_AUDIO_WORDS = ['audio', 'microphone', 'speaker', 'sound'];
+
+/** True when the issue type's name contains any of the words. */
+function nameHasAny(issue: { Name?: string }, words: string[]): boolean {
+  return words.some((word) => matchesText(word, issue.Name));
+}
 
 // Issues specific types
 export interface Issue {
@@ -151,13 +165,13 @@ export const enhancedIssuesTools = [
   },
   {
     name: 'issues_search_types',
-    description: 'Search issue types with filters (POST /issues/types)',
+    description: 'Search issue types by name and scope (filters the full POST /issues/types list client-side)',
     inputSchema: {
       type: 'object',
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in type names and descriptions',
+          description: 'Text matched against issue type names',
         },
         scope: {
           type: 'string',
@@ -591,192 +605,117 @@ export async function handleEnhancedIssuesTool(name: string, args: any) {
       }
       
       case 'issues_search_types': {
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: args.includeDeleted || false,
-          FilterByViewPermission: false,
-          SearchText: args.searchText,
-          Filters: [],
-          Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 50,
-          },
-        };
-        
-        if (args.scope) {
-          payload.Filters!.push({
-            Facet: 'Scope',
-            Id: args.scope,
-          });
-        }
-        
-        if (args.category) {
-          payload.Filters!.push({
-            Facet: 'Category',
-            Id: args.category,
-          });
-        }
-        
-        const response = await client.request<PaginatedResponse<IssueType>>({
-          method: 'POST',
-          url: '/issues/types',
-          data: payload,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No issue types found matching your criteria.',
-            }],
-          };
-        }
-        
-        const typeList = response.Items.slice(0, 10).map((type: IssueType) =>
-          `• ${type.Name}${type.Category ? ` (${type.Category})` : ''}
+        const { items, truncated } = await listIssueTypes(client, args.includeDeleted || false);
+        const matched = items.filter((type) =>
+          matchesText(args.searchText, type.Name) &&
+          (!args.scope || args.scope === 'All' || type.Scope?.toLowerCase() === String(args.scope).toLowerCase()) &&
+          matchesText(args.category, type.Category, type.Name)
+        );
+        return formatListPage({
+          rows: matched,
+          pageIndex: args.pageIndex,
+          pageSize: args.pageSize || 50,
+          noun: 'issue types',
+          emptyText: 'No issue types found matching your criteria.',
+          render: (type: IssueType) =>
+            `• ${type.Name}${type.Category ? ` (${type.Category})` : ''}
   Scope: ${type.Scope} | Active: ${type.IsActive ? 'Yes' : 'No'}
-  ${type.Metadata ? `Usage: ${type.Metadata.UsageCount || 0} times` : ''}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${response.ItemCount} issue types (showing ${Math.min(10, response.Items.length)}):
-
-${typeList}
-
-${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more types` : ''}`,
-          }],
-        };
+  ${type.Metadata ? `Usage: ${type.Metadata.UsageCount || 0} times` : ''}`,
+          truncated,
+        });
       }
       
       case 'issues_get_classroom_tech': {
-        // Search for classroom technology issues
-        const searchTerms = [];
-        if (args.includeProjector !== false) searchTerms.push('projector');
-        if (args.includeBoard !== false) searchTerms.push('board interactive smartboard');
-        if (args.includeAudio !== false) searchTerms.push('audio microphone speaker');
-        
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: searchTerms.join(' '),
-          Filters: [{
-            Facet: 'Category',
-            Id: 'Classroom',
-          }],
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<Issue>>({
-          method: 'POST',
-          url: '/issues/types',
-          data: payload,
-        });
-        
-        const classroomIssues = response?.Items || [];
-        
+        // Classroom technology issue types, matched by name (the server ignores SearchText).
+        const words: string[] = [];
+        if (args.includeProjector !== false) words.push('projector');
+        if (args.includeBoard !== false) words.push('board', 'interactive', 'smartboard');
+        if (args.includeAudio !== false) words.push(...CLASSROOM_AUDIO_WORDS);
+        const { items, truncated } = await listIssueTypes(client);
+        const classroomIssues = items.filter((issue) => nameHasAny(issue, words));
+
         if (classroomIssues.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: 'No classroom technology issues found.',
             }],
-          };
+          });
         }
         
         // Categorize classroom issues
         const categories = {
-          projector: classroomIssues.filter((i: Issue) => 
+          projector: classroomIssues.filter((i: IssueType) => 
             i.Name.toLowerCase().includes('projector')),
-          board: classroomIssues.filter((i: Issue) => 
+          board: classroomIssues.filter((i: IssueType) => 
             i.Name.toLowerCase().includes('board') || 
             i.Name.toLowerCase().includes('smart')),
-          audio: classroomIssues.filter((i: Issue) => 
-            i.Name.toLowerCase().includes('audio') || 
-            i.Name.toLowerCase().includes('sound')),
-          other: classroomIssues.filter((i: Issue) => 
+          audio: classroomIssues.filter((i: IssueType) => nameHasAny(i, CLASSROOM_AUDIO_WORDS)),
+          other: classroomIssues.filter((i: IssueType) =>
             !i.Name.toLowerCase().includes('projector') &&
             !i.Name.toLowerCase().includes('board') &&
-            !i.Name.toLowerCase().includes('audio')),
+            !i.Name.toLowerCase().includes('smart') &&
+            !nameHasAny(i, CLASSROOM_AUDIO_WORDS)),
         };
         
         let output = 'Classroom Technology Issues:\n';
         
         if (categories.projector.length > 0) {
           output += '\nProjector Issues:\n';
-          categories.projector.forEach((i: Issue) => {
+          categories.projector.forEach((i: IssueType) => {
             output += `  • ${i.Name}\n`;
           });
         }
         
         if (categories.board.length > 0) {
           output += '\nInteractive Board Issues:\n';
-          categories.board.forEach((i: Issue) => {
+          categories.board.forEach((i: IssueType) => {
             output += `  • ${i.Name}\n`;
           });
         }
         
         if (categories.audio.length > 0) {
           output += '\nAudio System Issues:\n';
-          categories.audio.forEach((i: Issue) => {
+          categories.audio.forEach((i: IssueType) => {
             output += `  • ${i.Name}\n`;
           });
         }
         
         if (categories.other.length > 0) {
           output += '\nOther Classroom Issues:\n';
-          categories.other.slice(0, 5).forEach((i: Issue) => {
+          categories.other.slice(0, 5).forEach((i: IssueType) => {
             output += `  • ${i.Name}\n`;
           });
         }
         
-        return {
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: output,
           }],
-        };
+        });
       }
       
       case 'issues_get_student_devices': {
-        // Search for student device issues
-        const searchText = args.deviceType && args.deviceType !== 'All' 
-          ? args.deviceType.toLowerCase()
-          : 'chromebook ipad laptop hotspot device';
-        
-        const payload: PaginatedRequest = {
-          OnlyShowDeleted: false,
-          FilterByViewPermission: false,
-          SearchText: `student ${searchText}`,
-          Paging: {
-            PageIndex: 0,
-            PageSize: 100,
-          },
-        };
-        
-        const response = await client.request<PaginatedResponse<Issue>>({
-          method: 'POST',
-          url: '/issues/types',
-          data: payload,
-        });
-        
-        const deviceIssues = response?.Items || [];
-        
+        // Student device issue types, matched by name (the server ignores SearchText).
+        const words = args.deviceType && args.deviceType !== 'All'
+          ? [String(args.deviceType)]
+          : ['chromebook', 'ipad', 'laptop', 'hotspot'];
+        const { items, truncated } = await listIssueTypes(client);
+        const deviceIssues = items.filter((issue) => nameHasAny(issue, words));
+
         if (deviceIssues.length === 0) {
-          return {
+          return withTruncationNote(truncated, {
             content: [{
               type: 'text',
               text: 'No student device issues found.',
             }],
-          };
+          });
         }
         
         // Group by device type
-        const issuesByDevice: Record<string, Issue[]> = {};
-        deviceIssues.forEach((issue: Issue) => {
+        const issuesByDevice: Record<string, IssueType[]> = {};
+        deviceIssues.forEach((issue: IssueType) => {
           let device = 'Other';
           if (issue.Name.toLowerCase().includes('chromebook')) device = 'Chromebook';
           else if (issue.Name.toLowerCase().includes('ipad')) device = 'iPad';
@@ -799,12 +738,12 @@ ${response.Items.length > 10 ? `\n...and ${response.Items.length - 10} more type
           }
         }
         
-        return {
+        return withTruncationNote(truncated, {
           content: [{
             type: 'text',
             text: output,
           }],
-        };
+        });
       }
       
       case 'issues_get_common_issues': {
