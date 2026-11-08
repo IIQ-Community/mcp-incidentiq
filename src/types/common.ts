@@ -101,6 +101,8 @@ export interface IIQUser {
   /** Sent by GET /users/{id} only (verified 2026-11-07). */
   HomePhone?: string;
   JobTitle?: string;
+  /** Sent by GET /users/{id} (verified 2026-11-08). */
+  CreatedDate?: string;
 }
 
 export interface IIQAsset {

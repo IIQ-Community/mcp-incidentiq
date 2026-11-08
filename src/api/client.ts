@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { iiqListAll, matchesText } from './paging.js';
+import { apiKeyUserId } from './token.js';
 import {
   IIQApiResponse,
   IIQItemResponse,
@@ -25,6 +26,7 @@ import {
  */
 export class IncidentIQClient {
   private client: AxiosInstance;
+  private readonly ownerId: string | undefined;
 
   constructor(
     baseURL: string = process.env.IIQ_API_BASE_URL || 'https://demo.iiqstaging.com/api/v1.0',
@@ -33,6 +35,7 @@ export class IncidentIQClient {
     if (!apiKey) {
       throw new Error('IncidentIQ API key is required. Please configure your district\'s API key.');
     }
+    this.ownerId = apiKeyUserId(apiKey);
 
     // Build headers with Site ID and Product ID if available
     const headers: Record<string, string> = {
@@ -86,6 +89,11 @@ export class IncidentIQClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  /** UserId of the API key's owner (its JWT `sub`), or undefined when the key does not carry one. */
+  keyOwnerId(): string | undefined {
+    return this.ownerId;
   }
 
   // Generic request method
