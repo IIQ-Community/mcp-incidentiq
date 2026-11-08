@@ -34,19 +34,19 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 
 ### 📊 Comprehensive API Coverage
 
-**158 MCP tools across 12 registered domain modules**, all wired into the server and validated against a production K-12 district instance.
+**119 MCP tools**: 118 across 12 registered domain modules plus `test_connection`, all wired into the server and validated against a production K-12 district instance. Every advertised tool has a handler, and tools IncidentIQ cannot back (no endpoint, no data) are not advertised.
 
 | Module | Status | Tools |
 |--------|--------|-------|
 | Tickets | ✅ Registered | 15 |
-| Assets | ✅ Registered | 15 |
-| Users | ✅ Registered | 15 |
-| Locations | ✅ Registered | 17 |
+| Assets | ✅ Registered | 14 |
+| Users | ✅ Registered | 11 |
+| Locations | ✅ Registered | 11 |
 | Teams | ✅ Registered | 9 |
-| Parts | ✅ Registered | 20 |
+| Parts | ✅ Registered | 11 |
 | Purchase Orders | ✅ Registered | 14 |
-| Issues | ✅ Registered | 20 |
-| Custom Fields | ✅ Registered | 18 |
+| Issues | ✅ Registered | 6 |
+| Custom Fields | ✅ Registered | 12 |
 | SLAs | ✅ Registered | 4 |
 | Views | ✅ Registered | 5 |
 | Notifications | ✅ Registered | 6 |
@@ -81,46 +81,44 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `ticket_get_wizards` - Get available ticket creation wizards
 - `ticket_get_wizards_by_site` - Get wizards for a specific site
 
-#### 💻 Asset Management (15 tools)
-- `asset_search_advanced` - Search IT assets with filters and pagination
+#### 💻 Asset Management (14 tools)
+- `asset_search_advanced` - Search IT assets with filters (type, status, location, room, assigned user) and pagination
 - `asset_find_by_tag` / `asset_search_by_tag` - Look up asset(s) by tag number
 - `asset_find_by_serial` / `asset_search_by_serial` - Look up asset(s) by serial number
 - `asset_get_history` - Get an asset's activity history
-- `asset_get_user_devices` - List devices assigned to a user
-- `asset_get_inventory_counts` - Get inventory summary counts
+- `asset_get_user_devices` / `asset_get_by_room` / `asset_get_by_storage` / `asset_get_favorites` - Paged asset lists
+- `asset_get_inventory_counts` - Total asset count, optionally grouped by type, status or location
 - `asset_get_status_types` / `asset_get_funding_types` - Reference data
-- ...and more (spares, favorites, by-room, by-storage)
+- `asset_get_spares` - Spare assets for a tag
 
-#### 👥 User Management (15 tools)
+#### 👥 User Management (11 tools)
 - `user_search_advanced` / `user_quick_search` - Search for users (students/staff/parents)
 - `user_get_details` - Get user details by ID
-- `user_get_students` / `user_get_staff` / `user_get_parents` - Filtered directory lookups
+- `user_get_students` / `user_get_staff` - Filtered directory lookups
 - `user_get_all_agents` / `user_search_agents` - List IT support agents
-- `user_get_by_location` - Users at a location
+- `user_get_by_location` - Users whose home location is a site (students optional)
 - `user_statistics_grades` / `user_statistics_locations` - Population statistics
-- ...and more (groups, permissions, current user)
+- `user_get_current` - The API key's own user (GET /users/me; returned 404 on the production test district)
 
-#### 🏫 Location Management (17 tools)
-- `location_get_all` - List all district locations
+#### 🏫 Location Management (11 tools)
+- `location_get_all` - List district locations grouped by type (retired sites hidden unless `includeInactive`)
 - `location_search_advanced` - Search for specific locations
-- `location_get_details` - Get location details by ID
-- `location_get_buildings` / `location_get_campuses` - Building hierarchy
-- `location_get_building_rooms` / `location_find_special_rooms` - Room lookups
-- `location_get_assets` / `location_get_users` / `location_get_tickets` - Cross-references
-- ...and more (hierarchy, children, available rooms)
+- `location_get_details` / `location_get_room_details` / `location_find_by_code` - Look up a location or room
+- `location_get_buildings` / `location_get_types` - Buildings and location types
+- `location_get_all_rooms` / `location_get_building_rooms` / `location_find_special_rooms` - Room lookups
+- `location_get_assets` - Assets at a location (use `user_get_by_location` for people, `ticket_search` with `locationIds` for tickets)
 
 #### 👪 Team Management (9 tools)
 - `team_get_all` / `team_search` - List or search IT support teams
 - `team_get` / `team_get_members` / `team_get_agents` - Team detail and roster
 - `team_get_tickets` / `team_get_locations` / `team_get_categories` / `team_get_stats` - Team context
 
-#### 🔧 Parts & Repair (20 tools)
+#### 🔧 Parts & Repair (11 tools)
 - `parts_get_all` / `parts_search` / `parts_find_by_number` - Inventory lookup
-- `parts_check_stock` / `parts_get_low_stock` / `parts_get_by_location` - Stock tracking
-- `parts_get_chromebook_parts` / `parts_get_ipad_parts` / `parts_get_compatible` - Device parts
+- `parts_get_details` / `parts_check_stock` / `parts_get_low_stock` - Stock tracking
+- `parts_get_chromebook_parts` / `parts_get_ipad_parts` - Device parts
 - `parts_get_suppliers` / `parts_get_supplier_details` - Suppliers
-- `parts_record_usage` / `parts_transfer` / `parts_get_repair_costs` - Repair workflows
-- ...and more (orders, common repairs, ticket parts)
+- `parts_get_orders` - Purchase orders, filterable by created date
 
 #### 🧾 Purchase Orders (14 tools)
 - `purchaseorder_get_all` / `purchaseorder_search` / `purchaseorder_get` - PO lookup
@@ -128,18 +126,16 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `purchaseorder_get_items` / `purchaseorder_get_parts` / `purchaseorder_get_attachments` - PO contents
 - `purchaseorder_get_history` / `purchaseorder_get_summary` / `purchaseorder_get_supplier` - PO context
 
-#### 🐞 Issue Types (20 tools)
+#### 🐞 Issue Types (6 tools)
 - `issues_get_types` / `issues_search_types` / `issues_get_type_details` - Issue type catalog
-- `issues_get_categories` / `issues_get_category_hierarchy` - Category structure
-- `issues_get_chromebook_issues` / `issues_get_network_issues` / `issues_get_classroom_tech` - Common K-12 issues
-- `issues_get_priorities` / `issues_get_priority_sla` - Priority and SLA mapping
-- ...and more (templates, recurring, seasonal, parent portal)
+- `issues_get_site_issues` - Issues available at this site, with names and categories
+- `issues_get_classroom_tech` / `issues_get_student_devices` - Common K-12 issue types
 
-#### 🏷️ Custom Fields (18 tools)
+#### 🏷️ Custom Fields (12 tools)
 - `customfield_get_all` / `customfield_search` / `customfield_find_by_name` - Field catalog
-- `customfield_get_by_entity` / `customfield_get_types` / `customfield_get_type_details` - Field definitions
-- `customfield_get_asset_values` / `customfield_get_ticket_values` / `customfield_get_user_values` / `customfield_get_location_values` - Field values
-- `customfield_validate_value` / `customfield_get_required` / `customfield_get_options` - Validation
+- `customfield_get_details` / `customfield_get_types` / `customfield_get_type_details` - Field definitions
+- `customfield_get_asset_values` / `customfield_get_ticket_values` / `customfield_get_user_values` - Field values
+- `customfield_get_required` / `customfield_get_options` / `customfield_get_student_fields` - Required fields, options and student fields
 
 #### 📈 SLA Management (4 tools)
 - `sla_list` - Get all configured SLAs

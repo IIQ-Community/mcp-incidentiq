@@ -343,10 +343,24 @@ export const handlers = [
 // Additional API endpoints for improved test coverage
 const additionalHandlers = [
   // Asset tag search endpoints
+  // Live IIQ wraps the exact match in Items and nests the names (verified 2026-11-07).
   http.get('https://test.incidentiq.com/api/v1.0/assets/assettag/:assetTag', ({ params }) => {
     const asset = mockAssets.find(a => a.AssetTag === params.assetTag);
     if (asset) {
-      return HttpResponse.json(asset);
+      return HttpResponse.json({
+        Items: [{
+          AssetId: asset.AssetId,
+          AssetTag: asset.AssetTag,
+          SerialNumber: asset.SerialNumber,
+          AssetTypeName: asset.AssetTypeName,
+          Model: { Name: asset.ModelName, Manufacturer: { Name: asset.ManufacturerName } },
+          Status: { Name: asset.StatusName },
+          Location: { Name: asset.LocationName },
+          Owner: { Name: asset.AssignedUserName },
+        }],
+        ItemCount: 1,
+        Paging: { TotalRows: 1 },
+      });
     }
     return new HttpResponse(null, { status: 404 });
   }),
@@ -367,17 +381,9 @@ const additionalHandlers = [
     });
   }),
 
-  // Asset count endpoint
+  // Asset count endpoint: live IIQ sends only Paging.TotalRows, no breakdown (verified 2026-11-07).
   http.post('https://test.incidentiq.com/api/v1.0/assets/count', () => {
-    return HttpResponse.json({
-      TotalCount: 2000,
-      ByType: {
-        Chromebook: 1500,
-        iPad: 300,
-        Desktop: 200,
-        Laptop: 150
-      }
-    });
+    return HttpResponse.json({ Items: [], Paging: { TotalRows: 2000 } });
   }),
   // Teams
   http.get('https://test.incidentiq.com/api/v1.0/teams/all', () => {

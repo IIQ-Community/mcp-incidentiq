@@ -11,7 +11,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 **🎉 PRODUCTION READY**: UAT successfully completed against a production K-12 school district instance. The project has been validated in production and is approved for deployment. Successfully pushed to GitHub (IIQ-Community/mcp-incidentiq).
 
 ### Core Implementation
-- **140+ MCP Tools**: Comprehensive tools across 9 distinct domain modules
+- **119 MCP Tools**: Every advertised tool has a handler; tools IncidentIQ cannot back are not advertised (issue #98)
 - **9 Domain Modules**: Tickets, Users, Assets, Locations, Teams, Parts, Purchase Orders, Issues, Custom Fields
 - **Strongly Typed**: Complete TypeScript interfaces for all IncidentIQ API entities
 - **Error Handling**: Robust error handling with user-friendly messages
@@ -23,7 +23,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
 - **E2E Tests**: MCP test client for end-to-end testing (currently disabled due to ES module issues)
 - **Mock Service Worker**: Realistic API mocking with K-12 specific test data
-- **Test Coverage**: 126 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
+- **Test Coverage**: 487 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
 - **Package Manager**: npm (`package-lock.json`); Node ≥ 22 (CI and release run Node 24)
 
@@ -34,8 +34,8 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Performance**: Handles large production datasets without issues
 - **Teams**: Multiple support teams with full IT agent rosters accessible
 - **Locations**: All district locations including schools accessible
-- **Minor Issues**: Some fields return undefined (cosmetic)
-- **Missing Tools**: parts_* and issues_* not yet implemented (low priority)
+- **Minor Issues**: Fields IIQ does not send were removed from tool output in #98 (previously shown as "undefined")
+- **Missing Tools**: resolved in #98: every advertised tool has a handler; tools IIQ cannot back are no longer advertised
 
 ### CI/CD Status (2025-01-09)
 - **✅ Type Checking**: Passing

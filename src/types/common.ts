@@ -96,10 +96,11 @@ export interface IIQUser {
   IsActive?: boolean;
   Homeroom?: string;
   Grade?: string;
-  PhoneNumber?: string;
-  /** Phone number field IIQ actually sends (verified 2026-11-07). */
+  /** Phone number field IIQ actually sends (verified 2026-11-07); there is no PhoneNumber or MobileNumber. */
   Phone?: string;
-  MobileNumber?: string;
+  /** Sent by GET /users/{id} only (verified 2026-11-07). */
+  HomePhone?: string;
+  JobTitle?: string;
 }
 
 export interface IIQAsset {
@@ -107,21 +108,23 @@ export interface IIQAsset {
   AssetTag: string;
   SerialNumber?: string;
   AssetTypeName?: string;
-  ModelName?: string;
-  ManufacturerName?: string;
-  StatusName?: string;
   LocationId?: string;
-  LocationName?: string;
-  AssignedUserId?: string;
-  AssignedUserName?: string;
-  PurchaseDate?: string;
+  /** Sent by POST /assets search rows, not by the exact tag/serial lookups (verified 2026-11-07). */
   WarrantyExpirationDate?: string;
   Notes?: string;
-  /** Nested objects POST /assets actually returns (verified 2026-11-07); the flat *Name fields above are not sent. */
-  Model?: { Name?: string };
+  /** Names arrive in nested objects (verified 2026-11-07); IIQ sends no flat ModelName/StatusName/AssignedUserName. */
+  Model?: { Name?: string; Manufacturer?: { Name?: string } };
   Status?: { Name?: string };
   Location?: { Name?: string };
   Owner?: { Name?: string };
+  /** Also sent by the tag/serial/user/room asset endpoints (verified 2026-11-07). */
+  OwnerId?: string;
+  LocationRoomId?: string;
+  LocationRoom?: { Name?: string };
+  FundingSourceId?: string;
+  FundingSource?: { Name?: string };
+  PurchasedDate?: string;
+  StorageUnitNumber?: string;
 }
 
 export interface IIQTicket {

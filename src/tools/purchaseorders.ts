@@ -27,6 +27,15 @@ function hasStatus(po: ListedPurchaseOrder, status: string): boolean {
   }
 }
 
+/**
+ * Calendar day (YYYY-MM-DD) of a date or timestamp. Comparing days makes both range bounds
+ * inclusive whole days with no timezone implied: IIQ CreatedDate carries no offset, and
+ * date-only inputs would otherwise parse as UTC.
+ */
+export function day(value: string | undefined): string | undefined {
+  return value ? String(value).slice(0, 10) : undefined;
+}
+
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
 
@@ -304,9 +313,6 @@ export class PurchaseOrderTools {
       case 'purchaseorder_search': {
         // IIQ has no PO search (POST /purchaseorders returns 405), so filter the full PO list.
         const { items, truncated } = await iiqListAll<ListedPurchaseOrder>(client, '/purchaseorders');
-        // Compare calendar dates (YYYY-MM-DD) so both bounds are inclusive whole days and no
-        // timezone is implied: IIQ CreatedDate carries no offset, and date-only inputs would parse as UTC.
-        const day = (value: string | undefined) => (value ? String(value).slice(0, 10) : undefined);
         const from = day(args.dateFrom);
         const to = day(args.dateTo);
         const matched = items.filter((po) => {

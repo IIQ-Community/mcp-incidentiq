@@ -8,8 +8,11 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { pathSegment } from '../api/path.js';
 import { ROLES, resolveIds } from '../api/lookups.js';
-import { formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows, withTruncationNote } from '../api/paging.js';
+import {
+  formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows, mapLimit, withTruncationNote,
+} from '../api/paging.js';
 import {
   IIQFilter,
   IIQLocation,
@@ -21,6 +24,13 @@ import {
 /** Display name: IIQ sends `Name` (there is no `FullName`); first + last is the fallback. */
 function userName(user: IIQUser): string {
   return user.Name || `${user.FirstName} ${user.LastName}`;
+}
+
+/** One agent row, shared by user_get_all_agents and user_search_agents. */
+function renderAgentRow(agent: IIQUser): string {
+  return `• ${userName(agent)}
+  Email: ${agent.Email || 'N/A'} | Phone: ${agent.Phone || 'N/A'}
+  Location: ${agent.LocationName || 'N/A'}`;
 }
 
 /** Most statistics count requests in flight at once (one request per grade or location). */
@@ -56,39 +66,11 @@ async function countUsers(client: IncidentIQClient, filters: IIQFilter[]): Promi
   return iiqTotalRows(response);
 }
 
-/** Maps `items` through `fn` with at most `limit` calls in flight, keeping input order. */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const index = next++;
-      results[index] = await fn(items[index]);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
-
 // User-specific types
 export interface UserStatistics {
   Category: string;
   Count: number;
   Percentage?: number;
-}
-
-export interface UserPermission {
-  PermissionId: string;
-  PermissionName: string;
-  Scope: string;
-  LocationId?: string;
-}
-
-export interface UserGroup {
-  GroupId: string;
-  GroupName: string;
-  Description?: string;
-  MemberCount?: number;
 }
 
 // Initialize client lazily
@@ -126,17 +108,13 @@ export const enhancedUserTools = [
           type: 'string',
           description: 'Building/school ID',
         },
-        isActive: {
-          type: 'boolean',
-          description: 'Active status filter',
-        },
         viewId: {
           type: 'string',
           description: 'Use a saved view for filtering',
         },
         includeDeleted: {
           type: 'boolean',
-          description: 'Include deleted users (default: false)',
+          description: 'Show only deleted users (sent as OnlyShowDeleted; default: false)',
         },
         pageSize: {
           type: 'number',
@@ -180,21 +158,18 @@ export const enhancedUserTools = [
   },
   {
     name: 'user_get_staff',
-    description: 'Get all staff users (teachers, administrators, support)',
+    description: 'Get staff users: the Staff and Faculty roles (POST /users with role filters)',
     inputSchema: {
       type: 'object',
       properties: {
         role: {
           type: 'string',
-          description: 'Filter by role (Teacher, Administrator, etc.)',
+          enum: ['Staff', 'Faculty'],
+          description: 'Only this staff role (default: both Staff and Faculty)',
         },
         locationId: {
           type: 'string',
           description: 'Filter by building',
-        },
-        department: {
-          type: 'string',
-          description: 'Filter by department',
         },
         pageSize: {
           type: 'number',
@@ -208,35 +183,17 @@ export const enhancedUserTools = [
       required: [],
     },
   },
-  {
-    name: 'user_get_parents',
-    description: 'Get parent users with student associations',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        studentId: {
-          type: 'string',
-          description: 'Get parents of specific student',
-        },
-        grade: {
-          type: 'string',
-          description: 'Get parents of students in grade',
-        },
-      },
-      required: [],
-    },
-  },
   
   // IT Support
   {
     name: 'user_get_all_agents',
-    description: 'Get all IT support agents with permissions (GET /users/agents)',
+    description: 'Get all IT support agents (GET /users/agents); inactive agents are hidden unless includeInactive',
     inputSchema: {
       type: 'object',
       properties: {
         includeInactive: {
           type: 'boolean',
-          description: 'Include inactive agents',
+          description: 'Include inactive agents (IsActive false); default: false',
         },
         pageSize: {
           type: 'number',
@@ -258,15 +215,23 @@ export const enhancedUserTools = [
       properties: {
         searchText: {
           type: 'string',
-          description: 'Search in agent names',
+          description: 'Keyword matched by IIQ (e.g. agent name or email)',
         },
         locationId: {
           type: 'string',
-          description: 'Filter by assigned location',
+          description: 'Filter by agent location ID (GUID)',
         },
         teamId: {
           type: 'string',
-          description: 'Filter by support team',
+          description: 'Filter by support team ID (GUID, see team_get_all)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: [],
@@ -328,59 +293,28 @@ export const enhancedUserTools = [
     },
   },
   
-  // Permissions & Groups
-  {
-    name: 'user_get_permissions',
-    description: 'Get user permissions and access rights',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        userId: {
-          type: 'string',
-          description: 'User ID to check permissions for',
-        },
-      },
-      required: ['userId'],
-    },
-  },
-  {
-    name: 'user_get_groups',
-    description: 'Get all user groups in the district',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: 'user_get_user_groups',
-    description: 'Get groups a specific user belongs to',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        userId: {
-          type: 'string',
-          description: 'User ID',
-        },
-      },
-      required: ['userId'],
-    },
-  },
-  
   // Location-based
   {
     name: 'user_get_by_location',
-    description: 'Get users with permissions for a location (GET /users/location/{id})',
+    description: 'Get users whose home location is the given location (POST /users with a location filter); students are excluded unless includeStudents',
     inputSchema: {
       type: 'object',
       properties: {
         locationId: {
           type: 'string',
-          description: 'Location/building ID',
+          description: 'Location/building ID (GUID)',
         },
         includeStudents: {
           type: 'boolean',
-          description: 'Include student users',
+          description: 'Include student users (default: false)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['locationId'],
@@ -455,7 +389,7 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         const readPage = (pageIndex: number) => searchText
           ? client.request<PaginatedResponse<IIQUser>>({
             method: 'GET',
-            url: `/users/search/${encodeURIComponent(searchText)}`,
+            url: `/users/search/${pathSegment(searchText)}`,
             params: iiqPagingParams(pageIndex, pageSize),
           })
           : client.request<PaginatedResponse<IIQUser>>({
@@ -545,7 +479,10 @@ export async function handleEnhancedUserTool(name: string, args: any) {
       
       case 'user_get_staff': {
         // Staff OR Faculty: repeated `role` filters combine as OR in IIQ (3,497 + 72 = 3,569 live).
-        const staffRoleIds = await resolveIds(client, ROLES, ['Staff', 'Faculty'], { skipMissing: true });
+        // A `role` argument narrows to that one role.
+        const staffRoleIds = args.role
+          ? await resolveIds(client, ROLES, [String(args.role)])
+          : await resolveIds(client, ROLES, ['Staff', 'Faculty'], { skipMissing: true });
         const payload: PaginatedRequest = {
           OnlyShowDeleted: false,
           FilterByViewPermission: false,
@@ -585,25 +522,52 @@ export async function handleEnhancedUserTool(name: string, args: any) {
       case 'user_get_all_agents': {
         // GET /users/agents defaults to a 200-row page (300 agents live), so read the whole list.
         const { items, truncated } = await iiqListAll<IIQUser>(client, '/users/agents');
+        // IIQ lists inactive agents too (5 of 300 live); hide them unless asked.
+        const agents = args.includeInactive ? items : items.filter((agent) => agent.IsActive !== false);
         const result = formatListPage({
-          rows: items,
+          rows: agents,
           pageIndex: args.pageIndex,
           pageSize: args.pageSize || 25,
           noun: 'IT support agents',
           emptyText: 'No IT support agents found.',
-          render: (agent) => `• ${userName(agent)}
-  Email: ${agent.Email || 'N/A'} | Phone: ${agent.Phone || 'N/A'}
-  Location: ${agent.LocationName || 'N/A'}`,
+          render: renderAgentRow,
           truncated,
         });
-        if (items.length > 0) result.content[0].text += '\n\n💡 These agents can be assigned to tickets and have elevated permissions';
+        if (agents.length > 0) result.content[0].text += '\n\n💡 These agents can be assigned to tickets and have elevated permissions';
         return result;
+      }
+
+      case 'user_search_agents': {
+        // IIQ applies keyword, location and team facets on POST /users/agents (verified 2026-11-07).
+        const filters: IIQFilter[] = [];
+        const searchText = typeof args.searchText === 'string' ? args.searchText.trim() : '';
+        if (searchText) filters.push({ Facet: 'keyword', Value: searchText });
+        if (args.locationId) filters.push({ Facet: 'location', Id: args.locationId });
+        if (args.teamId) filters.push({ Facet: 'team', Id: args.teamId });
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
+          method: 'POST',
+          url: '/users/agents',
+          params: iiqPagingParams(index, pageSize),
+          data: { OnlyShowDeleted: false, FilterByViewPermission: false, Filters: filters },
+        });
+        const response = await readPage(pageIndex);
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'IT support agents',
+          emptyText: 'No IT support agents found matching your criteria.',
+          render: renderAgentRow,
+        });
       }
       
       case 'user_get_details': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/users/${args.userId}`,
+          url: `/users/${pathSegment(args.userId)}`,
         });
         
         const user = response?.Item || response;
@@ -627,11 +591,9 @@ Email: ${user.Email || 'N/A'}
 Type: ${user.Role?.Name || 'Unknown'}
 Role: ${user.Role?.Name || 'N/A'}
 Location: ${user.LocationName || 'N/A'}
-${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.PhoneNumber || 'N/A'}
-Mobile: ${user.MobileNumber || 'N/A'}
-Status: ${user.IsActive ? 'Active' : 'Inactive'}
-Created: ${user.CreatedDate || 'N/A'}
-Last Login: ${user.LastLoginDate || 'Never'}`,
+${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.Phone || 'N/A'}
+${user.HomePhone ? `Home Phone: ${user.HomePhone}\n` : ''}${user.JobTitle ? `Job Title: ${user.JobTitle}\n` : ''}Status: ${user.IsActive ? 'Active' : 'Inactive'}
+Created: ${user.CreatedDate || 'N/A'}`,
           }],
         };
       }
@@ -717,45 +679,34 @@ Permissions: ${user.Permissions?.length || 0} permissions`,
       }
       
       case 'user_get_by_location': {
-        const response = await client.request<PaginatedResponse<IIQUser>>({
-          method: 'GET',
-          url: `/users/location/${args.locationId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No users found for this location.',
-            }],
-          };
+        // GET /users/location/{id} ignores the location (every user, 48,465 live), so filter
+        // POST /users by the users' home location. Repeated `role` filters combine as OR.
+        const filters: IIQFilter[] = [{ Facet: 'location', Id: args.locationId }];
+        if (!args.includeStudents) {
+          const roles = await client.request<{ Items?: Array<{ RoleId: string; Name?: string }> }>({ method: 'GET', url: ROLES.url });
+          const nonStudent = (roles?.Items ?? []).filter((role) => role.Name?.trim().toLowerCase() !== 'student');
+          if (nonStudent.length === 0) throw new Error('No non-student roles found to filter by; use includeStudents: true.');
+          filters.push(...nonStudent.map((role) => ({ Facet: 'role', Id: role.RoleId })));
         }
-        
-        const usersByType: Record<string, IIQUser[]> = {};
-        response.Items.forEach((user: IIQUser) => {
-          const type = user.Role?.Name || 'Unknown';
-          if (!usersByType[type]) usersByType[type] = [];
-          usersByType[type].push(user);
+        const pageIndex = args.pageIndex || 0;
+        const pageSize = args.pageSize || 25;
+        const readPage = (index: number) => client.request<PaginatedResponse<IIQUser>>({
+          method: 'POST',
+          url: '/users',
+          params: iiqPagingParams(index, pageSize),
+          data: { OnlyShowDeleted: false, FilterByViewPermission: false, Filters: filters },
         });
-        
-        let output = `Users at Location (${iiqTotalRows(response)} total):\n`;
-        
-        for (const [type, users] of Object.entries(usersByType)) {
-          output += `\n${type} (${users.length}):\n`;
-          users.slice(0, 5).forEach(user => {
-            output += `  • ${userName(user)}\n`;
-          });
-          if (users.length > 5) {
-            output += `  ... and ${users.length - 5} more\n`;
-          }
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
+        const response = await readPage(pageIndex);
+        return formatListPage({
+          rows: response?.Items ?? [],
+          total: await iiqServerTotal(response, pageIndex, readPage),
+          pageIndex,
+          pageSize,
+          noun: 'users',
+          emptyText: 'No users found for this location.',
+          render: (user: IIQUser) => `• ${userName(user)} (${user.Role?.Name || 'Unknown'})
+  Email: ${user.Email || 'N/A'} | Location: ${user.LocationName || 'N/A'}`,
+        });
       }
       
       case 'user_quick_search': {

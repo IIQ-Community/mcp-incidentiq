@@ -8,12 +8,18 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { pathSegment } from '../api/path.js';
 import { ASSET_STATUSES, ASSET_TYPES, resolveIds } from '../api/lookups.js';
-import { formatListPage, iiqServerTotal, iiqTotalRows } from '../api/paging.js';
-import { 
+import {
+  formatListPage, iiqListAll, iiqPagingParams, iiqServerTotal, iiqTotalRows, mapLimit, normalizePageIndex,
+  normalizePageSize, withTruncationNote,
+} from '../api/paging.js';
+import {
   IIQAsset,
+  IIQFilter,
+  IIQLocation,
   PaginatedRequest,
-  PaginatedResponse 
+  PaginatedResponse
 } from '../types/common.js';
 
 // Asset-specific types
@@ -48,6 +54,77 @@ export function renderAssetRow(asset: IIQAsset): string {
   Model: ${asset.Model?.Name || 'N/A'} | Serial: ${asset.SerialNumber || 'N/A'}
   Status: ${asset.Status?.Name || 'Unknown'} | Location: ${asset.Location?.Name || 'N/A'}
   User: ${asset.Owner?.Name || 'Unassigned'}`;
+}
+
+/** Every field of one asset, from the nested objects IIQ sends (no flat ModelName/StatusName etc.). */
+function renderAssetDetails(asset: IIQAsset): string {
+  return `Type: ${asset.AssetTypeName || 'Unknown'}
+Model: ${asset.Model?.Name || 'N/A'}
+Manufacturer: ${asset.Model?.Manufacturer?.Name || 'N/A'}
+Serial: ${asset.SerialNumber || 'N/A'}
+Status: ${asset.Status?.Name || 'Unknown'}
+Location: ${asset.Location?.Name || 'N/A'}
+Room: ${asset.LocationRoom?.Name || 'N/A'}
+Assigned To: ${asset.Owner?.Name || 'Unassigned'}
+Purchase Date: ${asset.PurchasedDate || 'N/A'}
+Warranty: ${asset.WarrantyExpirationDate || 'N/A'}
+Funding: ${asset.FundingSource?.Name || 'N/A'}
+Notes: ${asset.Notes || 'None'}`;
+}
+
+/** The asset an exact lookup returns: IIQ sends `{ Items: [asset] }` (verified 2026-11-07); `{ Item }` is tolerated. */
+function singleAsset(response: { Items?: IIQAsset[]; Item?: IIQAsset } | null | undefined): IIQAsset | undefined {
+  return response?.Items?.[0] ?? response?.Item;
+}
+
+/** Text result for an unpaged asset list endpoint: heading with the total, then one row per asset. */
+function assetListText(response: PaginatedResponse<IIQAsset> | null | undefined, heading: (total: number) => string, emptyText: string) {
+  const rows = response?.Items ?? [];
+  if (rows.length === 0) return { content: [{ type: 'text', text: emptyText }] };
+  const total = iiqTotalRows(response);
+  return {
+    content: [{ type: 'text', text: `${heading(total)}:\n\n${rows.map(renderAssetRow).join('\n\n')}` }],
+  };
+}
+
+/** Most inventory count requests in flight at once (one request per type, status or location). */
+const COUNT_CONCURRENCY = 4;
+
+/** What each inventory `groupBy` counts: the list of groups and the POST /assets facet that filters on one. */
+const COUNT_GROUPS: Record<string, { label: string; url: string; idKey: string; facet: string }> = {
+  type: { label: 'Type', url: '/assets/types', idKey: 'AssetTypeId', facet: 'AssetType' },
+  status: { label: 'Status', url: '/assets/status/types', idKey: 'AssetStatusTypeId', facet: 'assetstatus' },
+  location: { label: 'Location', url: '/locations/all', idKey: 'LocationId', facet: 'location' },
+};
+
+/**
+ * Text result for a GET asset list paged on the IIQ server by $p/$s (verified 2026-11-07: tag/serial
+ * searches, and /assets/rooms, which otherwise sends 100 rows of a room that may hold thousands).
+ */
+async function pagedAssetList(
+  client: IncidentIQClient,
+  url: string,
+  args: any,
+  { noun = 'assets', emptyText, renderPage }: { noun?: string; emptyText: string; renderPage?: (page: IIQAsset[]) => string }
+) {
+  const pageIndex = args.pageIndex || 0;
+  const pageSize = args.pageSize || 25;
+  const readPage = (index: number) => client.request<PaginatedResponse<IIQAsset>>({
+    method: 'GET',
+    url,
+    params: iiqPagingParams(index, pageSize),
+  });
+  const response = await readPage(pageIndex);
+  return formatListPage({
+    rows: response?.Items ?? [],
+    total: await iiqServerTotal(response, pageIndex, readPage),
+    pageIndex,
+    pageSize,
+    noun,
+    emptyText,
+    render: renderAssetRow,
+    renderPage,
+  });
 }
 
 // Initialize client lazily
@@ -90,19 +167,15 @@ export const enhancedAssetTools = [
         },
         roomId: {
           type: 'string',
-          description: 'Filter by specific room ID',
+          description: 'Filter by room ID (LocationRoomId), sent as the `room` facet',
         },
         assignedUserId: {
           type: 'string',
-          description: 'Filter by assigned user (student/staff)',
-        },
-        fundingType: {
-          type: 'string',
-          description: 'Filter by funding source (grants, budget, etc.)',
+          description: 'Filter by the assigned user\'s ID (OwnerId, student or staff), sent as the `user` facet',
         },
         includeDeleted: {
           type: 'boolean',
-          description: 'Include deleted assets (default: false)',
+          description: 'Show only deleted assets (sent as OnlyShowDeleted; default: false)',
         },
         pageSize: {
           type: 'number',
@@ -134,13 +207,21 @@ export const enhancedAssetTools = [
   },
   {
     name: 'asset_search_by_tag',
-    description: 'Search assets by tag with wildcards (GET /assets/assettag/search/{tag})',
+    description: 'Search assets by partial asset tag, paged on the server (GET /assets/assettag/search/{tag})',
     inputSchema: {
       type: 'object',
       properties: {
         tagPattern: {
           type: 'string',
-          description: 'Tag pattern (supports wildcards, e.g., CHR-*)',
+          description: 'Part of an asset tag to search for (e.g., CHR-12)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['tagPattern'],
@@ -164,13 +245,21 @@ export const enhancedAssetTools = [
   },
   {
     name: 'asset_search_by_serial',
-    description: 'Search assets by serial with wildcards (GET /assets/serial/search/{serial})',
+    description: 'Search assets by partial serial number, paged on the server (GET /assets/serial/search/{serial})',
     inputSchema: {
       type: 'object',
       properties: {
         serialPattern: {
           type: 'string',
-          description: 'Serial pattern (supports wildcards)',
+          description: 'Part of a serial number to search for',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['serialPattern'],
@@ -180,7 +269,7 @@ export const enhancedAssetTools = [
   // User Assets
   {
     name: 'asset_get_user_devices',
-    description: 'Get all devices assigned to a student/staff member (GET /assets/for/{userId})',
+    description: 'Get the devices assigned to a student/staff member, paged on the server (GET /assets/for/{userId})',
     inputSchema: {
       type: 'object',
       properties: {
@@ -188,9 +277,13 @@ export const enhancedAssetTools = [
           type: 'string',
           description: 'User ID (student or staff GUID)',
         },
-        includeInactive: {
-          type: 'boolean',
-          description: 'Include inactive/retired devices',
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['userId'],
@@ -200,7 +293,7 @@ export const enhancedAssetTools = [
   // Favorites Management
   {
     name: 'asset_get_favorites',
-    description: 'Get user\'s favorite assets for quick access (GET /assets/favorites/{userId})',
+    description: 'Get the assets a user has favorited, paged on the server (GET /assets/favorites/{userId})',
     inputSchema: {
       type: 'object',
       properties: {
@@ -210,40 +303,25 @@ export const enhancedAssetTools = [
         },
         includeAll: {
           type: 'boolean',
-          description: 'Include inactive favorites',
+          description: 'Also include assets in the user\'s assigned rooms (GET /assets/favorites/{userId}/true; default: false)',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['userId'],
-    },
-  },
-  {
-    name: 'asset_toggle_favorite',
-    description: 'Add/remove asset from favorites (POST /assets/favorites/...)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        assetId: {
-          type: 'string',
-          description: 'Asset ID to favorite/unfavorite',
-        },
-        userId: {
-          type: 'string',
-          description: 'User ID',
-        },
-        action: {
-          type: 'string',
-          enum: ['add', 'remove'],
-          description: 'Add to or remove from favorites',
-        },
-      },
-      required: ['assetId', 'userId', 'action'],
     },
   },
   
   // Location-based Queries
   {
     name: 'asset_get_by_room',
-    description: 'Get all assets in a specific classroom/room (GET /assets/rooms/{roomId})',
+    description: 'Get the assets in a specific classroom/room, paged on the server and grouped by type (GET /assets/rooms/{roomId})',
     inputSchema: {
       type: 'object',
       properties: {
@@ -251,13 +329,21 @@ export const enhancedAssetTools = [
           type: 'string',
           description: 'Room/classroom ID',
         },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
+        },
       },
       required: ['roomId'],
     },
   },
   {
     name: 'asset_get_by_storage',
-    description: 'Get assets in storage unit (GET /assets/storageunit/{locationId}/{unitNumber})',
+    description: 'Get assets in a storage unit, paged on the server (GET /assets/storageunit/{locationId}/{unitNumber})',
     inputSchema: {
       type: 'object',
       properties: {
@@ -268,6 +354,14 @@ export const enhancedAssetTools = [
         unitNumber: {
           type: 'string',
           description: 'Storage unit number',
+        },
+        pageSize: {
+          type: 'number',
+          description: 'Results per page (default: 25)',
+        },
+        pageIndex: {
+          type: 'number',
+          description: 'Page number (0-based)',
         },
       },
       required: ['locationId', 'unitNumber'],
@@ -321,18 +415,18 @@ export const enhancedAssetTools = [
   // Inventory & Counts
   {
     name: 'asset_get_inventory_counts',
-    description: 'Get asset counts by various categories (POST /assets/count)',
+    description: 'Get the total asset count (POST /assets/count), optionally broken down by type, status or location (one filtered POST /assets count per group)',
     inputSchema: {
       type: 'object',
       properties: {
         groupBy: {
           type: 'string',
-          enum: ['type', 'status', 'location', 'funding', 'manufacturer'],
-          description: 'Category to group counts by',
+          enum: ['type', 'status', 'location'],
+          description: 'Break the count down by asset type (GET /assets/types), status (GET /assets/status/types) or location (GET /locations/all); omit for the total only',
         },
         includeDeleted: {
           type: 'boolean',
-          description: 'Include deleted assets in counts',
+          description: 'Count only deleted assets (sent as OnlyShowDeleted; default: false)',
         },
       },
       required: [],
@@ -367,8 +461,8 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
           FilterByViewPermission: false,
           Filters: [],
           Paging: {
-            PageIndex: args.pageIndex || 0,
-            PageSize: args.pageSize || 25,
+            PageIndex: normalizePageIndex(args.pageIndex),
+            PageSize: normalizePageSize(args.pageSize || 25),
           },
         };
         
@@ -403,6 +497,15 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
             Id: args.locationId,
           });
         }
+
+        // IIQ applies these facets (verified 2026-11-07); it has no working funding facet.
+        if (args.roomId) {
+          payload.Filters!.push({ Facet: 'room', Id: args.roomId });
+        }
+
+        if (args.assignedUserId) {
+          payload.Filters!.push({ Facet: 'user', Id: args.assignedUserId });
+        }
         
         const readPage = (pageIndex: number) => client.request<PaginatedResponse<IIQAsset>>({
           method: 'POST',
@@ -424,176 +527,83 @@ export async function handleEnhancedAssetTool(name: string, args: any) {
       }
       
       case 'asset_find_by_tag': {
-        const response = await client.request<any>({
+        const asset = singleAsset(await client.request<PaginatedResponse<IIQAsset> & { Item?: IIQAsset }>({
           method: 'GET',
-          url: `/assets/assettag/${encodeURIComponent(args.assetTag)}`,
-        });
-        
-        if (!response) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No asset found with tag: ${args.assetTag}`,
-            }],
-          };
-        }
-        
-        const asset = response.Item || response;
-        
-        return {
-          content: [{
-            type: 'text',
-              text: `Asset Found: ${asset.AssetTag}
-Type: ${asset.AssetTypeName || 'Unknown'}
-Model: ${asset.ModelName || 'N/A'}
-Manufacturer: ${asset.ManufacturerName || 'N/A'}
-Serial: ${asset.SerialNumber || 'N/A'}
-Status: ${asset.StatusName || 'Unknown'}
-Location: ${asset.LocationName || 'N/A'}
-Room: ${asset.RoomNumber || 'N/A'}
-Assigned To: ${asset.AssignedUserName || 'Unassigned'}
-Purchase Date: ${asset.PurchaseDate || 'N/A'}
-Warranty: ${asset.WarrantyExpirationDate || 'N/A'}
-Funding: ${asset.FundingTypeName || 'N/A'}
-Notes: ${asset.Notes || 'None'}`,
-            }],
-          };
+          url: `/assets/assettag/${pathSegment(args.assetTag)}`,
+        }));
+        const text = asset
+          ? `Asset Found: ${asset.AssetTag}\n${renderAssetDetails(asset)}`
+          : `No asset found with tag: ${args.assetTag}`;
+        return { content: [{ type: 'text', text }] };
       }
-      
-      case 'asset_search_by_tag': {
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
-          method: 'GET',
-          url: `/assets/assettag/search/${encodeURIComponent(args.tagPattern)}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No assets found matching tag pattern: ${args.tagPattern}`,
-            }],
-          };
-        }
-        
-        const assetList = response.Items.map((asset: IIQAsset) =>
-          `• ${asset.AssetTag} - ${asset.AssetTypeName} (${asset.StatusName})`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Found ${iiqTotalRows(response)} assets matching "${args.tagPattern}":
-            
-${assetList}`,
-          }],
-        };
-      }
-      
-      case 'asset_find_by_serial': {
-        const response = await client.request<any>({
-          method: 'GET',
-          url: `/assets/serial/${encodeURIComponent(args.serialNumber)}`,
-        });
-        
-        if (!response) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No asset found with serial: ${args.serialNumber}`,
-            }],
-          };
-        }
-        
-        const asset = response.Item || response;
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Found by Serial: ${asset.SerialNumber}
-Tag: ${asset.AssetTag}
-Type: ${asset.AssetTypeName}
-Model: ${asset.ModelName}
-Status: ${asset.StatusName}
-Location: ${asset.LocationName}
-User: ${asset.AssignedUserName || 'Unassigned'}`,
-          }],
-        };
-      }
-      
-      case 'asset_get_user_devices': {
-        const url = args.includeInactive 
-          ? `/assets/for/${args.userId}/true`
-          : `/assets/for/${args.userId}`;
-          
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
-          method: 'GET',
-          url,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No devices assigned to this user.',
-            }],
-          };
-        }
-        
-        const deviceList = response.Items.map((asset: IIQAsset) =>
-          `• ${asset.AssetTag} - ${asset.AssetTypeName}
-  Status: ${asset.StatusName} | Serial: ${asset.SerialNumber || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `User has ${iiqTotalRows(response)} assigned device(s):
 
-${deviceList}`,
-          }],
-        };
-      }
-      
-      case 'asset_get_by_room': {
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
+      case 'asset_search_by_tag':
+        return await pagedAssetList(
+          client,
+          `/assets/assettag/search/${pathSegment(args.tagPattern)}`,
+          args,
+          { emptyText: `No assets found matching tag pattern: ${args.tagPattern}` }
+        );
+
+      case 'asset_find_by_serial': {
+        const asset = singleAsset(await client.request<PaginatedResponse<IIQAsset> & { Item?: IIQAsset }>({
           method: 'GET',
-          url: `/assets/rooms/${args.roomId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No assets found in this room.',
-            }],
-          };
-        }
-        
-        // Group by asset type for better organization
-        const assetsByType: Record<string, IIQAsset[]> = {};
-        response.Items.forEach((asset: IIQAsset) => {
-          const type = asset.AssetTypeName || 'Unknown';
-          if (!assetsByType[type]) assetsByType[type] = [];
-          assetsByType[type].push(asset);
-        });
-        
-        let output = `Room Inventory (${iiqTotalRows(response)} assets):\n`;
-        
-        for (const [type, assets] of Object.entries(assetsByType)) {
-          output += `\n${type} (${assets.length}):\n`;
-          assets.forEach(asset => {
-            output += `  • ${asset.AssetTag} - ${asset.StatusName}\n`;
-          });
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
+          url: `/assets/serial/${pathSegment(args.serialNumber)}`,
+        }));
+        const text = asset
+          ? `Asset Found by Serial: ${asset.SerialNumber}\nTag: ${asset.AssetTag}\n${renderAssetDetails(asset)}`
+          : `No asset found with serial: ${args.serialNumber}`;
+        return { content: [{ type: 'text', text }] };
       }
-      
+
+      case 'asset_search_by_serial':
+        return await pagedAssetList(
+          client,
+          `/assets/serial/search/${pathSegment(args.serialPattern)}`,
+          args,
+          { emptyText: `No assets found matching serial pattern: ${args.serialPattern}` }
+        );
+
+      case 'asset_get_user_devices':
+        // The /true ("All") variant returned the same rows for 12 of 12 owners and is undocumented.
+        return await pagedAssetList(client, `/assets/for/${pathSegment(args.userId)}`, args, {
+          noun: 'assigned devices',
+          emptyText: 'No devices assigned to this user.',
+        });
+
+      case 'asset_get_favorites':
+        return await pagedAssetList(
+          client,
+          args.includeAll ? `/assets/favorites/${pathSegment(args.userId)}/true` : `/assets/favorites/${pathSegment(args.userId)}`,
+          args,
+          { noun: 'favorite assets', emptyText: 'No favorite assets found for this user.' }
+        );
+
+      case 'asset_get_by_room':
+        return await pagedAssetList(client, `/assets/rooms/${pathSegment(args.roomId)}`, args, {
+          noun: 'assets in this room',
+          emptyText: 'No assets found in this room.',
+          renderPage: (page) => {
+            // Group the page's rows by asset type.
+            const assetsByType: Record<string, IIQAsset[]> = {};
+            for (const asset of page) {
+              const type = asset.AssetTypeName || 'Unknown';
+              (assetsByType[type] ??= []).push(asset);
+            }
+            return Object.entries(assetsByType)
+              .map(([type, assets]) => `${type} (${assets.length}):\n\n${assets.map(renderAssetRow).join('\n\n')}`)
+              .join('\n\n');
+          },
+        });
+
+      case 'asset_get_by_storage':
+        return await pagedAssetList(
+          client,
+          `/assets/storageunit/${pathSegment(args.locationId)}/${pathSegment(args.unitNumber)}`,
+          args,
+          { noun: `assets in storage unit ${args.unitNumber}`, emptyText: `No assets found in storage unit ${args.unitNumber}.` }
+        );
+
       case 'asset_get_status_types': {
         const response = await client.request<PaginatedResponse<AssetStatusType>>({
           method: 'GET',
@@ -658,7 +668,7 @@ ${fundingList}
         // IIQ returns every activity at once (no paging, no TotalRows), so page locally.
         const response = await client.request<PaginatedResponse<AssetActivity>>({
           method: 'GET',
-          url: `/assets/${args.assetId}/activities`,
+          url: `/assets/${pathSegment(args.assetId)}/activities`,
         });
         return formatListPage({
           rows: response?.Items ?? [],
@@ -673,69 +683,59 @@ ${fundingList}
       }
       
       case 'asset_get_inventory_counts': {
-        const payload = {
-          OnlyShowDeleted: args.includeDeleted || false,
-          FilterByViewPermission: false,
-        };
-        
-        const response = await client.request<any>({
+        const scope = { OnlyShowDeleted: args.includeDeleted || false, FilterByViewPermission: false };
+        // POST /assets/count reports only the total (Paging.TotalRows), with no breakdown (verified 2026-11-07).
+        const total = iiqTotalRows(await client.request<PaginatedResponse<unknown>>({
           method: 'POST',
           url: '/assets/count',
-          data: payload,
-        });
-        
-        // Response format varies, handle different structures
-        let output = 'Asset Inventory Counts:\n\n';
-        
-        if (Array.isArray(response)) {
-          response.forEach((item: any) => {
-            output += `• ${item.Name || item.Category}: ${item.Count || item.Value}\n`;
-          });
-        } else if (response?.Items) {
-          response.Items.forEach((item: any) => {
-            output += `• ${item.Name}: ${item.Value}\n`;
-          });
-        } else if (typeof response === 'object') {
-          Object.entries(response).forEach(([key, value]) => {
-            output += `• ${key}: ${value}\n`;
-          });
-        }
-        
-        return {
-          content: [{
-            type: 'text',
-            text: output,
-          }],
-        };
-      }
-      
-      case 'asset_get_spares': {
-        const response = await client.request<PaginatedResponse<IIQAsset>>({
-          method: 'GET',
-          url: `/assets/spares/assettag/${encodeURIComponent(args.assetTag)}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No spare parts found for asset: ${args.assetTag}`,
-            }],
-          };
-        }
-        
-        const sparesList = response.Items.map((spare: IIQAsset) =>
-          `• ${spare.AssetTag} - ${spare.AssetTypeName} (${spare.StatusName})`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Spare Parts for ${args.assetTag} (${iiqTotalRows(response)}):
+          data: scope,
+        }));
 
-${sparesList}`,
+        const group = args.groupBy ? COUNT_GROUPS[args.groupBy] : undefined;
+        if (!group) {
+          return { content: [{ type: 'text', text: `Asset Inventory Counts:\n\nTotal Assets: ${total}` }] };
+        }
+
+        // Each group is counted with a filtered 1-row POST /assets read for its Paging.TotalRows.
+        const { items, truncated } = await iiqListAll<Record<string, string>>(client, group.url);
+        const counts = await mapLimit(items, COUNT_CONCURRENCY, async (item) => {
+          const filter: IIQFilter = { Facet: group.facet, Id: item[group.idKey] };
+          return iiqTotalRows(await client.request<PaginatedResponse<IIQAsset>>({
+            method: 'POST',
+            url: '/assets',
+            data: { ...scope, Filters: [filter], Paging: { PageIndex: 0, PageSize: 1 } },
+          }));
+        });
+
+        const lines = items.flatMap((item, i) =>
+          counts[i] > 0 ? [`  ${item.Name || (item as Partial<IIQLocation>).LocationName || item[group.idKey]}: ${counts[i]}`] : []
+        );
+        const other = total - counts.reduce((sum, count) => sum + count, 0);
+        if (other > 0) lines.push(`  Other/none: ${other}`);
+        return withTruncationNote(truncated, {
+          content: [{
+            type: 'text',
+            text: `Asset Inventory Counts by ${group.label}:\n\n${lines.join('\n')}\n\nTotal Assets: ${total}`,
           }],
-        };
+        });
+      }
+
+      case 'asset_get_spares': {
+        let response: PaginatedResponse<IIQAsset> | undefined;
+        try {
+          response = await client.request<PaginatedResponse<IIQAsset>>({
+            method: 'GET',
+            url: `/assets/spares/assettag/${pathSegment(args.assetTag)}`,
+          });
+        } catch (error: any) {
+          // IIQ answers 404 when the asset has no spares (verified 2026-11-07).
+          if (error?.response?.status !== 404) throw error;
+        }
+        return assetListText(
+          response,
+          (total) => `Spare Parts for ${args.assetTag} (${total})`,
+          `No spare parts found for asset: ${args.assetTag}`
+        );
       }
       
       default:

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatListPage, iiqListAll, iiqPage, withTruncationNote, TRUNCATION_NOTE, type IIQRequester } from '../../../src/api/paging';
+import { formatListPage, iiqListAll, iiqPage, iiqPagingParams, withTruncationNote, TRUNCATION_NOTE, type IIQRequester } from '../../../src/api/paging';
 
 /** In-memory IIQ GET list: pages via $p/$s; `withTotal: false` omits Paging.TotalRows. */
 function fakeList(rowCount: number, { withTotal = true } = {}) {
@@ -131,5 +131,19 @@ describe('formatListPage with a server total (rows are already the page)', () =>
     expect(text({ rows: [1, 2], total: 2, renderPage: (rows) => `rows=${rows.join('+')}` })).toBe(
       'Found 2 widgets (showing 2):\n\nrows=1+2\n\nPage 1 of 1'
     );
+  });
+});
+
+describe('iiqPagingParams', () => {
+  it('sends the same whole-number paging formatListPage displays (no fractional or negative $p/$s)', () => {
+    expect(iiqPagingParams(1.9, 2.8)).toEqual({ $p: 1, $s: 2 });
+    expect(iiqPagingParams(-3, -5)).toEqual({ $p: 0, $s: 1 });
+    expect(iiqPagingParams(Number.NaN, Number.NaN)).toEqual({ $p: 0, $s: 1 });
+    expect(iiqPagingParams(2, 25)).toEqual({ $p: 2, $s: 25 });
+  });
+
+  it('matches formatListPage\'s page label for the same raw input', () => {
+    const text = formatListPage({ rows: [1, 2], total: 30, pageIndex: 1.9, pageSize: 2.8, noun: 'rows', emptyText: '', render: String }).content[0].text;
+    expect(text).toContain(`Page ${iiqPagingParams(1.9, 2.8).$p + 1} of 15`);
   });
 });

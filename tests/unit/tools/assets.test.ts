@@ -64,6 +64,7 @@ describe('Asset Tools', () => {
 
     describe('asset_find_by_tag', () => {
       it('should find asset by tag number', async () => {
+        // The default mock answers in the live shape: { Items: [asset] } with nested names.
         const result = await handleAssetTool('asset_find_by_tag', {
           assetTag: 'CHR-12345',
         });
@@ -112,12 +113,10 @@ describe('Asset Tools', () => {
 
     describe('asset_get_inventory_counts', () => {
       it('should retrieve asset inventory counts', async () => {
+        // The default mock answers in the live shape: only Paging.TotalRows.
         const result = await handleAssetTool('asset_get_inventory_counts', {});
 
-        expect(result.content[0].text).toContain('Asset Inventory');
-        expect(result.content[0].text).toContain('2000');
-        // The output currently shows TotalCount, not "Total Assets"
-        expect(result.content[0].text).toContain('TotalCount');
+        expect(result.content[0].text).toBe('Asset Inventory Counts:\n\nTotal Assets: 2000');
       });
     });
 
