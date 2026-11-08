@@ -5,6 +5,19 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.3...v0.5.4) (2026-11-08)
+
+
+### Bug Fixes
+
+* **analytics:** drop unused args; add router contract tests and docs ([4a5db93](https://github.com/IIQ-Community/mcp-incidentiq/commit/4a5db937053cb9668ab60414340b1354ff6615cb)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **assets:** page asset lists, drop ghost fields and unbacked args ([b75791e](https://github.com/IIQ-Community/mcp-incidentiq/commit/b75791ebd22cad25a881133cfd808b9d2f13b823)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **customfields:** implement detail and value tools, fix student sections ([12c5ce3](https://github.com/IIQ-Community/mcp-incidentiq/commit/12c5ce3d9f0d775f036bdabc2cd4b6928670d704)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **issues:** page issue lists, resolve site issue names, drop unbacked tools ([818d4f8](https://github.com/IIQ-Community/mcp-incidentiq/commit/818d4f824e0e15ec4f5692ccc6b697c313cf2f14)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **locations:** hide retired sites, add room details, drop unbacked tools ([7b249e7](https://github.com/IIQ-Community/mcp-incidentiq/commit/7b249e7b4ede0170d9d4493696475a229f03436e)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **parts:** implement part and supplier details, remove unbacked part tools ([7bb57d0](https://github.com/IIQ-Community/mcp-incidentiq/commit/7bb57d082892e803a123a6f206b7ac07a8d18a4d)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+* **users:** implement user_search_agents, remove unbacked user tools ([a9fab0b](https://github.com/IIQ-Community/mcp-incidentiq/commit/a9fab0b7dec23379dbfefd2241fc30fe191f4cf2)), closes [#98](https://github.com/IIQ-Community/mcp-incidentiq/issues/98)
+
 ## [0.5.3](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.2...v0.5.3) (2026-11-07)
 
 
