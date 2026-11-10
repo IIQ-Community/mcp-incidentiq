@@ -98,7 +98,7 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `user_get_all_agents` / `user_search_agents` - List IT support agents
 - `user_get_by_location` - Users whose home location is a site (students optional)
 - `user_statistics_grades` / `user_statistics_locations` - Population statistics
-- `user_get_current` - The API key's own user (GET /users/me; returned 404 on the production test district)
+- `user_get_current` - The API key's own user (the user id in the key's token, then GET /users/{id}; IncidentIQ has no /users/me)
 
 #### 🏫 Location Management (11 tools)
 - `location_get_all` - List district locations grouped by type (retired sites hidden unless `includeInactive`)

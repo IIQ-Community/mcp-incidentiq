@@ -33,6 +33,20 @@ function renderAgentRow(agent: IIQUser): string {
   Location: ${agent.LocationName || 'N/A'}`;
 }
 
+/** One user's detail block (GET /users/{id} Item), shared by user_get_details and user_get_current. */
+function renderUserDetails(user: IIQUser, heading: string): string {
+  return `${heading}:
+Name: ${userName(user)}
+Username: ${user.Username || 'N/A'}
+Email: ${user.Email || 'N/A'}
+Type: ${user.Role?.Name || 'Unknown'}
+Role: ${user.Role?.Name || 'N/A'}
+Location: ${user.LocationName || 'N/A'}
+${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.Phone || 'N/A'}
+${user.HomePhone ? `Home Phone: ${user.HomePhone}\n` : ''}${user.JobTitle ? `Job Title: ${user.JobTitle}\n` : ''}Status: ${user.IsActive ? 'Active' : 'Inactive'}
+Created: ${user.CreatedDate || 'N/A'}`;
+}
+
 /** Most statistics count requests in flight at once (one request per grade or location). */
 const STAT_CONCURRENCY = 4;
 
@@ -255,7 +269,7 @@ export const enhancedUserTools = [
   },
   {
     name: 'user_get_current',
-    description: 'Get current authenticated user details (GET /users/me)',
+    description: "Get the user this API key belongs to (the user id in the key's token, then GET /users/{id})",
     inputSchema: {
       type: 'object',
       properties: {},
@@ -584,28 +598,30 @@ export async function handleEnhancedUserTool(name: string, args: any) {
         return {
           content: [{
             type: 'text',
-            text: `User Details:
-Name: ${userName(user)}
-Username: ${user.Username || 'N/A'}
-Email: ${user.Email || 'N/A'}
-Type: ${user.Role?.Name || 'Unknown'}
-Role: ${user.Role?.Name || 'N/A'}
-Location: ${user.LocationName || 'N/A'}
-${user.Grade ? `Grade: ${user.Grade}\n` : ''}${user.Homeroom ? `Homeroom: ${user.Homeroom}\n` : ''}Phone: ${user.Phone || 'N/A'}
-${user.HomePhone ? `Home Phone: ${user.HomePhone}\n` : ''}${user.JobTitle ? `Job Title: ${user.JobTitle}\n` : ''}Status: ${user.IsActive ? 'Active' : 'Inactive'}
-Created: ${user.CreatedDate || 'N/A'}`,
+            text: renderUserDetails(user, 'User Details'),
           }],
         };
       }
-      
+
       case 'user_get_current': {
+        // IIQ has no GET /users/me (404); the API key's JWT `sub` claim is its owner's UserId.
+        const ownerId = client.keyOwnerId();
+        if (!ownerId) {
+          return {
+            content: [{
+              type: 'text',
+              text: 'This API key does not identify a user (its token carries no user id), so there is no current user to look up.',
+            }],
+          };
+        }
+
         const response = await client.request<any>({
           method: 'GET',
-          url: '/users/me',
+          url: `/users/${pathSegment(ownerId)}`,
         });
-        
+
         const user = response?.Item || response;
-        
+
         if (!user) {
           return {
             content: [{
@@ -614,16 +630,11 @@ Created: ${user.CreatedDate || 'N/A'}`,
             }],
           };
         }
-        
+
         return {
           content: [{
             type: 'text',
-            text: `Current User:
-Name: ${user.FullName || `${user.FirstName} ${user.LastName}`}
-Username: ${user.Username}
-Email: ${user.Email}
-Role: ${user.Role?.Name || 'N/A'}
-Permissions: ${user.Permissions?.length || 0} permissions`,
+            text: renderUserDetails(user, 'Current User (API key owner)'),
           }],
         };
       }
@@ -755,7 +766,7 @@ ${userList}`,
         return {
           content: [{
             type: 'text',
-            text: 'Current user endpoint not available. The API key may not have user context.',
+            text: "The API key's user was not found in IncidentIQ.",
           }],
         };
       }
