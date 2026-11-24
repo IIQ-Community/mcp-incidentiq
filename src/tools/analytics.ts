@@ -1,11 +1,10 @@
 /**
- * ANALYTICS TOOLS - Based on Swagger Documentation
- * 
- * The Analytics API provides aggregated data for dashboards and reporting.
- * All endpoints return ListGetResponseOfAnalyticsDataPoint with structure:
- * { Items: AnalyticsDataPoint[], ItemCount: number, Paging: {...} }
- * 
- * AnalyticsDataPoint contains: Name, Value, Id, Date
+ * ANALYTICS TOOLS (context/iiq-api/Analytics.json)
+ *
+ * Asset-verification breakdowns and the analytics report catalog. Live responses are
+ * `{ ItemCount, Items }` with no Paging, and IIQ ignores `$p`/`$s` (probe 2026-11-24).
+ * No documented endpoint returns report values, and audit-policy/schedule IDs have no
+ * documented source, so those tools are not offered (#112).
  */
 
 import { IncidentIQClient } from '../api/client.js';
@@ -97,35 +96,6 @@ export const analyticsTools = [
       required: [],
     },
   },
-  {
-    name: 'analytics_asset_audit_by_policy',
-    description: 'Get audit status breakdown for a specific audit policy',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        policyId: {
-          type: 'string',
-          description: 'The Audit Policy ID (GUID)',
-        },
-      },
-      required: ['policyId'],
-    },
-  },
-  {
-    name: 'analytics_asset_audit_by_schedule',
-    description: 'Get audit status breakdown for a specific audit schedule',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        scheduleId: {
-          type: 'string',
-          description: 'The Audit Policy Schedule ID (GUID)',
-        },
-      },
-      required: ['scheduleId'],
-    },
-  },
-  
   // Reports Management
   {
     name: 'analytics_list_reports',
@@ -148,50 +118,6 @@ export const analyticsTools = [
         },
       },
       required: ['reportId'],
-    },
-  },
-  {
-    name: 'analytics_get_report_elements',
-    description: 'Get UI elements/widgets for a specific report',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        reportId: {
-          type: 'string',
-          description: 'The Report ID (GUID)',
-        },
-      },
-      required: ['reportId'],
-    },
-  },
-  {
-    name: 'analytics_get_report_queries',
-    description: 'Get query definitions for a specific report',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        reportId: {
-          type: 'string',
-          description: 'The Report ID (GUID)',
-        },
-      },
-      required: ['reportId'],
-    },
-  },
-  
-  // Custom Analytics (for dashboard creation)
-  {
-    name: 'analytics_dashboard_summary',
-    description: 'Get a summary of key metrics for dashboard display',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeAssets: {
-          type: 'boolean',
-          description: 'Include asset audit status metrics (default: true)',
-        },
-      },
-      required: [],
     },
   },
 ];
@@ -318,60 +244,6 @@ export async function handleAnalyticsTool(name: string, args: any) {
         };
       }
       
-      case 'analytics_asset_audit_by_policy': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: `/analytics/assets/by-audit-policy-status/${args.policyId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No audit data found for policy ${args.policyId}.`,
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Audit Status for Policy ${args.policyId}:\n\n${dataPoints}\n\nTotal statuses: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
-      case 'analytics_asset_audit_by_schedule': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: `/analytics/assets/by-audit-policy-schedule-status/${args.scheduleId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No audit data found for schedule ${args.scheduleId}.`,
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Audit Status for Schedule ${args.scheduleId}:\n\n${dataPoints}\n\nTotal statuses: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
       // Reports Management
       case 'analytics_list_reports': {
         const response = await client.request<PaginatedResponse<AnalyticsReport>>({
@@ -434,132 +306,7 @@ ID: ${report.ReportId}`,
           }],
         };
       }
-      
-      case 'analytics_get_report_elements': {
-        const response = await client.request<PaginatedResponse<ReportElement>>({
-          method: 'GET',
-          url: `/analytics/reports/elements/${args.reportId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No elements found for report ${args.reportId}.`,
-            }],
-          };
-        }
-        
-        const elementList = response.Items.map((element: ReportElement) =>
-          `• ${element.Name}${element.Subtitle ? ` - ${element.Subtitle}` : ''}
-  Type: ${element.ReportElementTypeId}
-  Size: ${element.DefaultSizeX}x${element.DefaultSizeY}
-  Icon: ${element.Icon || 'None'}
-  About: ${element.About || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Elements for ${args.reportId} (${response.ItemCount}):\n\n${elementList}`,
-          }],
-        };
-      }
-      
-      case 'analytics_get_report_queries': {
-        const response = await client.request<PaginatedResponse<any>>({
-          method: 'GET',
-          url: `/analytics/reports/queries/${args.reportId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No queries found for report ${args.reportId}.`,
-            }],
-          };
-        }
-        
-        const queryList = response.Items.map((query: any) =>
-          `• ${query.Name}
-  Query Key: ${query.QueryKey || 'N/A'}
-  Type ID: ${query.ReportElementTypeId}
-  Has Primary Definition: ${query.HasDefinitionPrimary ? 'Yes' : 'No'}
-  Has Secondary Definition: ${query.HasDefinitionSecondary ? 'Yes' : 'No'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Queries for ${args.reportId} (${response.ItemCount}):\n\n${queryList}`,
-          }],
-        };
-      }
-      
-      // Custom Dashboard Summary (aggregates multiple analytics)
-      case 'analytics_dashboard_summary': {
-        const includeAssets = args.includeAssets !== false;
-        
-        let summary = '📊 Analytics Dashboard Summary\n' + '='.repeat(40) + '\n\n';
-        
-        // Try to get asset audit status if including assets
-        if (includeAssets) {
-          try {
-            const assetAudit = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-              method: 'GET',
-              url: '/analytics/assets/by-audit-status',
-            });
-            
-            if (assetAudit?.Items && assetAudit.Items.length > 0) {
-              summary += '📦 Asset Audit Status:\n';
-              const total = assetAudit.Items.reduce((sum, dp) => sum + dp.Value, 0);
-              assetAudit.Items.forEach((dp: AnalyticsDataPoint) => {
-                const percentage = ((dp.Value / total) * 100).toFixed(1);
-                summary += `  • ${dp.Name}: ${dp.Value} (${percentage}%)\n`;
-              });
-              summary += `  Total Assets: ${total}\n\n`;
-            }
-          } catch (error) {
-            summary += '📦 Asset Analytics: Not available\n\n';
-          }
-        }
-        
-        // Try to get available reports
-        try {
-          const reports = await client.request<PaginatedResponse<AnalyticsReport>>({
-            method: 'GET',
-            url: '/analytics/reports',
-          });
-          
-          if (reports?.Items && reports.Items.length > 0) {
-            summary += `📈 Available Reports: ${reports.ItemCount}\n`;
-            reports.Items.slice(0, 5).forEach((report: AnalyticsReport) => {
-              summary += `  • ${report.Name}\n`;
-            });
-            if (reports.ItemCount > 5) {
-              summary += `  ...and ${reports.ItemCount - 5} more\n`;
-            }
-            summary += '\n';
-          }
-        } catch (error) {
-          summary += '📈 Reports: Not available\n\n';
-        }
-        
-        summary += '💡 Tips:\n';
-        summary += '• Use view-based filtering for complex analytics queries\n';
-        summary += '• Implement 15-minute update cycle for real-time dashboards\n';
-        summary += '• Cache analytics data to reduce API load\n';
-        summary += '• Combine with Google Sheets for custom visualizations';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: summary,
-          }],
-        };
-      }
-      
+
       default:
         return {
           content: [{
