@@ -226,7 +226,7 @@ The project includes a comprehensive modular validation system for testing Incid
 ### PowerShell Module Integration
 The validators have been aligned with production PowerShell module patterns:
 - **Query Parameters**: GET endpoints use `$p`, `$s`, `$d` for pagination
-- **Required Headers**: `Client: WebBrowser`, specific User-Agent, `Pragma: no-cache`
+- **Headers**: `Client: WebBrowser`, a browser User-Agent and `Pragma: no-cache` came from IIQ's browser API and are **not required** on `/api/v1.0` (verified 2026-11-24: same rows with `WebBrowser`, `ApiClient` or no `Client` header). Never call `/services/*` (it returns 405 to API clients) and never send `FilterByProduct: false` (it widens a search to every IIQ product); the client refuses both.
 - **POST Payloads**: Include `OnlyShowDeleted` and `FilterByViewPermission` fields
 - **100% Success Rate**: PowerShell patterns work perfectly with 1-second delays
 

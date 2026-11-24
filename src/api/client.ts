@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { iiqListAll, matchesText } from './paging.js';
+import { assertNoProductWidening, assertNotServicesPath } from './request-guard.js';
 import {
   IIQApiResponse,
   IIQItemResponse,
@@ -46,7 +47,8 @@ export class IncidentIQClient {
       headers['SiteId'] = process.env.IIQ_SITE_ID;
     }
     
-    // Add Product ID for ticketing if configured (may be required for some endpoints)
+    // Optional ProductId header. Verified 2026-11-24: it does not change search scope. Scope comes from the
+    // body (omit FilterByProduct = the key's product; or FilterByProduct: true + ProductId), never this header.
     if (process.env.IIQ_PRODUCT_ID_TICKETS) {
       headers['ProductId'] = process.env.IIQ_PRODUCT_ID_TICKETS;
     }
@@ -60,6 +62,16 @@ export class IncidentIQClient {
     // Add request interceptor for logging
     this.client.interceptors.request.use(
       (config) => {
+        // Every request passes here, including tool handlers that call request() directly.
+        assertNotServicesPath(this.client.getUri(config));
+        assertNoProductWidening(config.data);
+        // Redirects are followed inside the adapter, after this interceptor: check each target, then run any
+        // caller-supplied hook (wrapping it so a per-request beforeRedirect cannot drop the check).
+        const callerBeforeRedirect = config.beforeRedirect;
+        config.beforeRedirect = (options, responseDetails, requestDetails) => {
+          assertNotServicesPath(String(options.href ?? `${options.protocol}//${options.hostname}${options.path}`));
+          callerBeforeRedirect?.(options, responseDetails, requestDetails);
+        };
         if (process.env.DEBUG_API) {
           console.log(`[IIQ API] ${config.method?.toUpperCase()} ${config.url}`);
         }
