@@ -34,7 +34,7 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 
 ### 📊 Comprehensive API Coverage
 
-**119 MCP tools**: 118 across 12 registered domain modules plus `test_connection`, all wired into the server and validated against a production K-12 district instance. Every advertised tool has a handler, and tools IncidentIQ cannot back (no endpoint, no data) are not advertised.
+**125 MCP tools**: 124 across 13 registered domain modules plus `test_connection`, all wired into the server and validated against a production K-12 district instance. Every advertised tool has a handler, and tools IncidentIQ cannot back (no endpoint, no data) are not advertised.
 
 | Module | Status | Tools |
 |--------|--------|-------|
@@ -50,7 +50,7 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 | SLAs | ✅ Registered | 4 |
 | Views | ✅ Registered | 5 |
 | Notifications | ✅ Registered | 6 |
-| Analytics | 🚧 Implemented, not yet registered | 11 |
+| Analytics | ✅ Registered | 6 |
 
 ### Available MCP Tools
 
@@ -157,6 +157,14 @@ IncidentIQ is the #1 K-12 service management platform, used by over 2000 school 
 - `notification_get_unarchived` - Get unarchived notifications
 - `notification_mark_all_read` - Mark all as read
 - `notification_mark_read` - Mark specific notification as read
+
+#### 📊 Analytics (6 tools)
+- `analytics_asset_audit_coverage` - Asset counts by audit-policy coverage, with share of total
+- `analytics_asset_audit_status` - Asset counts by audit status, with share of total
+- `analytics_asset_verification_location` - Asset counts by verification location, largest first (paged)
+- `analytics_asset_verification_type` - Asset counts by verification type (app, web, scan, mobile)
+- `analytics_list_reports` - List the analytics report catalog with each report's key and ID
+- `analytics_get_report` - Get a report's details and its elements (IncidentIQ's API returns report layout, not report values)
 
 ## Installation
 
@@ -377,7 +385,7 @@ mcp-incidentiq/
 │   │   ├── slas.ts          # SLA tools
 │   │   ├── views.ts         # View tools
 │   │   ├── notifications.ts # Notification & email tools
-│   │   └── analytics.ts     # Analytics tools (defined, not yet registered)
+│   │   └── analytics.ts     # Analytics tools
 │   └── types/               # TypeScript type definitions
 │       └── common.ts        # Shared type definitions
 └── dist/                    # Compiled JavaScript output
@@ -409,7 +417,7 @@ This MCP server integrates with IncidentIQ's core modules:
 - ✅ **Issue Types** - Issue/category catalog and K-12 issue templates
 - ✅ **Custom Fields** - District-specific data across all entities
 - ✅ **SLAs / Views / Notifications** - Compliance metrics, saved views, and email/notification access
-- 🚧 **Analytics** - Reporting tools implemented but not yet registered in the server
+- ✅ **Analytics** - Asset-verification breakdowns and report catalog
 
 ### API Rate Limiting
 

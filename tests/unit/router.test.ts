@@ -62,8 +62,33 @@ describe('tool router', () => {
     ];
     const names = new Set(router.listTools().map((tool) => tool.name));
     expect(added.filter((name) => !names.has(name))).toEqual([]);
-    // 159 before #98, minus the 40 removed; the 15 above were already advertised (unhandled).
-    expect(names.size).toBe(119);
+    // 159 before #98, minus the 40 removed (119); plus the 6 analytics tools registered for #112.
+    expect(names.size).toBe(125);
+  });
+
+  it('advertises the 6 analytics tools IIQ backs and none of the 5 it cannot (#112)', () => {
+    const present = [
+      'analytics_asset_audit_coverage', 'analytics_asset_audit_status', 'analytics_asset_verification_location',
+      'analytics_asset_verification_type', 'analytics_list_reports', 'analytics_get_report',
+    ];
+    const removed = [
+      'analytics_asset_audit_by_policy', 'analytics_asset_audit_by_schedule', 'analytics_dashboard_summary',
+      'analytics_get_report_elements', 'analytics_get_report_queries',
+    ];
+    const names = new Set(router.listTools().map((tool) => tool.name));
+    expect(present.filter((name) => !names.has(name))).toEqual([]);
+    expect(removed.filter((name) => names.has(name))).toEqual([]);
+  });
+
+  it('analytics_get_report rejects a traversal id without calling IIQ', async () => {
+    const paths: string[] = [];
+    server.use(http.all(`${BASE}/*`, ({ request }) => {
+      paths.push(new URL(request.url).pathname);
+      return HttpResponse.json({ Item: { Name: 'leaked' }, Items: [] });
+    }));
+    const text = (await router.callTool('analytics_get_report', { reportId: '../users/me' })).content[0]?.text ?? '';
+    expect(paths).toEqual([]);
+    expect(text).toMatch(/must be a report GUID/);
   });
 
   it.each([

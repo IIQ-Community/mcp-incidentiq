@@ -163,7 +163,7 @@ export const analyticsTools = [
   // Reports Management
   {
     name: 'analytics_list_reports',
-    description: 'Get all available analytics reports',
+    description: 'List every analytics report (name, subtitle, key and ID). Use an ID with analytics_get_report.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -172,13 +172,13 @@ export const analyticsTools = [
   },
   {
     name: 'analytics_get_report',
-    description: 'Get details of a specific analytics report',
+    description: "Get an analytics report's details and its elements (name, subtitle, description). IncidentIQ's API returns the report layout, not its values.",
     inputSchema: {
       type: 'object',
       properties: {
         reportId: {
           type: 'string',
-          description: 'The Report ID (GUID)',
+          description: 'The Report ID (GUID) from analytics_list_reports',
         },
       },
       required: ['reportId'],
