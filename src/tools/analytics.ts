@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { formatListPage } from '../api/paging.js';
 import { PaginatedResponse } from '../types/common.js';
 
 // Analytics-specific types
@@ -48,6 +49,49 @@ export interface ReportElement {
   Meta?: any;
 }
 
+type TextResult = { content: Array<{ type: 'text'; text: string }> };
+const text = (body: string): TextResult => ({ content: [{ type: 'text', text: body }] });
+
+const count = (n: number) => n.toLocaleString('en-US');
+const assets = (n: number) => `${count(n)} asset${n === 1 ? '' : 's'}`;
+/** A data point's count; a missing or non-numeric Value counts as 0 so totals never become NaN. */
+const valueOf = (point: AnalyticsDataPoint) => (Number.isFinite(point.Value) ? point.Value : 0);
+const sumOf = (points: AnalyticsDataPoint[]) => points.reduce((sum, point) => sum + valueOf(point), 0);
+/** Largest count first, ties by name; sorts a copy so the response is not mutated. */
+const byCountDesc = (points: AnalyticsDataPoint[]) =>
+  [...points].sort((a, b) => valueOf(b) - valueOf(a) || String(a.Name).localeCompare(String(b.Name)));
+
+/** `• <Name>: <count> assets (<share>%)`; the share is omitted when the total is 0. */
+function breakdownRow(point: AnalyticsDataPoint, total: number): string {
+  const share = total > 0 ? ` (${((valueOf(point) / total) * 100).toFixed(1)}%)` : '';
+  return `• ${point.Name}: ${assets(valueOf(point))}${share}`;
+}
+const breakdownRows = (points: AnalyticsDataPoint[], total: number) =>
+  byCountDesc(points).map((point) => breakdownRow(point, total));
+
+async function readPoints(client: IncidentIQClient, url: string): Promise<AnalyticsDataPoint[]> {
+  const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({ method: 'GET', url });
+  return response?.Items ?? [];
+}
+
+const BREAKDOWNS: Record<string, { url: string; title: string; emptyText: string }> = {
+  analytics_asset_audit_coverage: {
+    url: '/analytics/assets/by-audit-policy-coverage',
+    title: 'Asset Audit Policy Coverage',
+    emptyText: 'No audit policy coverage data available.',
+  },
+  analytics_asset_audit_status: {
+    url: '/analytics/assets/by-audit-status',
+    title: 'Asset Audit Status',
+    emptyText: 'No audit status data available.',
+  },
+  analytics_asset_verification_type: {
+    url: '/analytics/assets/by-verification-type',
+    title: 'Asset Verification by Type',
+    emptyText: 'No verification type data available.',
+  },
+};
+
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
 
@@ -80,10 +124,13 @@ export const analyticsTools = [
   },
   {
     name: 'analytics_asset_verification_location',
-    description: 'Get breakdown of asset counts by verification location',
+    description: 'Get asset counts by verification location: every location, largest first, with its share of all verified assets. Paged client-side.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        pageSize: { type: 'number', description: 'Results per page (default: 25)' },
+        pageIndex: { type: 'number', description: 'Page number (0-based)' },
+      },
       required: [],
     },
   },
@@ -127,124 +174,32 @@ export async function handleAnalyticsTool(name: string, args: any) {
   
   try {
     switch (name) {
-      // Asset Auditing Analytics
-      case 'analytics_asset_audit_coverage': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-audit-policy-coverage',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No audit policy coverage data available.',
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Audit Policy Coverage:\n\n${dataPoints}\n\nTotal data points: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
-      case 'analytics_asset_audit_status': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-audit-status',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No audit status data available.',
-            }],
-          };
-        }
-        
-        const total = response.Items.reduce((sum, dp) => sum + dp.Value, 0);
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) => {
-          const percentage = ((dp.Value / total) * 100).toFixed(1);
-          return `• ${dp.Name}: ${dp.Value} assets (${percentage}%)`;
-        }).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Audit Status Distribution:\n\n${dataPoints}\n\nTotal assets: ${total}`,
-          }],
-        };
-      }
-      
-      case 'analytics_asset_verification_location': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-verification-location',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No verification location data available.',
-            }],
-          };
-        }
-        
-        const sortedLocations = response.Items.sort((a, b) => b.Value - a.Value);
-        const top10 = sortedLocations.slice(0, 10);
-        
-        const dataPoints = top10.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        const remainingCount = response.ItemCount - 10;
-        const remainingText = remainingCount > 0 ? `\n\n...and ${remainingCount} more locations` : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Verification by Location (Top 10):\n\n${dataPoints}${remainingText}\n\nTotal locations: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
+      // Asset-verification breakdowns (N7): count, share and total, largest first.
+      case 'analytics_asset_audit_coverage':
+      case 'analytics_asset_audit_status':
       case 'analytics_asset_verification_type': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-verification-type',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No verification type data available.',
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Verification by Type:\n\n${dataPoints}\n\nTotal types: ${response.ItemCount}`,
-          }],
-        };
+        const breakdown = BREAKDOWNS[name];
+        const points = await readPoints(client, breakdown.url);
+        if (points.length === 0) return text(breakdown.emptyText);
+        const total = sumOf(points);
+        return text(`${breakdown.title} (${assets(total)}):\n\n${breakdownRows(points, total).join('\n')}`);
       }
-      
-      // Reports Management
+
+      // N5: every location, largest first, paged client-side (IIQ ignores $p/$s here).
+      case 'analytics_asset_verification_location': {
+        const points = await readPoints(client, '/analytics/assets/by-verification-location');
+        const total = sumOf(points);
+        return formatListPage({
+          rows: byCountDesc(points),
+          pageIndex: args?.pageIndex,
+          pageSize: args?.pageSize ?? 25,
+          noun: 'locations',
+          emptyText: 'No verification location data available.',
+          render: (point) => breakdownRow(point, total),
+          renderPage: (page) => `Total assets verified: ${count(total)}\n\n${page.map((point) => breakdownRow(point, total)).join('\n')}`,
+        });
+      }
+
       case 'analytics_list_reports': {
         const response = await client.request<PaginatedResponse<AnalyticsReport>>({
           method: 'GET',
