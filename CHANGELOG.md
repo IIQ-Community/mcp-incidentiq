@@ -5,6 +5,13 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.4...v0.5.5) (2026-11-24)
+
+
+### Bug Fixes
+
+* **client:** refuse FilterByProduct false and /services requests ([1e38d25](https://github.com/IIQ-Community/mcp-incidentiq/commit/1e38d25a3c647b212edb402eb9ad4d56192a638a)), closes [#110](https://github.com/IIQ-Community/mcp-incidentiq/issues/110)
+
 ## [0.5.4](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.3...v0.5.4) (2026-11-08)
 
 
