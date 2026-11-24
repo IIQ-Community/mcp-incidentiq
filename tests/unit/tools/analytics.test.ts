@@ -129,3 +129,88 @@ describe('analytics_asset_verification_location paging (N5)', () => {
     expect(await run({ pageIndex: 3 })).toBe('Page 4 is past the end: 63 locations match (3 pages).');
   });
 });
+
+const R = '0f8fad5b-d9cb-469f-a165-70867728950e';
+const failWith = (path: string, status: number) =>
+  server.use(http.get(`${BASE}${path}`, ({ request }) => {
+    hits.push(new URL(request.url).pathname);
+    return HttpResponse.json({ Message: 'Internal Server Error' }, { status });
+  }));
+
+describe('analytics_list_reports (N8)', () => {
+  it('lists every report by DisplayOrder then Name, with Key and ID', async () => {
+    serve('/analytics/reports', {
+      ItemCount: 3,
+      Items: [
+        { ReportId: 'r-tickets', Name: 'Tickets', Subtitle: 'Ticket trends', ReportKey: 'tickets', DisplayOrder: 10, IsSidebarVisible: true },
+        { ReportId: 'r-overview', Name: 'Overview', ReportKey: 'overview', DisplayOrder: 0, IsSidebarVisible: true },
+        { ReportId: 'r-assets', Name: 'Assets', Subtitle: 'Device counts', ReportKey: 'assets', DisplayOrder: 10, IsSidebarVisible: false },
+      ],
+    });
+    expect(await textOf('analytics_list_reports')).toBe(
+      'Analytics Reports (3):\n\n' +
+      '• Overview\n  Key: overview | ID: r-overview\n\n' +
+      '• Assets — Device counts\n  Key: assets | ID: r-assets\n\n' +
+      '• Tickets — Ticket trends\n  Key: tickets | ID: r-tickets'
+    );
+  });
+});
+
+describe('analytics_get_report (N3, N6)', () => {
+  const detail = { Item: { ReportId: R, Name: 'Tickets', Subtitle: 'Ticket trends', ReportKey: 'tickets', DisplayOrder: 10, IsSidebarVisible: true, ProductId: 'p', SiteId: 's' } };
+  const DETAILS = `Report: Tickets — Ticket trends\nKey: tickets | Display Order: 10 | Sidebar Visible: Yes\nID: ${R}`;
+
+  it.each([['not-a-guid'], ['../users/me'], [[R]], [42]])('rejects reportId %j before any request', async (reportId) => {
+    expect(await textOf('analytics_get_report', { reportId })).toBe('reportId must be a report GUID (use analytics_list_reports)');
+    expect(hits).toHaveLength(0);
+  });
+
+  it('renders the report and its elements in DefaultDisplayOrder order', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    serve(`/analytics/reports/elements/${R}`, {
+      ItemCount: 3,
+      Items: [
+        { Name: 'Closed', DefaultDisplayOrder: 2 },
+        { Name: 'Backlog', DefaultDisplayOrder: 1, Subtitle: 'Open tickets', About: 'Tickets not yet resolved.' },
+        { Name: 'Created', DefaultDisplayOrder: 2 },
+      ],
+    });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(
+      `${DETAILS}\n\nElements (3):\n` +
+      '• Backlog — Open tickets\n  Tickets not yet resolved.\n' +
+      '• Closed\n' +
+      '• Created'
+    );
+    expect(hits.sort()).toEqual([`/api/v1.0/analytics/reports/${R}`, `/api/v1.0/analytics/reports/elements/${R}`]);
+  });
+
+  it('says so when the report has no elements', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(`${DETAILS}\n\nNo elements.`);
+  });
+
+  it('maps a detail 500 to "no report found"', async () => {
+    failWith(`/analytics/reports/${R}`, 500);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(
+      `No report found for ID ${R} (IncidentIQ returned 500); use analytics_list_reports for valid IDs.`
+    );
+  });
+
+  it('keeps the details when only the elements request fails', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    failWith(`/analytics/reports/elements/${R}`, 500);
+    const text = await textOf('analytics_get_report', { reportId: R });
+    expect(text.startsWith(`${DETAILS}\n\nElements: unavailable (`)).toBe(true);
+    expect(text).not.toContain('No report found');
+  });
+
+  it('uses the existing error path for any other detail failure', async () => {
+    failWith(`/analytics/reports/${R}`, 404);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    const text = await textOf('analytics_get_report', { reportId: R });
+    expect(text).toMatch(/^Analytics endpoint not available/);
+    expect(text).not.toContain('No report found');
+  });
+});

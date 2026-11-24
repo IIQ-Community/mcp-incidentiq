@@ -8,7 +8,9 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { GUID } from '../api/lookups.js';
 import { formatListPage } from '../api/paging.js';
+import { pathSegment } from '../api/path.js';
 import { PaginatedResponse } from '../types/common.js';
 
 // Analytics-specific types
@@ -42,6 +44,7 @@ export interface ReportElement {
   ElementKey?: string;
   HasDefinitionPrimary: boolean;
   HasDefinitionSecondary: boolean;
+  DefaultDisplayOrder?: number;
   DefaultSizeX: number;
   DefaultSizeY: number;
   Icon?: string;
@@ -91,6 +94,20 @@ const BREAKDOWNS: Record<string, { url: string; title: string; emptyText: string
     emptyText: 'No verification type data available.',
   },
 };
+
+const titleOf = (report: { Name: string; Subtitle?: string }) =>
+  `${report.Name}${report.Subtitle ? ` — ${report.Subtitle}` : ''}`;
+
+/** A report's elements by DefaultDisplayOrder then Name: name, subtitle and About only (no layout GUIDs). */
+function renderElements(result: PromiseSettledResult<PaginatedResponse<ReportElement>>): string {
+  if (result.status === 'rejected') return `Elements: unavailable (${result.reason?.message ?? 'request failed'})`;
+  const elements = result.value?.Items ?? [];
+  if (elements.length === 0) return 'No elements.';
+  const rows = [...elements]
+    .sort((a, b) => (a.DefaultDisplayOrder ?? 0) - (b.DefaultDisplayOrder ?? 0) || String(a.Name).localeCompare(String(b.Name)))
+    .map((element) => `• ${titleOf(element)}${element.About ? `\n  ${element.About}` : ''}`);
+  return `Elements (${elements.length}):\n${rows.join('\n')}`;
+}
 
 // Initialize client lazily
 let client: IncidentIQClient | null = null;
@@ -200,66 +217,41 @@ export async function handleAnalyticsTool(name: string, args: any) {
         });
       }
 
+      // N8: the whole catalog (IIQ returns it in one response), by DisplayOrder then Name.
       case 'analytics_list_reports': {
-        const response = await client.request<PaginatedResponse<AnalyticsReport>>({
-          method: 'GET',
-          url: '/analytics/reports',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No analytics reports available.',
-            }],
-          };
-        }
-        
-        const reportList = response.Items
-          .sort((a, b) => a.DisplayOrder - b.DisplayOrder)
-          .map((report: AnalyticsReport) =>
-            `• ${report.Name}${report.Subtitle ? ` - ${report.Subtitle}` : ''}\n  ID: ${report.ReportId}\n  Key: ${report.ReportKey || 'N/A'}`
-          ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Available Analytics Reports (${response.ItemCount}):\n\n${reportList}`,
-          }],
-        };
+        const response = await client.request<PaginatedResponse<AnalyticsReport>>({ method: 'GET', url: '/analytics/reports' });
+        const reports = response?.Items ?? [];
+        if (reports.length === 0) return text('No analytics reports available.');
+        const rows = [...reports]
+          .sort((a, b) => (a.DisplayOrder ?? 0) - (b.DisplayOrder ?? 0) || String(a.Name).localeCompare(String(b.Name)))
+          .map((report) => `• ${titleOf(report)}\n  Key: ${report.ReportKey || 'N/A'} | ID: ${report.ReportId}`);
+        return text(`Analytics Reports (${reports.length}):\n\n${rows.join('\n\n')}`);
       }
-      
+
+      // N3 + N6: report details with its elements; the ID must be a GUID before any request.
       case 'analytics_get_report': {
-        const response = await client.request<{ Item: AnalyticsReport }>({
-          method: 'GET',
-          url: `/analytics/reports/${args.reportId}`,
-        });
-        
-        if (!response?.Item) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Report ${args.reportId} not found.`,
-            }],
-          };
+        const reportId: unknown = args?.reportId;
+        // typeof first: RegExp.test coerces, so ['<guid>'] would otherwise pass.
+        if (typeof reportId !== 'string' || !GUID.test(reportId)) {
+          return text('reportId must be a report GUID (use analytics_list_reports)');
         }
-        
-        const report = response.Item;
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Details:
-Name: ${report.Name}
-Subtitle: ${report.Subtitle || 'N/A'}
-Report Key: ${report.ReportKey || 'N/A'}
-Product ID: ${report.ProductId}
-Site ID: ${report.SiteId || 'N/A'}
-Display Order: ${report.DisplayOrder}
-Sidebar Visible: ${report.IsSidebarVisible ? 'Yes' : 'No'}
-ID: ${report.ReportId}`,
-          }],
-        };
+        const id = pathSegment(reportId);
+        // allSettled: an elements failure must not discard a successful detail.
+        const [detail, elements] = await Promise.allSettled([
+          client.request<{ Item?: AnalyticsReport }>({ method: 'GET', url: `/analytics/reports/${id}` }),
+          client.request<PaginatedResponse<ReportElement>>({ method: 'GET', url: `/analytics/reports/elements/${id}` }),
+        ]);
+        if (detail.status === 'rejected') {
+          // IIQ answers an unknown report ID with 500 (probe 2026-11-24); other failures use the shared path.
+          if (detail.reason?.response?.status === 500) {
+            return text(`No report found for ID ${reportId} (IncidentIQ returned 500); use analytics_list_reports for valid IDs.`);
+          }
+          throw detail.reason;
+        }
+        const report = detail.value?.Item;
+        if (!report) return text(`No report found for ID ${reportId}; use analytics_list_reports for valid IDs.`);
+        const details = `Report: ${titleOf(report)}\nKey: ${report.ReportKey || 'N/A'} | Display Order: ${report.DisplayOrder} | Sidebar Visible: ${report.IsSidebarVisible ? 'Yes' : 'No'}\nID: ${report.ReportId}`;
+        return text(`${details}\n\n${renderElements(elements)}`);
       }
 
       default:
