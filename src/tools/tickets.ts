@@ -52,7 +52,7 @@ export const ticketTools = [
   // Search and List Operations
   {
     name: 'ticket_search',
-    description: 'Search for tickets with optional facet filters (status/agent/team/location) and pagination. Within a facet multiple values are OR; across facets they are AND.',
+    description: 'Search for tickets with optional facet filters (status/agent/team/location) and pagination. Within a facet multiple values are OR; across facets they are AND. Without statusIds, every ticket state (open and closed) is returned.',
     inputSchema: {
       type: 'object',
       properties: {
