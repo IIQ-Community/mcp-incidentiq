@@ -15,7 +15,7 @@ export const ROLES: NamedList = { url: '/sites/roles', idKey: 'RoleId', label: '
 export const ASSET_TYPES: NamedList = { url: '/assets/types', idKey: 'AssetTypeId', label: 'asset type' };
 export const ASSET_STATUSES: NamedList = { url: '/assets/status/types', idKey: 'AssetStatusTypeId', label: 'asset status' };
 
-const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Resolves each name to its id: a GUID passes through; otherwise a case-insensitive exact name
