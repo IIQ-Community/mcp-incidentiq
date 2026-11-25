@@ -23,7 +23,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
 - **E2E Tests**: MCP test client for end-to-end testing (currently disabled due to ES module issues)
 - **Mock Service Worker**: Realistic API mocking with K-12 specific test data
-- **Test Coverage**: 702 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
+- **Test Coverage**: 708 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
 - **Package Manager**: npm (`package-lock.json`); Node ≥ 22 (CI and release run Node 24)
 

@@ -74,6 +74,17 @@ const EXTRA_CASES: [string, Record<string, unknown>][] = [
   ['ticket_unassign', { ticketId: GUID, unassignFrom: 'sla' }],
   ['ticket_unassign', { ticketId: GUID, unassignFrom: 'team' }],
   ['purchaseorder_get_all', { status: 'pending' }],
+  // Boolean args pick the endpoint; the generated args are always false, so record the true branch.
+  ['ticket_set_urgency', { ticketId: GUID, isUrgent: true }],
+  ['ticket_set_sensitivity', { ticketId: GUID, isSensitive: true }],
+  ['ticket_confirm_issue', { ticketId: GUID, isConfirmed: true }],
+  ['asset_get_favorites', { userId: GUID, includeAll: true }],
+];
+
+// Notification writes report success only when IIQ answers `StatusCode: 200`, which BODY lacks.
+const WRITE_SUCCESS_CASES: [string, Record<string, unknown>][] = [
+  ['notification_mark_all_read', {}],
+  ['notification_mark_read', { notification_id: GUID }],
 ];
 
 const cases: [string, Record<string, unknown>][] = [
@@ -105,13 +116,26 @@ describe('golden tool output', () => {
   });
 
   it.each(cases)('%s %j', async (name, args) => {
-    requests.length = 0;
-    let text: string;
+    expect(await record(name, args)).toMatchSnapshot();
+  });
+
+  it.each(WRITE_SUCCESS_CASES)('%s %j when IIQ reports StatusCode 200', async (name, args) => {
+    server.use(http.post('https://test.incidentiq.com/api/v1.0/notifications/*', () => HttpResponse.json({ StatusCode: 200 })));
     try {
-      text = (await router.callTool(name, args)).content.map((c) => c.text).join('\n');
-    } catch (error) {
-      text = `THROWN: ${(error as Error).message}`;
+      expect(await record(name, args)).toMatchSnapshot();
+    } finally {
+      server.resetHandlers();
     }
-    expect({ text, requests: [...requests] }).toMatchSnapshot();
   });
 });
+
+async function record(name: string, args: Record<string, unknown>): Promise<{ text: string; requests: string[] }> {
+  requests.length = 0;
+  let text: string;
+  try {
+    text = (await router.callTool(name, args)).content.map((c) => c.text).join('\n');
+  } catch (error) {
+    text = `THROWN: ${(error as Error).message}`;
+  }
+  return { text, requests: [...requests] };
+}

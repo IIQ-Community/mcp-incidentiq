@@ -152,6 +152,22 @@ Page 1 of 1",
 }
 `;
 
+exports[`golden tool output > asset_get_favorites {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e","includeAll":true} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/favorites/0f8fad5b-d9cb-469f-a165-70867728950e/true?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 favorite assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
 exports[`golden tool output > asset_get_favorites {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
 {
   "requests": [
@@ -718,6 +734,18 @@ exports[`golden tool output > notification_mark_all_read {} 1`] = `
 }
 `;
 
+exports[`golden tool output > notification_mark_all_read {} when IIQ reports StatusCode 200 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/notifications/all-read",
+  ],
+  "text": "{
+  "success": true,
+  "message": "All notifications marked as read"
+}",
+}
+`;
+
 exports[`golden tool output > notification_mark_read {"notification_id":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
 {
   "requests": [
@@ -727,6 +755,19 @@ exports[`golden tool output > notification_mark_read {"notification_id":"0f8fad5
   "notification_id": "0f8fad5b-d9cb-469f-a165-70867728950e",
   "success": false,
   "message": "Failed to mark notification as read"
+}",
+}
+`;
+
+exports[`golden tool output > notification_mark_read {"notification_id":"0f8fad5b-d9cb-469f-a165-70867728950e"} when IIQ reports StatusCode 200 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/notifications/0f8fad5b-d9cb-469f-a165-70867728950e/read",
+  ],
+  "text": "{
+  "notification_id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "success": true,
+  "message": "Notification marked as read"
 }",
 }
 `;
@@ -2781,6 +2822,15 @@ exports[`golden tool output > ticket_confirm_issue {"ticketId":"0f8fad5b-d9cb-46
 }
 `;
 
+exports[`golden tool output > ticket_confirm_issue {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isConfirmed":true} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/confirm-issue",
+  ],
+  "text": "Successfully confirmed the issue.",
+}
+`;
+
 exports[`golden tool output > ticket_get {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
 {
   "requests": [
@@ -2914,12 +2964,30 @@ exports[`golden tool output > ticket_set_sensitivity {"ticketId":"0f8fad5b-d9cb-
 }
 `;
 
+exports[`golden tool output > ticket_set_sensitivity {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isSensitive":true} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-sensitive",
+  ],
+  "text": "Successfully marked ticket as sensitive.",
+}
+`;
+
 exports[`golden tool output > ticket_set_urgency {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isUrgent":false} 1`] = `
 {
   "requests": [
     "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-not-urgent",
   ],
   "text": "Successfully marked ticket as not urgent.",
+}
+`;
+
+exports[`golden tool output > ticket_set_urgency {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isUrgent":true} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-urgent",
+  ],
+  "text": "Successfully marked ticket as urgent.",
 }
 `;
 
