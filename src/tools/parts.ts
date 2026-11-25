@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import { formatListPage, iiqListAll, matchesText, withTruncationNote } from '../api/paging.js';
 import { day } from './purchaseorders.js';
@@ -51,7 +52,7 @@ function dayBound(name: string, value: unknown): { day?: string; error?: string 
 }
 
 /** Parts for one device family, matched by name (live parts carry no DeviceType/Category). */
-async function deviceParts(client: IncidentIQClient, device: 'chromebook' | 'ipad', label: string, args: any) {
+async function deviceParts(client: IncidentIQClient, device: 'chromebook' | 'ipad', label: string, args: any): Promise<ToolResult> {
   const { items, truncated } = await listParts(client);
   const deviceMatches = items.filter((part) =>
     matchesText(device, part.DeviceType, part.Name) &&
@@ -125,16 +126,6 @@ function orderStatus(order: PurchaseOrder): 'Closed' | 'Approved' | 'Open' {
   return order.IsApproved ? 'Approved' : 'Open';
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
 const PAGE_PROPS = {
   pageSize: {
     type: 'number',
@@ -146,7 +137,7 @@ const PAGE_PROPS = {
   },
 };
 
-export const enhancedPartsTools = [
+export const partsTools: ToolDefinition[] = [
   // Core Operations
   {
     name: 'parts_get_all',
@@ -353,8 +344,7 @@ export const enhancedPartsTools = [
   },
 ];
 
-export async function handleEnhancedPartsTool(name: string, args: any) {
-  const client = getClient();
+export async function handlePartsTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -502,10 +492,10 @@ ID: ${supplier.PartSupplierId}`,
       }
 
       case 'parts_get_chromebook_parts':
-        return deviceParts(client, 'chromebook', 'Chromebook', args);
+        return await deviceParts(client, 'chromebook', 'Chromebook', args);
 
       case 'parts_get_ipad_parts':
-        return deviceParts(client, 'ipad', 'iPad', args);
+        return await deviceParts(client, 'ipad', 'iPad', args);
 
       case 'parts_get_low_stock': {
         const { items, truncated } = await listParts(client);
@@ -596,20 +586,5 @@ ID: ${part.PartId}`,
         text: `Error: ${error.message}`,
       }],
     };
-  }
-}
-
-// Export for class compatibility
-export class PartsTools {
-  constructor(_client: any) {
-    // Client is passed but not needed as we use getClient() internally
-  }
-  
-  getTools() {
-    return enhancedPartsTools;
-  }
-  
-  async handleToolCall(name: string, args: any) {
-    return handleEnhancedPartsTool(name, args);
   }
 }

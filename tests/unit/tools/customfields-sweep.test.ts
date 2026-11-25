@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedCustomFieldTool, enhancedCustomFieldTools } from '../../../src/tools/customfields';
+import { handleCustomFieldTool, customFieldTools } from '../../../src/tools/customfields';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 sweep, custom fields (C1-C7). Live IIQ (verified 2026-11-07): GET /custom-fields/{id} and
@@ -19,9 +20,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object = {}) => (await (handleEnhancedCustomFieldTool as Handler)(name, args)).content[0].text;
+const run = async (name: string, args: object = {}) => (await withClient(handleCustomFieldTool)(name, args)).content[0].text;
 const bullets = (text: string) => text.split('\n').filter((line) => line.trimStart().startsWith('• '));
-const schemaOf = (name: string) => enhancedCustomFieldTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
+const schemaOf = (name: string) => customFieldTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
 
 let seen: URL[] = [];
 const paged = (rows: object[], defaultSize = 100) => ({ request }: { request: Request }) => {
@@ -209,7 +210,7 @@ describe('C6 customfield_get_student_fields toggles', () => {
 
 describe('C7 removed custom field tools', () => {
   it('no longer advertises tools IIQ cannot back', () => {
-    const names = enhancedCustomFieldTools.map((t) => t.name);
+    const names = customFieldTools.map((t) => t.name);
     const removed = ['customfield_get_location_values', 'customfield_get_device_fields', 'customfield_get_compliance_fields',
       'customfield_validate_value', 'customfield_get_by_entity', 'customfield_search_values'];
     expect(removed.filter((name) => names.includes(name))).toEqual([]);

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedCustomFieldTool } from '../../../src/tools/customfields';
-import { handleEnhancedIssuesTool } from '../../../src/tools/issues';
+import { handleCustomFieldTool } from '../../../src/tools/customfields';
+import { handleIssuesTool } from '../../../src/tools/issues';
 import { handleLocationTool } from '../../../src/tools/locations';
-import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { handlePartsTool } from '../../../src/tools/parts';
 import { withClient } from '../../helpers/client';
 
 /**
@@ -37,7 +37,7 @@ describe('customfield_search output', () => {
     { CustomFieldId: 'f2', CustomFieldTypeId: 't2', EntityTypeId: TICKET, IsRequired: false, CustomFieldType: { Name: 'Room Phone' } },
   ];
   const use = () => server.use(http.post(`${BASE}/custom-fields`, () => HttpResponse.json({ Items: fields, ItemCount: fields.length })));
-  const run = (args: object) => textOf(handleEnhancedCustomFieldTool as Handler, 'customfield_search', args);
+  const run = (args: object) => textOf(withClient(handleCustomFieldTool), 'customfield_search', args);
 
   it('renders a page exactly', async () => {
     use();
@@ -68,7 +68,7 @@ describe('issues_search_types output', () => {
     { IssueTypeId: 'i2', Name: 'Projector remote', Scope: 'Site', Category: 'AV' }, // Category is not a live field; rows must not show it
   ];
   const use = () => server.use(http.post(`${BASE}/issues/types`, paged(types)));
-  const run = (args: object) => textOf(handleEnhancedIssuesTool as Handler, 'issues_search_types', args);
+  const run = (args: object) => textOf(withClient(handleIssuesTool), 'issues_search_types', args);
 
   it('renders a page exactly', async () => {
     use();
@@ -130,7 +130,7 @@ describe('parts_search output', () => {
     { PartId: 'p2', Name: 'Hinge cover' },
   ];
   const use = () => server.use(http.get(`${BASE}/parts`, paged(parts)));
-  const run = (args: object) => textOf(handleEnhancedPartsTool as Handler, 'parts_search', args);
+  const run = (args: object) => textOf(withClient(handlePartsTool), 'parts_search', args);
 
   it('renders a page exactly', async () => {
     use();
@@ -160,13 +160,13 @@ const TOOLS: Array<{
   tool: string; noun: string; handler: Handler; use: (rows: object[]) => void; row: (i: number) => object; bullet: (i: number) => string;
 }> = [
   {
-    tool: 'customfield_search', noun: 'custom fields', handler: handleEnhancedCustomFieldTool as Handler,
+    tool: 'customfield_search', noun: 'custom fields', handler: withClient(handleCustomFieldTool),
     use: (rows) => server.use(http.post(`${BASE}/custom-fields`, () => HttpResponse.json({ Items: rows, ItemCount: rows.length }))),
     row: (i) => ({ CustomFieldId: `f${i}`, CustomFieldTypeId: `t${i}`, EntityTypeId: TICKET, IsRequired: false, CustomFieldType: { Name: `Match ${i}` } }),
     bullet: (i) => `• Match ${i}\n`,
   },
   {
-    tool: 'issues_search_types', noun: 'issue types', handler: handleEnhancedIssuesTool as Handler,
+    tool: 'issues_search_types', noun: 'issue types', handler: withClient(handleIssuesTool),
     use: (rows) => server.use(http.post(`${BASE}/issues/types`, paged(rows))),
     row: (i) => ({ IssueTypeId: `i${i}`, Name: `Match ${i}`, Scope: 'Global' }),
     bullet: (i) => `• Match ${i}\n`,
@@ -178,7 +178,7 @@ const TOOLS: Array<{
     bullet: (i) => `• Match ${i}\n`,
   },
   {
-    tool: 'parts_search', noun: 'parts', handler: handleEnhancedPartsTool as Handler,
+    tool: 'parts_search', noun: 'parts', handler: withClient(handlePartsTool),
     use: (rows) => server.use(http.get(`${BASE}/parts`, paged(rows))),
     row: (i) => ({ PartId: `p${i}`, Name: `Match ${i}` }),
     bullet: (i) => `• Match ${i}\n`,

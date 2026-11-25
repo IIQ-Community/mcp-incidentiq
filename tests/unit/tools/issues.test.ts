@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedIssuesTool } from '../../../src/tools/issues';
+import { handleIssuesTool } from '../../../src/tools/issues';
+import { testClient } from '../../helpers/client';
 
 const BASE = 'https://test.incidentiq.com/api/v1.0';
 
@@ -37,7 +38,7 @@ beforeEach(() => {
   );
 });
 
-const textOf = async (name: string, args: object) => (await handleEnhancedIssuesTool(name, args)).content[0].text as string;
+const textOf = async (name: string, args: object) => (await handleIssuesTool(name, args, testClient())).content[0].text as string;
 
 describe('issues_search_types', () => {
   it('filters issue types by name client-side (the server ignores SearchText)', async () => {

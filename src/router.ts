@@ -4,10 +4,10 @@ import { userTools, handleUserTool } from './tools/users.js';
 import { assetTools, handleAssetTool } from './tools/assets.js';
 import { locationTools, handleLocationTool } from './tools/locations.js';
 import { teamTools, handleTeamTool } from './tools/teams.js';
-import { PartsTools } from './tools/parts.js';
+import { partsTools, handlePartsTool } from './tools/parts.js';
 import { purchaseOrderTools, handlePurchaseOrderTool } from './tools/purchaseorders.js';
-import { IssueTools } from './tools/issues.js';
-import { CustomFieldTools } from './tools/customfields.js';
+import { issuesTools, handleIssuesTool } from './tools/issues.js';
+import { customFieldTools, handleCustomFieldTool } from './tools/customfields.js';
 import { SLATools } from './tools/slas.js';
 import { ViewTools } from './tools/views.js';
 import { NotificationTools } from './tools/notifications.js';
@@ -51,9 +51,6 @@ function wrapped(handle: ToolHandler): ToolHandler {
 
 /** Builds the tool list and the name -> handler dispatch for the MCP server. */
 export function createToolRouter(client: IncidentIQClient = new IncidentIQClient()) {
-  const partsTools = new PartsTools(client);
-  const issueTools = new IssueTools(client);
-  const customFieldTools = new CustomFieldTools(client);
   const slaTools = new SLATools(client);
   const viewTools = new ViewTools(client);
   const notificationTools = new NotificationTools(client);
@@ -65,14 +62,10 @@ export function createToolRouter(client: IncidentIQClient = new IncidentIQClient
     { prefix: 'asset_', tools: assetTools, handle: (n, a) => handleAssetTool(n, a, client) },
     { prefix: 'location_', tools: locationTools, handle: (n, a) => handleLocationTool(n, a, client) },
     { prefix: 'team_', tools: teamTools, handle: handleTeamTool },
-    { prefix: 'parts_', tools: partsTools.getTools(), handle: wrapped((n, a) => partsTools.handleToolCall(n, a)) },
+    { prefix: 'parts_', tools: partsTools, handle: (n, a) => handlePartsTool(n, a, client) },
     { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: handlePurchaseOrderTool },
-    { prefix: 'issues_', tools: issueTools.getTools(), handle: wrapped((n, a) => issueTools.handleToolCall(n, a)) },
-    {
-      prefix: 'customfield_',
-      tools: customFieldTools.getTools(),
-      handle: wrapped((n, a) => customFieldTools.handleToolCall(n, a)),
-    },
+    { prefix: 'issues_', tools: issuesTools, handle: (n, a) => handleIssuesTool(n, a, client) },
+    { prefix: 'customfield_', tools: customFieldTools, handle: (n, a) => handleCustomFieldTool(n, a, client) },
     { prefix: 'sla_', tools: slaTools.getTools(), handle: wrapped((n, a) => slaTools.handleToolCall(n, a)) },
     { prefix: 'view_', tools: viewTools.getTools(), handle: wrapped((n, a) => viewTools.handleToolCall(n, a)) },
     {

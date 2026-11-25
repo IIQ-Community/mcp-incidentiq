@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedIssuesTool, enhancedIssuesTools } from '../../../src/tools/issues';
+import { handleIssuesTool, issuesTools } from '../../../src/tools/issues';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 sweep, issues (I1-I6). Live IIQ (verified 2026-11-07): POST /issues/types pages via $p/$s
@@ -15,9 +16,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object = {}) => (await (handleEnhancedIssuesTool as Handler)(name, args)).content[0].text;
+const run = async (name: string, args: object = {}) => (await withClient(handleIssuesTool)(name, args)).content[0].text;
 const bullets = (text: string) => text.split('\n').filter((line) => line.trimStart().startsWith('• '));
-const schemaOf = (name: string) => enhancedIssuesTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
+const schemaOf = (name: string) => issuesTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
 
 let seen: URL[] = [];
 const types = Array.from({ length: 60 }, (_, i) => ({
@@ -92,7 +93,7 @@ describe('I3 removed arguments', () => {
 
 describe('I4-I6 removed issues tools', () => {
   it('no longer advertises tools IIQ cannot back', () => {
-    const names = enhancedIssuesTools.map((t) => t.name);
+    const names = issuesTools.map((t) => t.name);
     const removed = ['issues_get_common_issues', 'issues_find_by_keyword', 'issues_get_categories', 'issues_get_category_hierarchy',
       'issues_get_common_categories', 'issues_get_priorities', 'issues_get_priority_sla', 'issues_get_chromebook_issues',
       'issues_get_network_issues', 'issues_get_parent_portal', 'issues_get_templates', 'issues_get_by_building',
@@ -158,7 +159,7 @@ describe('X1 issues_get_site_issues', () => {
   it('advertises paging and says what it does', () => {
     expect(schemaOf('issues_get_site_issues')).toHaveProperty('pageSize');
     expect(schemaOf('issues_get_site_issues')).toHaveProperty('pageIndex');
-    expect(enhancedIssuesTools.find((t) => t.name === 'issues_get_site_issues')?.description).toContain('/issues/{IssueId}');
+    expect(issuesTools.find((t) => t.name === 'issues_get_site_issues')?.description).toContain('/issues/{IssueId}');
   });
 });
 

@@ -4,7 +4,7 @@ import { server } from '../../mocks/server';
 import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
 import { handleLocationTool } from '../../../src/tools/locations';
-import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { handlePartsTool } from '../../../src/tools/parts';
 import { withClient } from '../../helpers/client';
 
 /**
@@ -75,7 +75,7 @@ describe('capped tools: nothing-found texts unchanged', () => {
       () => server.use(http.get(`${BASE}/users/agents`, empty))],
     ['location_get_all_rooms', withClient(handleLocationTool), 'No rooms found.', {},
       () => server.use(http.get(`${BASE}/locations/rooms`, empty))],
-    ['parts_get_orders', handleEnhancedPartsTool as Handler, 'No purchase orders found.', {},
+    ['parts_get_orders', withClient(handlePartsTool), 'No purchase orders found.', {},
       () => server.use(http.get(`${BASE}/purchaseorders`, empty))],
   ];
 

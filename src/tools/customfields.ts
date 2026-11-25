@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import { IIQ_LIST_BODY, formatListPage, iiqListAll, matchesText } from '../api/paging.js';
 
@@ -77,7 +78,7 @@ const isEmptyValue = (value: unknown) => value === null || value === undefined |
  * Custom field values for one ticket, asset or user (GET /custom-fields/values/for/{entity}/{id}),
  * labelled with the field type name. Empty values are hidden unless `includeEmpty`.
  */
-async function entityValues(client: IncidentIQClient, entity: 'ticket' | 'asset' | 'user', id: string, includeEmpty: boolean) {
+async function entityValues(client: IncidentIQClient, entity: 'ticket' | 'asset' | 'user', id: string, includeEmpty: boolean): Promise<ToolResult> {
   const label = entity[0].toUpperCase() + entity.slice(1);
   const response = await client.request<{ Items?: CustomFieldValue[] } | CustomFieldValue[]>({
     method: 'GET',
@@ -160,17 +161,7 @@ export interface CustomFieldValue {
   IsHidden?: boolean;
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const enhancedCustomFieldTools = [
+export const customFieldTools: ToolDefinition[] = [
   // Core Operations
   {
     name: 'customfield_search',
@@ -412,8 +403,7 @@ export const enhancedCustomFieldTools = [
   },
 ];
 
-export async function handleEnhancedCustomFieldTool(name: string, args: any) {
-  const client = getClient();
+export async function handleCustomFieldTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -526,13 +516,13 @@ ID: ${type.CustomFieldTypeId}`,
       }
 
       case 'customfield_get_ticket_values':
-        return entityValues(client, 'ticket', args.ticketId, args.includeEmpty === true);
+        return await entityValues(client, 'ticket', args.ticketId, args.includeEmpty === true);
 
       case 'customfield_get_asset_values':
-        return entityValues(client, 'asset', args.assetId, args.includeEmpty === true);
+        return await entityValues(client, 'asset', args.assetId, args.includeEmpty === true);
 
       case 'customfield_get_user_values':
-        return entityValues(client, 'user', args.userId, args.includeEmpty === true);
+        return await entityValues(client, 'user', args.userId, args.includeEmpty === true);
 
       case 'customfield_get_options': {
         const field = await getItem<CustomField>(client, `/custom-fields/${pathSegment(args.fieldId)}`);
@@ -694,20 +684,5 @@ Required: ${field.IsRequired ? 'Yes' : 'No'}${field.Description ? `\nDescription
         text: `Error: ${error.message}`,
       }],
     };
-  }
-}
-
-// Export for class compatibility
-export class CustomFieldTools {
-  constructor(_client: any) {
-    // Client is passed but not needed as we use getClient() internally
-  }
-  
-  getTools() {
-    return enhancedCustomFieldTools;
-  }
-  
-  async handleToolCall(name: string, args: any) {
-    return handleEnhancedCustomFieldTool(name, args);
   }
 }

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedCustomFieldTool } from '../../../src/tools/customfields';
+import { handleCustomFieldTool } from '../../../src/tools/customfields';
+import { testClient } from '../../helpers/client';
 
 const BASE = 'https://test.incidentiq.com/api/v1.0';
 const TICKET = '888891ac-91aa-e711-80c2-100dffa00001';
@@ -44,7 +45,7 @@ beforeEach(() => {
 });
 
 const textOf = async (name: string, args: object) =>
-  (await handleEnhancedCustomFieldTool(name, args)).content[0].text as string;
+  (await handleCustomFieldTool(name, args, testClient())).content[0].text as string;
 
 describe('customfield_search', () => {
   it('filters by field name client-side (the server ignores SearchText)', async () => {

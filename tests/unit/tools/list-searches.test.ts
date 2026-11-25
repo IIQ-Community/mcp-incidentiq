@@ -3,7 +3,8 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleTeamTool } from '../../../src/tools/teams';
 import { handlePurchaseOrderTool } from '../../../src/tools/purchaseorders';
-import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { handlePartsTool } from '../../../src/tools/parts';
+import { testClient } from '../../helpers/client';
 
 const BASE = 'https://test.incidentiq.com/api/v1.0';
 
@@ -118,7 +119,7 @@ describe('parts searches', () => {
   );
 
   it('parts_search filters the parts list by text and supplier', async () => {
-    const text = (await handleEnhancedPartsTool('parts_search', { searchText: 'chromebook', supplierId: 's1' })).content[0].text;
+    const text = (await handlePartsTool('parts_search', { searchText: 'chromebook', supplierId: 's1' }, testClient())).content[0].text;
     expect(text).toContain('Found 1 parts');
     expect(text).toContain('Chromebook 3100 Screen');
     expect(text).not.toContain('Keyboard');
@@ -126,20 +127,20 @@ describe('parts searches', () => {
   });
 
   it('parts_get_chromebook_parts lists only Chromebook parts', async () => {
-    const text = (await handleEnhancedPartsTool('parts_get_chromebook_parts', { model: '3100' })).content[0].text;
+    const text = (await handlePartsTool('parts_get_chromebook_parts', { model: '3100' }, testClient())).content[0].text;
     expect(text).toContain('Chromebook 3100 Screen');
     expect(text).toContain('Chromebook 3100 Keyboard');
     expect(text).not.toContain('iPad');
   });
 
   it('parts_find_by_number matches the part name/number case-insensitively', async () => {
-    const text = (await handleEnhancedPartsTool('parts_find_by_number', { partNumber: 'ipad charger' })).content[0].text;
+    const text = (await handlePartsTool('parts_find_by_number', { partNumber: 'ipad charger' }, testClient())).content[0].text;
     expect(text).toContain('Name: iPad Charger');
     expect(text).toContain('ID: p3');
   });
 
   it('parts_find_by_number reports a missing part', async () => {
-    const text = (await handleEnhancedPartsTool('parts_find_by_number', { partNumber: 'NOPE-1' })).content[0].text;
+    const text = (await handlePartsTool('parts_find_by_number', { partNumber: 'NOPE-1' }, testClient())).content[0].text;
     expect(text).toBe('No part found with number: NOPE-1');
   });
 });

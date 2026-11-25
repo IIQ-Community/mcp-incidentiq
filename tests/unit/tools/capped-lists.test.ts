@@ -4,7 +4,7 @@ import { server } from '../../mocks/server';
 import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
 import { handleLocationTool } from '../../../src/tools/locations';
-import { handleEnhancedPartsTool, enhancedPartsTools } from '../../../src/tools/parts';
+import { handlePartsTool, partsTools } from '../../../src/tools/parts';
 import { locationTools } from '../../../src/tools/locations';
 import { withClient } from '../../helpers/client';
 
@@ -79,7 +79,7 @@ describe('user_get_all_agents', () => {
 });
 
 describe('parts_get_orders', () => {
-  const run = (args: object) => textOf(handleEnhancedPartsTool as Handler, 'parts_get_orders', args);
+  const run = (args: object) => textOf(withClient(handlePartsTool), 'parts_get_orders', args);
   const po = (i: number, flags: object = {}) => ({
     PurchaseOrderId: `po-${i}-0000`, PoNumber: `PO-${i}`, CreatedDate: '2026-10-01', PurchaseTotalCosts: 120, Purchases: [{}, {}], IsApproved: false, IsClosed: false, ...flags,
   });
@@ -99,7 +99,7 @@ describe('parts_get_orders', () => {
   });
 
   it('offers the statuses that can actually match', () => {
-    const schema = enhancedPartsTools.find((t) => t.name === 'parts_get_orders')!.inputSchema.properties as any;
+    const schema = partsTools.find((t) => t.name === 'parts_get_orders')!.inputSchema.properties as any;
     expect(schema.status.enum).toEqual(['Open', 'Approved', 'Closed']);
   });
 
