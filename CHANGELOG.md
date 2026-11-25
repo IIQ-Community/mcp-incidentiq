@@ -5,6 +5,22 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.6.0](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.5...v0.6.0) (2026-11-25)
+
+
+### Bug Fixes
+
+* **analytics:** label partial or absent totals instead of implying a full total ([4dfc16e](https://github.com/IIQ-Community/mcp-incidentiq/commit/4dfc16e82d3585ac7e308e6b83e18ebf9b6c207b)), closes [#112](https://github.com/IIQ-Community/mcp-incidentiq/issues/112)
+* **analytics:** one breakdown renderer for the 4 asset-verification tools ([cb1e566](https://github.com/IIQ-Community/mcp-incidentiq/commit/cb1e566241e2272705b7482a796a671040de1683)), closes [#112](https://github.com/IIQ-Community/mcp-incidentiq/issues/112)
+* **analytics:** use the router's client; never report a missing count as 0 ([c0a4831](https://github.com/IIQ-Community/mcp-incidentiq/commit/c0a4831fd66b5337750e58e0660ac27dd5bfbf66)), closes [#112](https://github.com/IIQ-Community/mcp-incidentiq/issues/112)
+* **analytics:** validated report detail with elements, sorted report list ([d461458](https://github.com/IIQ-Community/mcp-incidentiq/commit/d4614583f08ae4952ec11f1cefa93a29f5b681f8)), closes [#112](https://github.com/IIQ-Community/mcp-incidentiq/issues/112)
+* **users:** resolve user_get_current from the API key's token, not /users/me ([8788185](https://github.com/IIQ-Community/mcp-incidentiq/commit/8788185a27269a71223555a0adf9333ddb2fded2)), closes [#101](https://github.com/IIQ-Community/mcp-incidentiq/issues/101)
+
+
+### Features
+
+* **analytics:** register the Analytics module (125 tools) ([d2b1fd3](https://github.com/IIQ-Community/mcp-incidentiq/commit/d2b1fd32f4fedcfe61dc5dfacf2b7289b2449434)), closes [#112](https://github.com/IIQ-Community/mcp-incidentiq/issues/112)
+
 ## [0.5.5](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.4...v0.5.5) (2026-11-24)
 
 
