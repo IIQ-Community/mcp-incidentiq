@@ -43,10 +43,12 @@ jobs:
       # injecting NPM_TOKEN -- so `npm publish` runs with an unset NODE_AUTH_TOKEN and 401s (verified
       # v0.5.0 failure, 2026-06-15). The registry is supplied by package.json `publishConfig.registry`,
       # and @semantic-release/npm writes `//npm.pkg.github.com/:_authToken=${NPM_TOKEN}` itself.
-      - name: Setup Node.js 24
+      # Node 26 because semantic-release 26 requires node >=26.13. Only this job uses it: CI and the
+      # package's engines (>=22) stay on 22/24, since the published server still supports those.
+      - name: Setup Node.js 26
         uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
           cache: npm
 
       - name: Install dependencies
