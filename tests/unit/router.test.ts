@@ -155,6 +155,9 @@ describe('tool router', () => {
     ['ticket_unassign', { ticketId: TICKET, unassignFrom: '..' }],
     ['ticket_mark_duplicate', { ticketId: TICKET, originalTicketId: '..' }],
     ['ticket_get_wizards_by_site', { siteId: '..' }],
+    ['team_get', { teamId: '..' }],
+    ['purchaseorder_get', { purchaseOrderId: '..' }],
+    ['purchaseorder_get_all', { status: '..' }],
   ])('%s rejects a dot-only path value %j without calling IIQ', async (name, args) => {
     const paths: string[] = [];
     server.use(http.all(`${BASE}/*`, ({ request }) => {
