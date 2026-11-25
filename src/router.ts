@@ -92,7 +92,7 @@ export function createToolRouter(client: IncidentIQClient = new IncidentIQClient
       tools: notificationTools.getTools(),
       handle: wrapped((n, a) => notificationTools.handleToolCall(n, a)),
     },
-    { prefix: 'analytics_', tools: analyticsTools, handle: handleAnalyticsTool },
+    { prefix: 'analytics_', tools: analyticsTools, handle: (n, a) => handleAnalyticsTool(n, a, client) },
   ];
 
   async function testConnection(): Promise<ToolResult> {

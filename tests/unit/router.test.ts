@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { createToolRouter } from '../../src/router';
+import type { IncidentIQClient } from '../../src/api/client';
 
 const BASE = 'https://test.incidentiq.com/api/v1.0';
 
@@ -168,5 +169,13 @@ describe('tool router', () => {
     server.use(http.get(`${BASE}/slas`, () => HttpResponse.json({ Items: [{ Name: 'Standard' }] })));
     const result = await router.callTool('sla_list', {});
     expect(result.content[0].text).toContain('Standard');
+  });
+
+  it('analytics tools use the client the router was built with', async () => {
+    const request = vi.fn().mockResolvedValue({ ItemCount: 1, Items: [{ Name: 'Scan', Value: 2 }] });
+    const injected = createToolRouter({ request } as unknown as IncidentIQClient);
+    const text = (await injected.callTool('analytics_asset_verification_type', {})).content[0]?.text ?? '';
+    expect(request).toHaveBeenCalledWith({ method: 'GET', url: '/analytics/assets/by-verification-type' });
+    expect(text).toContain('• Scan: 2 assets (100.0%)');
   });
 });

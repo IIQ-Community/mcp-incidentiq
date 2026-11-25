@@ -57,17 +57,26 @@ const text = (body: string): TextResult => ({ content: [{ type: 'text', text: bo
 
 const count = (n: number) => n.toLocaleString('en-US');
 const assets = (n: number) => `${count(n)} asset${n === 1 ? '' : 's'}`;
-/** A data point's count; a missing or non-numeric Value counts as 0 so totals never become NaN. */
-const valueOf = (point: AnalyticsDataPoint) => (Number.isFinite(point.Value) ? point.Value : 0);
-const sumOf = (points: AnalyticsDataPoint[]) => points.reduce((sum, point) => sum + valueOf(point), 0);
-/** Largest count first, ties by name; sorts a copy so the response is not mutated. */
+/** True when IIQ sent a usable numeric count; anything else is shown as unavailable, never as 0. */
+const hasCount = (point: AnalyticsDataPoint) => typeof point.Value === 'number' && Number.isFinite(point.Value);
+const sumOf = (points: AnalyticsDataPoint[]) => points.reduce((sum, point) => sum + (hasCount(point) ? point.Value : 0), 0);
+/** Counted points largest first (ties by name), then points without a count; sorts a copy. */
 const byCountDesc = (points: AnalyticsDataPoint[]) =>
-  [...points].sort((a, b) => valueOf(b) - valueOf(a) || String(a.Name).localeCompare(String(b.Name)));
+  [...points].sort((a, b) =>
+    Number(hasCount(b)) - Number(hasCount(a)) ||
+    (hasCount(a) && hasCount(b) ? b.Value - a.Value : 0) ||
+    String(a.Name).localeCompare(String(b.Name)));
+/** `; N point(s) without a count` when IIQ omitted any count, so the total is visibly partial. */
+function uncountedNote(points: AnalyticsDataPoint[]): string {
+  const missing = points.filter((point) => !hasCount(point)).length;
+  return missing === 0 ? '' : `; ${missing} point${missing === 1 ? '' : 's'} without a count`;
+}
 
 /** `• <Name>: <count> assets (<share>%)`; the share is omitted when the total is 0. */
 function breakdownRow(point: AnalyticsDataPoint, total: number): string {
-  const share = total > 0 ? ` (${((valueOf(point) / total) * 100).toFixed(1)}%)` : '';
-  return `• ${point.Name}: ${assets(valueOf(point))}${share}`;
+  if (!hasCount(point)) return `• ${point.Name}: count unavailable`;
+  const share = total > 0 ? ` (${((point.Value / total) * 100).toFixed(1)}%)` : '';
+  return `• ${point.Name}: ${assets(point.Value)}${share}`;
 }
 const breakdownRows = (points: AnalyticsDataPoint[], total: number) =>
   byCountDesc(points).map((point) => breakdownRow(point, total));
@@ -186,8 +195,8 @@ export const analyticsTools = [
   },
 ];
 
-export async function handleAnalyticsTool(name: string, args: any) {
-  const client = getClient();
+/** `client` defaults to an environment-configured client; the router passes the one it was built with. */
+export async function handleAnalyticsTool(name: string, args: any, client: IncidentIQClient = getClient()) {
   
   try {
     switch (name) {
@@ -199,7 +208,7 @@ export async function handleAnalyticsTool(name: string, args: any) {
         const points = await readPoints(client, breakdown.url);
         if (points.length === 0) return text(breakdown.emptyText);
         const total = sumOf(points);
-        return text(`${breakdown.title} (${assets(total)}):\n\n${breakdownRows(points, total).join('\n')}`);
+        return text(`${breakdown.title} (${assets(total)}${uncountedNote(points)}):\n\n${breakdownRows(points, total).join('\n')}`);
       }
 
       // N5: every location, largest first, paged client-side (IIQ ignores $p/$s here).
@@ -213,7 +222,7 @@ export async function handleAnalyticsTool(name: string, args: any) {
           noun: 'locations',
           emptyText: 'No verification location data available.',
           render: (point) => breakdownRow(point, total),
-          renderPage: (page) => `Total assets verified: ${count(total)}\n\n${page.map((point) => breakdownRow(point, total)).join('\n')}`,
+          renderPage: (page) => `Total assets verified: ${count(total)}${uncountedNote(points)}\n\n${page.map((point) => breakdownRow(point, total)).join('\n')}`,
         });
       }
 

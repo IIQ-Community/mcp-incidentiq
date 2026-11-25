@@ -214,3 +214,18 @@ describe('analytics_get_report (N3, N6)', () => {
     expect(text).not.toContain('No report found');
   });
 });
+
+describe('breakdown values IIQ did not send as numbers (Codex review)', () => {
+  it('shows a point without a numeric count as unavailable and leaves it out of the total', async () => {
+    serve('/analytics/assets/by-verification-type', {
+      ItemCount: 3,
+      Items: [{ Name: 'Scan', Value: 30 }, { Name: 'Web', Value: null }, { Name: 'App', Value: 10 }],
+    });
+    expect(await textOf('analytics_asset_verification_type')).toBe(
+      'Asset Verification by Type (40 assets; 1 point without a count):\n\n' +
+      '• Scan: 30 assets (75.0%)\n' +
+      '• App: 10 assets (25.0%)\n' +
+      '• Web: count unavailable'
+    );
+  });
+});
