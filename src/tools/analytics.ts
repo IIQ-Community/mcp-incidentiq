@@ -1,14 +1,16 @@
 /**
- * ANALYTICS TOOLS - Based on Swagger Documentation
- * 
- * The Analytics API provides aggregated data for dashboards and reporting.
- * All endpoints return ListGetResponseOfAnalyticsDataPoint with structure:
- * { Items: AnalyticsDataPoint[], ItemCount: number, Paging: {...} }
- * 
- * AnalyticsDataPoint contains: Name, Value, Id, Date
+ * ANALYTICS TOOLS (context/iiq-api/Analytics.json)
+ *
+ * Asset-verification breakdowns and the analytics report catalog. Live responses are
+ * `{ ItemCount, Items }` with no Paging, and IIQ ignores `$p`/`$s` (probe 2026-11-24).
+ * No documented endpoint returns report values, and audit-policy/schedule IDs have no
+ * documented source, so those tools are not offered (#112).
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { GUID } from '../api/lookups.js';
+import { formatListPage } from '../api/paging.js';
+import { pathSegment } from '../api/path.js';
 import { PaginatedResponse } from '../types/common.js';
 
 // Analytics-specific types
@@ -42,11 +44,89 @@ export interface ReportElement {
   ElementKey?: string;
   HasDefinitionPrimary: boolean;
   HasDefinitionSecondary: boolean;
+  DefaultDisplayOrder?: number;
   DefaultSizeX: number;
   DefaultSizeY: number;
   Icon?: string;
   About?: string;
   Meta?: any;
+}
+
+type TextResult = { content: Array<{ type: 'text'; text: string }> };
+const text = (body: string): TextResult => ({ content: [{ type: 'text', text: body }] });
+
+const count = (n: number) => n.toLocaleString('en-US');
+const assets = (n: number) => `${count(n)} asset${n === 1 ? '' : 's'}`;
+/** True when IIQ sent a usable numeric count; anything else is shown as unavailable, never as 0. */
+const hasCount = (point: AnalyticsDataPoint) => typeof point.Value === 'number' && Number.isFinite(point.Value);
+const sumOf = (points: AnalyticsDataPoint[]) => points.reduce((sum, point) => sum + (hasCount(point) ? point.Value : 0), 0);
+/** Counted points largest first (ties by name), then points without a count; sorts a copy. */
+const byCountDesc = (points: AnalyticsDataPoint[]) =>
+  [...points].sort((a, b) =>
+    Number(hasCount(b)) - Number(hasCount(a)) ||
+    (hasCount(a) && hasCount(b) ? b.Value - a.Value : 0) ||
+    String(a.Name).localeCompare(String(b.Name)));
+const missingCount = (points: AnalyticsDataPoint[]) => points.filter((point) => !hasCount(point)).length;
+const pointsWithout = (n: number) => `${n} point${n === 1 ? '' : 's'} without a count`;
+
+/**
+ * The total, said honestly: a plain total when every point has a count, a "counted" total when
+ * some do not, and no total at all when none do. `unit` renders the number (with or without "assets").
+ */
+function totalLabel(points: AnalyticsDataPoint[], unit: (n: number) => string): string {
+  const missing = missingCount(points);
+  if (missing === 0) return unit(sumOf(points));
+  if (missing === points.length) return `no counts available; ${pointsWithout(missing)}`;
+  return `${unit(sumOf(points))} counted; ${pointsWithout(missing)}`;
+}
+
+/** `• <Name>: <count> assets (<share>%)`; no share at total 0, and "of counted" when the total is partial. */
+function breakdownRow(point: AnalyticsDataPoint, total: number, partial: boolean): string {
+  if (!hasCount(point)) return `• ${point.Name}: count unavailable`;
+  const share = total > 0 ? ` (${((point.Value / total) * 100).toFixed(1)}%${partial ? ' of counted' : ''})` : '';
+  return `• ${point.Name}: ${assets(point.Value)}${share}`;
+}
+const breakdownRows = (points: AnalyticsDataPoint[]) => {
+  const total = sumOf(points);
+  const partial = missingCount(points) > 0;
+  return byCountDesc(points).map((point) => breakdownRow(point, total, partial));
+};
+
+async function readPoints(client: IncidentIQClient, url: string): Promise<AnalyticsDataPoint[]> {
+  const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({ method: 'GET', url });
+  return response?.Items ?? [];
+}
+
+const BREAKDOWNS: Record<string, { url: string; title: string; emptyText: string }> = {
+  analytics_asset_audit_coverage: {
+    url: '/analytics/assets/by-audit-policy-coverage',
+    title: 'Asset Audit Policy Coverage',
+    emptyText: 'No audit policy coverage data available.',
+  },
+  analytics_asset_audit_status: {
+    url: '/analytics/assets/by-audit-status',
+    title: 'Asset Audit Status',
+    emptyText: 'No audit status data available.',
+  },
+  analytics_asset_verification_type: {
+    url: '/analytics/assets/by-verification-type',
+    title: 'Asset Verification by Type',
+    emptyText: 'No verification type data available.',
+  },
+};
+
+const titleOf = (report: { Name: string; Subtitle?: string }) =>
+  `${report.Name}${report.Subtitle ? ` — ${report.Subtitle}` : ''}`;
+
+/** A report's elements by DefaultDisplayOrder then Name: name, subtitle and About only (no layout GUIDs). */
+function renderElements(result: PromiseSettledResult<PaginatedResponse<ReportElement>>): string {
+  if (result.status === 'rejected') return `Elements: unavailable (${result.reason?.message ?? 'request failed'})`;
+  const elements = result.value?.Items ?? [];
+  if (elements.length === 0) return 'No elements.';
+  const rows = [...elements]
+    .sort((a, b) => (a.DefaultDisplayOrder ?? 0) - (b.DefaultDisplayOrder ?? 0) || String(a.Name).localeCompare(String(b.Name)))
+    .map((element) => `• ${titleOf(element)}${element.About ? `\n  ${element.About}` : ''}`);
+  return `Elements (${elements.length}):\n${rows.join('\n')}`;
 }
 
 // Initialize client lazily
@@ -81,10 +161,13 @@ export const analyticsTools = [
   },
   {
     name: 'analytics_asset_verification_location',
-    description: 'Get breakdown of asset counts by verification location',
+    description: 'Get asset counts by verification location: every location, largest first, with its share of all verified assets. Paged client-side.',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        pageSize: { type: 'number', description: 'Results per page (default: 25)' },
+        pageIndex: { type: 'number', description: 'Page number (0-based)' },
+      },
       required: [],
     },
   },
@@ -97,39 +180,10 @@ export const analyticsTools = [
       required: [],
     },
   },
-  {
-    name: 'analytics_asset_audit_by_policy',
-    description: 'Get audit status breakdown for a specific audit policy',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        policyId: {
-          type: 'string',
-          description: 'The Audit Policy ID (GUID)',
-        },
-      },
-      required: ['policyId'],
-    },
-  },
-  {
-    name: 'analytics_asset_audit_by_schedule',
-    description: 'Get audit status breakdown for a specific audit schedule',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        scheduleId: {
-          type: 'string',
-          description: 'The Audit Policy Schedule ID (GUID)',
-        },
-      },
-      required: ['scheduleId'],
-    },
-  },
-  
   // Reports Management
   {
     name: 'analytics_list_reports',
-    description: 'Get all available analytics reports',
+    description: 'List every analytics report (name, subtitle, key and ID). Use an ID with analytics_get_report.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -138,428 +192,88 @@ export const analyticsTools = [
   },
   {
     name: 'analytics_get_report',
-    description: 'Get details of a specific analytics report',
+    description: "Get an analytics report's details and its elements (name, subtitle, description). IncidentIQ's API returns the report layout, not its values.",
     inputSchema: {
       type: 'object',
       properties: {
         reportId: {
           type: 'string',
-          description: 'The Report ID (GUID)',
+          description: 'The Report ID (GUID) from analytics_list_reports',
         },
       },
       required: ['reportId'],
-    },
-  },
-  {
-    name: 'analytics_get_report_elements',
-    description: 'Get UI elements/widgets for a specific report',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        reportId: {
-          type: 'string',
-          description: 'The Report ID (GUID)',
-        },
-      },
-      required: ['reportId'],
-    },
-  },
-  {
-    name: 'analytics_get_report_queries',
-    description: 'Get query definitions for a specific report',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        reportId: {
-          type: 'string',
-          description: 'The Report ID (GUID)',
-        },
-      },
-      required: ['reportId'],
-    },
-  },
-  
-  // Custom Analytics (for dashboard creation)
-  {
-    name: 'analytics_dashboard_summary',
-    description: 'Get a summary of key metrics for dashboard display',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeAssets: {
-          type: 'boolean',
-          description: 'Include asset audit status metrics (default: true)',
-        },
-      },
-      required: [],
     },
   },
 ];
 
-export async function handleAnalyticsTool(name: string, args: any) {
-  const client = getClient();
+/** `client` defaults to an environment-configured client; the router passes the one it was built with. */
+export async function handleAnalyticsTool(name: string, args: any, client: IncidentIQClient = getClient()) {
   
   try {
     switch (name) {
-      // Asset Auditing Analytics
-      case 'analytics_asset_audit_coverage': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-audit-policy-coverage',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No audit policy coverage data available.',
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Audit Policy Coverage:\n\n${dataPoints}\n\nTotal data points: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
-      case 'analytics_asset_audit_status': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-audit-status',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No audit status data available.',
-            }],
-          };
-        }
-        
-        const total = response.Items.reduce((sum, dp) => sum + dp.Value, 0);
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) => {
-          const percentage = ((dp.Value / total) * 100).toFixed(1);
-          return `• ${dp.Name}: ${dp.Value} assets (${percentage}%)`;
-        }).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Audit Status Distribution:\n\n${dataPoints}\n\nTotal assets: ${total}`,
-          }],
-        };
-      }
-      
-      case 'analytics_asset_verification_location': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-verification-location',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No verification location data available.',
-            }],
-          };
-        }
-        
-        const sortedLocations = response.Items.sort((a, b) => b.Value - a.Value);
-        const top10 = sortedLocations.slice(0, 10);
-        
-        const dataPoints = top10.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        const remainingCount = response.ItemCount - 10;
-        const remainingText = remainingCount > 0 ? `\n\n...and ${remainingCount} more locations` : '';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Verification by Location (Top 10):\n\n${dataPoints}${remainingText}\n\nTotal locations: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
+      // Asset-verification breakdowns (N7): count, share and total, largest first.
+      case 'analytics_asset_audit_coverage':
+      case 'analytics_asset_audit_status':
       case 'analytics_asset_verification_type': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: '/analytics/assets/by-verification-type',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No verification type data available.',
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Asset Verification by Type:\n\n${dataPoints}\n\nTotal types: ${response.ItemCount}`,
-          }],
-        };
+        const breakdown = BREAKDOWNS[name];
+        const points = await readPoints(client, breakdown.url);
+        if (points.length === 0) return text(breakdown.emptyText);
+        return text(`${breakdown.title} (${totalLabel(points, assets)}):\n\n${breakdownRows(points).join('\n')}`);
       }
-      
-      case 'analytics_asset_audit_by_policy': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: `/analytics/assets/by-audit-policy-status/${args.policyId}`,
+
+      // N5: every location, largest first, paged client-side (IIQ ignores $p/$s here).
+      case 'analytics_asset_verification_location': {
+        const points = await readPoints(client, '/analytics/assets/by-verification-location');
+        const total = sumOf(points);
+        const partial = missingCount(points) > 0;
+        return formatListPage({
+          rows: byCountDesc(points),
+          pageIndex: args?.pageIndex,
+          pageSize: args?.pageSize ?? 25,
+          noun: 'locations',
+          emptyText: 'No verification location data available.',
+          render: (point) => breakdownRow(point, total, partial),
+          renderPage: (page) => `Total assets verified: ${totalLabel(points, count)}\n\n${page.map((point) => breakdownRow(point, total, partial)).join('\n')}`,
         });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No audit data found for policy ${args.policyId}.`,
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Audit Status for Policy ${args.policyId}:\n\n${dataPoints}\n\nTotal statuses: ${response.ItemCount}`,
-          }],
-        };
       }
-      
-      case 'analytics_asset_audit_by_schedule': {
-        const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-          method: 'GET',
-          url: `/analytics/assets/by-audit-policy-schedule-status/${args.scheduleId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No audit data found for schedule ${args.scheduleId}.`,
-            }],
-          };
-        }
-        
-        const dataPoints = response.Items.map((dp: AnalyticsDataPoint) =>
-          `• ${dp.Name}: ${dp.Value} assets`
-        ).join('\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Audit Status for Schedule ${args.scheduleId}:\n\n${dataPoints}\n\nTotal statuses: ${response.ItemCount}`,
-          }],
-        };
-      }
-      
-      // Reports Management
+
+      // N8: the whole catalog (IIQ returns it in one response), by DisplayOrder then Name.
       case 'analytics_list_reports': {
-        const response = await client.request<PaginatedResponse<AnalyticsReport>>({
-          method: 'GET',
-          url: '/analytics/reports',
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'No analytics reports available.',
-            }],
-          };
-        }
-        
-        const reportList = response.Items
-          .sort((a, b) => a.DisplayOrder - b.DisplayOrder)
-          .map((report: AnalyticsReport) =>
-            `• ${report.Name}${report.Subtitle ? ` - ${report.Subtitle}` : ''}\n  ID: ${report.ReportId}\n  Key: ${report.ReportKey || 'N/A'}`
-          ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Available Analytics Reports (${response.ItemCount}):\n\n${reportList}`,
-          }],
-        };
+        const response = await client.request<PaginatedResponse<AnalyticsReport>>({ method: 'GET', url: '/analytics/reports' });
+        const reports = response?.Items ?? [];
+        if (reports.length === 0) return text('No analytics reports available.');
+        const rows = [...reports]
+          .sort((a, b) => (a.DisplayOrder ?? 0) - (b.DisplayOrder ?? 0) || String(a.Name).localeCompare(String(b.Name)))
+          .map((report) => `• ${titleOf(report)}\n  Key: ${report.ReportKey || 'N/A'} | ID: ${report.ReportId}`);
+        return text(`Analytics Reports (${reports.length}):\n\n${rows.join('\n\n')}`);
       }
-      
+
+      // N3 + N6: report details with its elements; the ID must be a GUID before any request.
       case 'analytics_get_report': {
-        const response = await client.request<{ Item: AnalyticsReport }>({
-          method: 'GET',
-          url: `/analytics/reports/${args.reportId}`,
-        });
-        
-        if (!response?.Item) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Report ${args.reportId} not found.`,
-            }],
-          };
+        const reportId: unknown = args?.reportId;
+        // typeof first: RegExp.test coerces, so ['<guid>'] would otherwise pass.
+        if (typeof reportId !== 'string' || !GUID.test(reportId)) {
+          return text('reportId must be a report GUID (use analytics_list_reports)');
         }
-        
-        const report = response.Item;
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Details:
-Name: ${report.Name}
-Subtitle: ${report.Subtitle || 'N/A'}
-Report Key: ${report.ReportKey || 'N/A'}
-Product ID: ${report.ProductId}
-Site ID: ${report.SiteId || 'N/A'}
-Display Order: ${report.DisplayOrder}
-Sidebar Visible: ${report.IsSidebarVisible ? 'Yes' : 'No'}
-ID: ${report.ReportId}`,
-          }],
-        };
-      }
-      
-      case 'analytics_get_report_elements': {
-        const response = await client.request<PaginatedResponse<ReportElement>>({
-          method: 'GET',
-          url: `/analytics/reports/elements/${args.reportId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No elements found for report ${args.reportId}.`,
-            }],
-          };
-        }
-        
-        const elementList = response.Items.map((element: ReportElement) =>
-          `• ${element.Name}${element.Subtitle ? ` - ${element.Subtitle}` : ''}
-  Type: ${element.ReportElementTypeId}
-  Size: ${element.DefaultSizeX}x${element.DefaultSizeY}
-  Icon: ${element.Icon || 'None'}
-  About: ${element.About || 'N/A'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Elements for ${args.reportId} (${response.ItemCount}):\n\n${elementList}`,
-          }],
-        };
-      }
-      
-      case 'analytics_get_report_queries': {
-        const response = await client.request<PaginatedResponse<any>>({
-          method: 'GET',
-          url: `/analytics/reports/queries/${args.reportId}`,
-        });
-        
-        if (!response?.Items || response.Items.length === 0) {
-          return {
-            content: [{
-              type: 'text',
-              text: `No queries found for report ${args.reportId}.`,
-            }],
-          };
-        }
-        
-        const queryList = response.Items.map((query: any) =>
-          `• ${query.Name}
-  Query Key: ${query.QueryKey || 'N/A'}
-  Type ID: ${query.ReportElementTypeId}
-  Has Primary Definition: ${query.HasDefinitionPrimary ? 'Yes' : 'No'}
-  Has Secondary Definition: ${query.HasDefinitionSecondary ? 'Yes' : 'No'}`
-        ).join('\n\n');
-        
-        return {
-          content: [{
-            type: 'text',
-            text: `Report Queries for ${args.reportId} (${response.ItemCount}):\n\n${queryList}`,
-          }],
-        };
-      }
-      
-      // Custom Dashboard Summary (aggregates multiple analytics)
-      case 'analytics_dashboard_summary': {
-        const includeAssets = args.includeAssets !== false;
-        
-        let summary = '📊 Analytics Dashboard Summary\n' + '='.repeat(40) + '\n\n';
-        
-        // Try to get asset audit status if including assets
-        if (includeAssets) {
-          try {
-            const assetAudit = await client.request<PaginatedResponse<AnalyticsDataPoint>>({
-              method: 'GET',
-              url: '/analytics/assets/by-audit-status',
-            });
-            
-            if (assetAudit?.Items && assetAudit.Items.length > 0) {
-              summary += '📦 Asset Audit Status:\n';
-              const total = assetAudit.Items.reduce((sum, dp) => sum + dp.Value, 0);
-              assetAudit.Items.forEach((dp: AnalyticsDataPoint) => {
-                const percentage = ((dp.Value / total) * 100).toFixed(1);
-                summary += `  • ${dp.Name}: ${dp.Value} (${percentage}%)\n`;
-              });
-              summary += `  Total Assets: ${total}\n\n`;
-            }
-          } catch (error) {
-            summary += '📦 Asset Analytics: Not available\n\n';
+        const id = pathSegment(reportId);
+        // allSettled: an elements failure must not discard a successful detail.
+        const [detail, elements] = await Promise.allSettled([
+          client.request<{ Item?: AnalyticsReport }>({ method: 'GET', url: `/analytics/reports/${id}` }),
+          client.request<PaginatedResponse<ReportElement>>({ method: 'GET', url: `/analytics/reports/elements/${id}` }),
+        ]);
+        if (detail.status === 'rejected') {
+          // IIQ answers an unknown report ID with 500 (probe 2026-11-24); other failures use the shared path.
+          if (detail.reason?.response?.status === 500) {
+            return text(`No report found for ID ${reportId} (IncidentIQ returned 500); use analytics_list_reports for valid IDs.`);
           }
+          throw detail.reason;
         }
-        
-        // Try to get available reports
-        try {
-          const reports = await client.request<PaginatedResponse<AnalyticsReport>>({
-            method: 'GET',
-            url: '/analytics/reports',
-          });
-          
-          if (reports?.Items && reports.Items.length > 0) {
-            summary += `📈 Available Reports: ${reports.ItemCount}\n`;
-            reports.Items.slice(0, 5).forEach((report: AnalyticsReport) => {
-              summary += `  • ${report.Name}\n`;
-            });
-            if (reports.ItemCount > 5) {
-              summary += `  ...and ${reports.ItemCount - 5} more\n`;
-            }
-            summary += '\n';
-          }
-        } catch (error) {
-          summary += '📈 Reports: Not available\n\n';
-        }
-        
-        summary += '💡 Tips:\n';
-        summary += '• Use view-based filtering for complex analytics queries\n';
-        summary += '• Implement 15-minute update cycle for real-time dashboards\n';
-        summary += '• Cache analytics data to reduce API load\n';
-        summary += '• Combine with Google Sheets for custom visualizations';
-        
-        return {
-          content: [{
-            type: 'text',
-            text: summary,
-          }],
-        };
+        const report = detail.value?.Item;
+        if (!report) return text(`No report found for ID ${reportId}; use analytics_list_reports for valid IDs.`);
+        const details = `Report: ${titleOf(report)}\nKey: ${report.ReportKey || 'N/A'} | Display Order: ${report.DisplayOrder} | Sidebar Visible: ${report.IsSidebarVisible ? 'Yes' : 'No'}\nID: ${report.ReportId}`;
+        return text(`${details}\n\n${renderElements(elements)}`);
       }
-      
+
       default:
         return {
           content: [{

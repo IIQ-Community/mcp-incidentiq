@@ -1,0 +1,255 @@
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../mocks/server';
+import { analyticsTools, handleAnalyticsTool } from '../../../src/tools/analytics';
+
+/**
+ * Analytics tools (#112). Live IIQ analytics responses are `{ ItemCount, Items }` with no
+ * Paging, and `$p`/`$s` are ignored (probe 2026-11-24), so every fixture here uses that shape.
+ */
+const BASE = 'https://test.incidentiq.com/api/v1.0';
+
+let hits: string[];
+
+beforeAll(() => server.listen());
+beforeEach(() => {
+  hits = [];
+  // Catch-all that records analytics requests; tests override specific endpoints with server.use.
+  server.use(
+    http.all(`${BASE}/analytics/*`, ({ request }) => {
+      hits.push(new URL(request.url).pathname);
+      return HttpResponse.json({ ItemCount: 0, Items: [] });
+    })
+  );
+});
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+const textOf = async (name: string, args: object = {}) =>
+  (await handleAnalyticsTool(name, args)).content[0].text;
+
+const ADVERTISED = [
+  'analytics_asset_audit_coverage',
+  'analytics_asset_audit_status',
+  'analytics_asset_verification_location',
+  'analytics_asset_verification_type',
+  'analytics_list_reports',
+  'analytics_get_report',
+];
+const REMOVED = [
+  'analytics_asset_audit_by_policy',
+  'analytics_asset_audit_by_schedule',
+  'analytics_dashboard_summary',
+  'analytics_get_report_elements',
+  'analytics_get_report_queries',
+];
+
+describe('analytics tool set (N2, N3, N4)', () => {
+  it('defines exactly the 6 tools IncidentIQ backs', () => {
+    expect(analyticsTools.map((t) => t.name).sort()).toEqual([...ADVERTISED].sort());
+  });
+
+  it.each(REMOVED)('%s is gone: unknown-tool text and no request', async (name) => {
+    expect(await textOf(name, { reportId: '0f8fad5b-d9cb-469f-a165-70867728950e', policyId: 'x', scheduleId: 'x' }))
+      .toMatch(/Unknown analytics tool/);
+    expect(hits).toHaveLength(0);
+  });
+});
+
+const points = (...pairs: Array<[string, number]>) => ({
+  ItemCount: pairs.length,
+  Items: pairs.map(([Name, Value]) => ({ Name, Value, Id: '00000000-0000-0000-0000-000000000000' })),
+});
+const serve = (path: string, body: object) =>
+  server.use(http.get(`${BASE}${path}`, ({ request }) => {
+    hits.push(new URL(request.url).pathname);
+    return HttpResponse.json(body);
+  }));
+const bullets = (text: string) => text.split('\n').filter((line) => line.startsWith('• '));
+
+describe('asset-verification breakdowns (N7)', () => {
+  it('renders count, share and total, sorted by count then name', async () => {
+    // The 4 live verification-type points (probe 2026-11-24), served out of order.
+    serve('/analytics/assets/by-verification-type', points(
+      ['Scan', 1], ['iiQ Web - Manual', 8546], ['Mobile Manual', 1], ['iiQ App Update - Automatic', 55067],
+    ));
+    expect(await textOf('analytics_asset_verification_type')).toBe(
+      'Asset Verification by Type (63,615 assets):\n\n' +
+      '• iiQ App Update - Automatic: 55,067 assets (86.6%)\n' +
+      '• iiQ Web - Manual: 8,546 assets (13.4%)\n' +
+      '• Mobile Manual: 1 asset (0.0%)\n' +
+      '• Scan: 1 asset (0.0%)'
+    );
+  });
+
+  it('shows counts without a share when the total is 0 (no NaN)', async () => {
+    serve('/analytics/assets/by-audit-policy-coverage', points(['Covered', 0], ['Not Covered', 0]));
+    const text = await textOf('analytics_asset_audit_coverage');
+    expect(text).toBe('Asset Audit Policy Coverage (0 assets):\n\n• Covered: 0 assets\n• Not Covered: 0 assets');
+    expect(text).not.toMatch(/NaN|%/);
+  });
+
+  it('keeps the empty-state text when IIQ returns no points', async () => {
+    serve('/analytics/assets/by-audit-status', { ItemCount: 0, Items: [] });
+    expect(await textOf('analytics_asset_audit_status')).toBe('No audit status data available.');
+  });
+});
+
+describe('analytics_asset_verification_location paging (N5)', () => {
+  // 63 locations with counts 1..63 (total 2,016), served in a scrambled order.
+  const locations = Array.from({ length: 63 }, (_, i) => [`School ${String(i + 1).padStart(2, '0')}`, i + 1] as [string, number])
+    .sort((a, b) => ((a[1] * 37) % 63) - ((b[1] * 37) % 63));
+  const run = (args: object = {}) => {
+    serve('/analytics/assets/by-verification-location', points(...locations));
+    return textOf('analytics_asset_verification_location', args);
+  };
+  const counts = (text: string) => bullets(text).map((line) => Number(line.match(/: ([\d,]+) asset/)![1].replace(/,/g, '')));
+
+  it('advertises pageIndex and pageSize', () => {
+    const tool = analyticsTools.find((t) => t.name === 'analytics_asset_verification_location');
+    expect(Object.keys(tool?.inputSchema.properties ?? {}).sort()).toEqual(['pageIndex', 'pageSize']);
+  });
+
+  it('shows the first 25 of all 63, largest first, under the grand total', async () => {
+    const text = await run();
+    expect(text.startsWith('Found 63 locations (showing 25):\n\nTotal assets verified: 2,016\n\n')).toBe(true);
+    expect(counts(text)).toEqual(Array.from({ length: 25 }, (_, i) => 63 - i));
+    expect(bullets(text)[0]).toBe('• School 63: 63 assets (3.1%)');
+    expect(text.endsWith('Page 1 of 3')).toBe(true);
+  });
+
+  it('shows the last 13 on page 3', async () => {
+    const text = await run({ pageIndex: 2 });
+    expect(counts(text)).toEqual(Array.from({ length: 13 }, (_, i) => 13 - i));
+    expect(text).toContain('Total assets verified: 2,016');
+    expect(text.endsWith('Page 3 of 3')).toBe(true);
+  });
+
+  it('says a page past the end is past the end', async () => {
+    expect(await run({ pageIndex: 3 })).toBe('Page 4 is past the end: 63 locations match (3 pages).');
+  });
+});
+
+const R = '0f8fad5b-d9cb-469f-a165-70867728950e';
+const failWith = (path: string, status: number) =>
+  server.use(http.get(`${BASE}${path}`, ({ request }) => {
+    hits.push(new URL(request.url).pathname);
+    return HttpResponse.json({ Message: 'Internal Server Error' }, { status });
+  }));
+
+describe('analytics_list_reports (N8)', () => {
+  it('lists every report by DisplayOrder then Name, with Key and ID', async () => {
+    serve('/analytics/reports', {
+      ItemCount: 3,
+      Items: [
+        { ReportId: 'r-tickets', Name: 'Tickets', Subtitle: 'Ticket trends', ReportKey: 'tickets', DisplayOrder: 10, IsSidebarVisible: true },
+        { ReportId: 'r-overview', Name: 'Overview', ReportKey: 'overview', DisplayOrder: 0, IsSidebarVisible: true },
+        { ReportId: 'r-assets', Name: 'Assets', Subtitle: 'Device counts', ReportKey: 'assets', DisplayOrder: 10, IsSidebarVisible: false },
+      ],
+    });
+    expect(await textOf('analytics_list_reports')).toBe(
+      'Analytics Reports (3):\n\n' +
+      '• Overview\n  Key: overview | ID: r-overview\n\n' +
+      '• Assets — Device counts\n  Key: assets | ID: r-assets\n\n' +
+      '• Tickets — Ticket trends\n  Key: tickets | ID: r-tickets'
+    );
+  });
+});
+
+describe('analytics_get_report (N3, N6)', () => {
+  const detail = { Item: { ReportId: R, Name: 'Tickets', Subtitle: 'Ticket trends', ReportKey: 'tickets', DisplayOrder: 10, IsSidebarVisible: true, ProductId: 'p', SiteId: 's' } };
+  const DETAILS = `Report: Tickets — Ticket trends\nKey: tickets | Display Order: 10 | Sidebar Visible: Yes\nID: ${R}`;
+
+  it.each([['not-a-guid'], ['../users/me'], [[R]], [42]])('rejects reportId %j before any request', async (reportId) => {
+    expect(await textOf('analytics_get_report', { reportId })).toBe('reportId must be a report GUID (use analytics_list_reports)');
+    expect(hits).toHaveLength(0);
+  });
+
+  it('renders the report and its elements in DefaultDisplayOrder order', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    serve(`/analytics/reports/elements/${R}`, {
+      ItemCount: 3,
+      Items: [
+        { Name: 'Closed', DefaultDisplayOrder: 2 },
+        { Name: 'Backlog', DefaultDisplayOrder: 1, Subtitle: 'Open tickets', About: 'Tickets not yet resolved.' },
+        { Name: 'Created', DefaultDisplayOrder: 2 },
+      ],
+    });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(
+      `${DETAILS}\n\nElements (3):\n` +
+      '• Backlog — Open tickets\n  Tickets not yet resolved.\n' +
+      '• Closed\n' +
+      '• Created'
+    );
+    expect(hits.sort()).toEqual([`/api/v1.0/analytics/reports/${R}`, `/api/v1.0/analytics/reports/elements/${R}`]);
+  });
+
+  it('says so when the report has no elements', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(`${DETAILS}\n\nNo elements.`);
+  });
+
+  it('maps a detail 500 to "no report found"', async () => {
+    failWith(`/analytics/reports/${R}`, 500);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    expect(await textOf('analytics_get_report', { reportId: R })).toBe(
+      `No report found for ID ${R} (IncidentIQ returned 500); use analytics_list_reports for valid IDs.`
+    );
+  });
+
+  it('keeps the details when only the elements request fails', async () => {
+    serve(`/analytics/reports/${R}`, detail);
+    failWith(`/analytics/reports/elements/${R}`, 500);
+    const text = await textOf('analytics_get_report', { reportId: R });
+    expect(text.startsWith(`${DETAILS}\n\nElements: unavailable (`)).toBe(true);
+    expect(text).not.toContain('No report found');
+  });
+
+  it('uses the existing error path for any other detail failure', async () => {
+    failWith(`/analytics/reports/${R}`, 404);
+    serve(`/analytics/reports/elements/${R}`, { ItemCount: 0, Items: [] });
+    const text = await textOf('analytics_get_report', { reportId: R });
+    expect(text).toMatch(/^Analytics endpoint not available/);
+    expect(text).not.toContain('No report found');
+  });
+});
+
+describe('breakdown values IIQ did not send as numbers (Codex review)', () => {
+  it('shows a point without a numeric count as unavailable and leaves it out of the total', async () => {
+    serve('/analytics/assets/by-verification-type', {
+      ItemCount: 3,
+      Items: [{ Name: 'Scan', Value: 30 }, { Name: 'Web', Value: null }, { Name: 'App', Value: 10 }],
+    });
+    expect(await textOf('analytics_asset_verification_type')).toBe(
+      'Asset Verification by Type (40 assets counted; 1 point without a count):\n\n' +
+      '• Scan: 30 assets (75.0% of counted)\n' +
+      '• App: 10 assets (25.0% of counted)\n' +
+      '• Web: count unavailable'
+    );
+  });
+
+  it('does not claim a total when no point has a count', async () => {
+    serve('/analytics/assets/by-audit-policy-coverage', {
+      ItemCount: 2, Items: [{ Name: 'Covered' }, { Name: 'Not Covered', Value: 'n/a' }],
+    });
+    expect(await textOf('analytics_asset_audit_coverage')).toBe(
+      'Asset Audit Policy Coverage (no counts available; 2 points without a count):\n\n' +
+      '• Covered: count unavailable\n' +
+      '• Not Covered: count unavailable'
+    );
+  });
+
+  it('labels the location total as partial when a count is missing', async () => {
+    serve('/analytics/assets/by-verification-location', {
+      ItemCount: 2, Items: [{ Name: 'North', Value: 4 }, { Name: 'South', Value: null }],
+    });
+    expect(await textOf('analytics_asset_verification_location')).toBe(
+      'Found 2 locations (showing 2):\n\n' +
+      'Total assets verified: 4 counted; 1 point without a count\n\n' +
+      '• North: 4 assets (100.0% of counted)\n' +
+      '• South: count unavailable\n\n' +
+      'Page 1 of 1'
+    );
+  });
+});

@@ -11,8 +11,8 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 **🎉 PRODUCTION READY**: UAT successfully completed against a production K-12 school district instance. The project has been validated in production and is approved for deployment. Successfully pushed to GitHub (IIQ-Community/mcp-incidentiq).
 
 ### Core Implementation
-- **119 MCP Tools**: Every advertised tool has a handler; tools IncidentIQ cannot back are not advertised (issue #98)
-- **9 Domain Modules**: Tickets, Users, Assets, Locations, Teams, Parts, Purchase Orders, Issues, Custom Fields
+- **125 MCP Tools**: Every advertised tool has a handler; tools IncidentIQ cannot back are not advertised (issues #98, #112)
+- **13 Domain Modules**: Tickets, Users, Assets, Locations, Teams, Parts, Purchase Orders, Issues, Custom Fields, SLAs, Views, Notifications, Analytics
 - **Strongly Typed**: Complete TypeScript interfaces for all IncidentIQ API entities
 - **Error Handling**: Robust error handling with user-friendly messages
 - **Authentication**: JWT Bearer token authentication with secure API key management

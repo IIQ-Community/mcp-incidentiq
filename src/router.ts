@@ -11,6 +11,7 @@ import { CustomFieldTools } from './tools/customfields.js';
 import { SLATools } from './tools/slas.js';
 import { ViewTools } from './tools/views.js';
 import { NotificationTools } from './tools/notifications.js';
+import { analyticsTools, handleAnalyticsTool } from './tools/analytics.js';
 
 /** MCP tool-call result shape returned to the client. */
 export interface ToolResult {
@@ -91,6 +92,7 @@ export function createToolRouter(client: IncidentIQClient = new IncidentIQClient
       tools: notificationTools.getTools(),
       handle: wrapped((n, a) => notificationTools.handleToolCall(n, a)),
     },
+    { prefix: 'analytics_', tools: analyticsTools, handle: (n, a) => handleAnalyticsTool(n, a, client) },
   ];
 
   async function testConnection(): Promise<ToolResult> {
