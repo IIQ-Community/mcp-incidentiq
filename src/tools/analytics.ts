@@ -66,20 +66,31 @@ const byCountDesc = (points: AnalyticsDataPoint[]) =>
     Number(hasCount(b)) - Number(hasCount(a)) ||
     (hasCount(a) && hasCount(b) ? b.Value - a.Value : 0) ||
     String(a.Name).localeCompare(String(b.Name)));
-/** `; N point(s) without a count` when IIQ omitted any count, so the total is visibly partial. */
-function uncountedNote(points: AnalyticsDataPoint[]): string {
-  const missing = points.filter((point) => !hasCount(point)).length;
-  return missing === 0 ? '' : `; ${missing} point${missing === 1 ? '' : 's'} without a count`;
+const missingCount = (points: AnalyticsDataPoint[]) => points.filter((point) => !hasCount(point)).length;
+const pointsWithout = (n: number) => `${n} point${n === 1 ? '' : 's'} without a count`;
+
+/**
+ * The total, said honestly: a plain total when every point has a count, a "counted" total when
+ * some do not, and no total at all when none do. `unit` renders the number (with or without "assets").
+ */
+function totalLabel(points: AnalyticsDataPoint[], unit: (n: number) => string): string {
+  const missing = missingCount(points);
+  if (missing === 0) return unit(sumOf(points));
+  if (missing === points.length) return `no counts available; ${pointsWithout(missing)}`;
+  return `${unit(sumOf(points))} counted; ${pointsWithout(missing)}`;
 }
 
-/** `• <Name>: <count> assets (<share>%)`; the share is omitted when the total is 0. */
-function breakdownRow(point: AnalyticsDataPoint, total: number): string {
+/** `• <Name>: <count> assets (<share>%)`; no share at total 0, and "of counted" when the total is partial. */
+function breakdownRow(point: AnalyticsDataPoint, total: number, partial: boolean): string {
   if (!hasCount(point)) return `• ${point.Name}: count unavailable`;
-  const share = total > 0 ? ` (${((point.Value / total) * 100).toFixed(1)}%)` : '';
+  const share = total > 0 ? ` (${((point.Value / total) * 100).toFixed(1)}%${partial ? ' of counted' : ''})` : '';
   return `• ${point.Name}: ${assets(point.Value)}${share}`;
 }
-const breakdownRows = (points: AnalyticsDataPoint[], total: number) =>
-  byCountDesc(points).map((point) => breakdownRow(point, total));
+const breakdownRows = (points: AnalyticsDataPoint[]) => {
+  const total = sumOf(points);
+  const partial = missingCount(points) > 0;
+  return byCountDesc(points).map((point) => breakdownRow(point, total, partial));
+};
 
 async function readPoints(client: IncidentIQClient, url: string): Promise<AnalyticsDataPoint[]> {
   const response = await client.request<PaginatedResponse<AnalyticsDataPoint>>({ method: 'GET', url });
@@ -207,22 +218,22 @@ export async function handleAnalyticsTool(name: string, args: any, client: Incid
         const breakdown = BREAKDOWNS[name];
         const points = await readPoints(client, breakdown.url);
         if (points.length === 0) return text(breakdown.emptyText);
-        const total = sumOf(points);
-        return text(`${breakdown.title} (${assets(total)}${uncountedNote(points)}):\n\n${breakdownRows(points, total).join('\n')}`);
+        return text(`${breakdown.title} (${totalLabel(points, assets)}):\n\n${breakdownRows(points).join('\n')}`);
       }
 
       // N5: every location, largest first, paged client-side (IIQ ignores $p/$s here).
       case 'analytics_asset_verification_location': {
         const points = await readPoints(client, '/analytics/assets/by-verification-location');
         const total = sumOf(points);
+        const partial = missingCount(points) > 0;
         return formatListPage({
           rows: byCountDesc(points),
           pageIndex: args?.pageIndex,
           pageSize: args?.pageSize ?? 25,
           noun: 'locations',
           emptyText: 'No verification location data available.',
-          render: (point) => breakdownRow(point, total),
-          renderPage: (page) => `Total assets verified: ${count(total)}${uncountedNote(points)}\n\n${page.map((point) => breakdownRow(point, total)).join('\n')}`,
+          render: (point) => breakdownRow(point, total, partial),
+          renderPage: (page) => `Total assets verified: ${totalLabel(points, count)}\n\n${page.map((point) => breakdownRow(point, total, partial)).join('\n')}`,
         });
       }
 

@@ -222,10 +222,34 @@ describe('breakdown values IIQ did not send as numbers (Codex review)', () => {
       Items: [{ Name: 'Scan', Value: 30 }, { Name: 'Web', Value: null }, { Name: 'App', Value: 10 }],
     });
     expect(await textOf('analytics_asset_verification_type')).toBe(
-      'Asset Verification by Type (40 assets; 1 point without a count):\n\n' +
-      '• Scan: 30 assets (75.0%)\n' +
-      '• App: 10 assets (25.0%)\n' +
+      'Asset Verification by Type (40 assets counted; 1 point without a count):\n\n' +
+      '• Scan: 30 assets (75.0% of counted)\n' +
+      '• App: 10 assets (25.0% of counted)\n' +
       '• Web: count unavailable'
+    );
+  });
+
+  it('does not claim a total when no point has a count', async () => {
+    serve('/analytics/assets/by-audit-policy-coverage', {
+      ItemCount: 2, Items: [{ Name: 'Covered' }, { Name: 'Not Covered', Value: 'n/a' }],
+    });
+    expect(await textOf('analytics_asset_audit_coverage')).toBe(
+      'Asset Audit Policy Coverage (no counts available; 2 points without a count):\n\n' +
+      '• Covered: count unavailable\n' +
+      '• Not Covered: count unavailable'
+    );
+  });
+
+  it('labels the location total as partial when a count is missing', async () => {
+    serve('/analytics/assets/by-verification-location', {
+      ItemCount: 2, Items: [{ Name: 'North', Value: 4 }, { Name: 'South', Value: null }],
+    });
+    expect(await textOf('analytics_asset_verification_location')).toBe(
+      'Found 2 locations (showing 2):\n\n' +
+      'Total assets verified: 4 counted; 1 point without a count\n\n' +
+      '• North: 4 assets (100.0% of counted)\n' +
+      '• South: count unavailable\n\n' +
+      'Page 1 of 1'
     );
   });
 });
