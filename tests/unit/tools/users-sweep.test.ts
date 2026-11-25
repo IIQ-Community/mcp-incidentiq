@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { enhancedUserTools, handleEnhancedUserTool } from '../../../src/tools/users';
+import { userTools, handleUserTool } from '../../../src/tools/users';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 sweep, users (U1-U7). Response shapes are the ones production IIQ returns (verified
@@ -14,8 +15,8 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object) => (await (handleEnhancedUserTool as Handler)(name, args)).content[0].text;
-const schemaOf = (name: string) => enhancedUserTools.find((t) => t.name === name)?.inputSchema as
+const run = async (name: string, args: object) => (await withClient(handleUserTool)(name, args)).content[0].text;
+const schemaOf = (name: string) => userTools.find((t) => t.name === name)?.inputSchema as
   { properties: Record<string, any>; required: string[] } | undefined;
 const bullets = (text: string) => text.split('\n').filter((line) => line.trimStart().startsWith('• '));
 
@@ -178,7 +179,7 @@ describe('U5 user_get_by_location', () => {
   });
 
   it('offers pageSize and pageIndex and describes the home location', () => {
-    const tool = enhancedUserTools.find((t) => t.name === 'user_get_by_location')!;
+    const tool = userTools.find((t) => t.name === 'user_get_by_location')!;
     expect(tool.inputSchema.properties).toHaveProperty('pageSize');
     expect(tool.inputSchema.properties).toHaveProperty('pageIndex');
     expect(tool.description).toMatch(/home location/i);
@@ -216,7 +217,7 @@ Created: 2020-01-01`);
 
 describe('U7 removed user tools', () => {
   it.each(['user_get_parents', 'user_get_permissions', 'user_get_groups', 'user_get_user_groups'])('%s is no longer advertised', (name) => {
-    expect(enhancedUserTools.map((t) => t.name)).not.toContain(name);
+    expect(userTools.map((t) => t.name)).not.toContain(name);
   });
 });
 
@@ -234,7 +235,7 @@ describe('user_quick_search query encoding', () => {
       q = new URL(request.url).searchParams.get('q');
       return HttpResponse.json({ Items: [] });
     }));
-    await (handleEnhancedUserTool as (n: string, a: object) => Promise<unknown>)('user_quick_search', { query: '.' });
+    await withClient(handleUserTool)('user_quick_search', { query: '.' });
     expect(q).toBe('.');
   });
 });

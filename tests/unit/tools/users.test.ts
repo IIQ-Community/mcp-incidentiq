@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from
 import { http, HttpResponse } from 'msw';
 import { handleUserTool, userTools } from '../../../src/tools/users';
 import { server } from '../../mocks/server';
+import { testClient } from '../../helpers/client';
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -32,7 +33,7 @@ describe('User Tools', () => {
       it('should search users with text filter', async () => {
         const result = await handleUserTool('user_search_advanced', {
           searchText: 'jane',
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Found');
@@ -43,7 +44,7 @@ describe('User Tools', () => {
       it('should handle empty search results', async () => {
         const result = await handleUserTool('user_search_advanced', {
           searchText: 'nonexistent',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('No users found');
       });
@@ -51,7 +52,7 @@ describe('User Tools', () => {
       it('should apply user type filter', async () => {
         const result = await handleUserTool('user_search_advanced', {
           userType: 'Staff',
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Found');
@@ -62,7 +63,7 @@ describe('User Tools', () => {
           searchText: 'user',
           pageSize: 5,
           pageIndex: 0,
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
       });
@@ -72,7 +73,7 @@ describe('User Tools', () => {
       it('should retrieve user details by ID', async () => {
         const result = await handleUserTool('user_get_details', {
           userId: 'user-1',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('User Details');
         // Test passes even if user data is empty/null in mock
@@ -82,7 +83,7 @@ describe('User Tools', () => {
       it('should handle non-existent user ID', async () => {
         const result = await handleUserTool('user_get_details', {
           userId: 'invalid-id',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('User Details');
         // Test passes - invalid ID still returns user details format
@@ -92,7 +93,7 @@ describe('User Tools', () => {
       it('should display complete user information', async () => {
         const result = await handleUserTool('user_get_details', {
           userId: 'user-1',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('Email:');
         expect(result.content[0].text).toContain('Location:');
@@ -102,7 +103,7 @@ describe('User Tools', () => {
 
     describe('user_get_all_agents', () => {
       it('should retrieve all IT agents', async () => {
-        const result = await handleUserTool('user_get_all_agents', {});
+        const result = await handleUserTool('user_get_all_agents', {}, testClient());
 
         expect(result.content[0].text).toContain('IT support agents');
         expect(result.content[0].text).toContain('Sally Technician');
@@ -110,7 +111,7 @@ describe('User Tools', () => {
       });
 
       it('should show agent details properly formatted', async () => {
-        const result = await handleUserTool('user_get_all_agents', {});
+        const result = await handleUserTool('user_get_all_agents', {}, testClient());
 
         expect(result.content[0].text).toContain('IT support agents');
         expect(result.content[0].text).toContain('Email:');
@@ -119,7 +120,7 @@ describe('User Tools', () => {
 
     describe('Error Handling', () => {
       it('should handle unknown tool gracefully', async () => {
-        const result = await handleUserTool('invalid_tool', {});
+        const result = await handleUserTool('invalid_tool', {}, testClient());
 
         expect(result.content[0].text).toContain('Error');
         expect(result.content[0].text).toContain('Unknown');
@@ -129,7 +130,7 @@ describe('User Tools', () => {
         // Test with valid tool name but potentially failing API call
         const result = await handleUserTool('user_search_advanced', {
           searchText: 'test',
-        });
+        }, testClient());
 
         // Should still return a result even if API fails
         expect(result.content).toBeDefined();
@@ -159,24 +160,24 @@ describe('IIQ paging via the $p/$s query (#94)', () => {
   });
 
   it('user_search_advanced returns the requested page', async () => {
-    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 }, testClient())).content[0].text as string;
     expect(text).toMatch(/• User 50\n/);
     expect(text).not.toMatch(/• User 0\n/);
   });
 
   it('user_search_advanced reports the server total (Paging.TotalRows) and page count', async () => {
-    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+    const text = (await handleUserTool('user_search_advanced', { pageIndex: 1, pageSize: 50 }, testClient())).content[0].text as string;
     expect(text).toContain('Found 250 users');
     expect(text).toContain('Page 2 of 5');
   });
 
   it('user_get_students returns the requested page size and the server total', async () => {
-    const text = (await handleUserTool('user_get_students', { pageSize: 100 })).content[0].text as string;
+    const text = (await handleUserTool('user_get_students', { pageSize: 100 }, testClient())).content[0].text as string;
     expect(text).toContain('Found 250 students (showing 100):');
   });
 
   it('user_get_staff returns a 25-row page by default and the server total', async () => {
-    const text = (await handleUserTool('user_get_staff', {})).content[0].text as string;
+    const text = (await handleUserTool('user_get_staff', {}, testClient())).content[0].text as string;
     expect(text).toContain('Found 250 staff members (showing 25):');
   });
 });
@@ -197,7 +198,7 @@ describe('user_search_advanced text search', () => {
       })
     );
 
-    const text = (await handleUserTool('user_search_advanced', { searchText: 'Rivera', pageSize: 25 })).content[0].text as string;
+    const text = (await handleUserTool('user_search_advanced', { searchText: 'Rivera', pageSize: 25 }, testClient())).content[0].text as string;
 
     expect(text).toContain('Sam Rivera');
     expect(text).not.toContain('Unfiltered Person');

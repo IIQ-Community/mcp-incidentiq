@@ -2,8 +2,9 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleEnhancedAssetTool } from '../../../src/tools/assets';
-import { handleEnhancedUserTool } from '../../../src/tools/users';
+import { handleUserTool } from '../../../src/tools/users';
 import { handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { withClient } from '../../helpers/client';
 
 /**
  * IIQ filters users by `role` + RoleId and assets by `AssetType` / `assetstatus` + id; it silently
@@ -18,7 +19,7 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const userText = async (name: string, args: object) => (await (handleEnhancedUserTool as Handler)(name, args)).content[0].text;
+const userText = async (name: string, args: object) => (await withClient(handleUserTool)(name, args)).content[0].text;
 const assetText = async (name: string, args: object) => (await (handleEnhancedAssetTool as Handler)(name, args)).content[0].text;
 
 const ROLES = ['Agent', 'Faculty', 'Guest', 'No Access', 'Parent / Guardian', 'Staff', 'Student'].map((Name) => ({ RoleId: `role-${Name}`, Name }));
