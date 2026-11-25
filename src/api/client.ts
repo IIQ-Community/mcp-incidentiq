@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { iiqListAll, matchesText } from './paging.js';
 import { apiKeyUserId } from './token.js';
+import { pathSegment } from './path.js';
 import { assertNoProductWidening, assertNotServicesPath } from './request-guard.js';
 import {
   IIQApiResponse,
@@ -521,7 +522,7 @@ export class IncidentIQClient {
   async getTicketSLA(ticketId: string): Promise<any | null> {
     const response = await this.request<any>({
       method: 'GET',
-      url: `/tickets/${ticketId}/sla`
+      url: `/tickets/${pathSegment(ticketId)}/sla`
     });
     return response.Item || response || null;
   }
@@ -579,7 +580,7 @@ export class IncidentIQClient {
   async getTicketEmails(ticketId: string): Promise<any[]> {
     const response = await this.request<IIQPagedResult<any>>({
       method: 'GET',
-      url: `/notifications/emails/for/ticket/${ticketId}`
+      url: `/notifications/emails/for/ticket/${pathSegment(ticketId)}`
     });
     return response.Items || [];
   }
@@ -625,11 +626,8 @@ export class IncidentIQClient {
   async markNotificationRead(notificationId: string): Promise<boolean> {
     const response = await this.request<any>({
       method: 'POST',
-      url: `/notifications/${notificationId}/read`
+      url: `/notifications/${pathSegment(notificationId)}/read`
     });
     return response.StatusCode === 200;
   }
 }
-
-// Export alias for tools
-export { IncidentIQClient as ApiClient };

@@ -8,9 +8,9 @@ import { partsTools, handlePartsTool } from './tools/parts.js';
 import { purchaseOrderTools, handlePurchaseOrderTool } from './tools/purchaseorders.js';
 import { issuesTools, handleIssuesTool } from './tools/issues.js';
 import { customFieldTools, handleCustomFieldTool } from './tools/customfields.js';
-import { SLATools } from './tools/slas.js';
-import { ViewTools } from './tools/views.js';
-import { NotificationTools } from './tools/notifications.js';
+import { slaTools, handleSlaTool } from './tools/slas.js';
+import { viewTools, handleViewTool } from './tools/views.js';
+import { notificationTools, handleNotificationTool } from './tools/notifications.js';
 import { analyticsTools, handleAnalyticsTool } from './tools/analytics.js';
 import type { ToolDefinition, ToolHandler, ToolResult } from './tools/result.js';
 
@@ -51,29 +51,21 @@ function wrapped(handle: ToolHandler): ToolHandler {
 
 /** Builds the tool list and the name -> handler dispatch for the MCP server. */
 export function createToolRouter(client: IncidentIQClient = new IncidentIQClient()) {
-  const slaTools = new SLATools(client);
-  const viewTools = new ViewTools(client);
-  const notificationTools = new NotificationTools(client);
-
   // Each prefix must match the tool names its module advertises (e.g. `parts_*`, `issues_*`).
   const routes: Route[] = [
-    { prefix: 'ticket_', tools: ticketTools, handle: (n, a) => handleTicketTool(n, a, client) },
-    { prefix: 'user_', tools: userTools, handle: (n, a) => handleUserTool(n, a, client) },
-    { prefix: 'asset_', tools: assetTools, handle: (n, a) => handleAssetTool(n, a, client) },
-    { prefix: 'location_', tools: locationTools, handle: (n, a) => handleLocationTool(n, a, client) },
-    { prefix: 'team_', tools: teamTools, handle: (n, a) => handleTeamTool(n, a, client) },
-    { prefix: 'parts_', tools: partsTools, handle: (n, a) => handlePartsTool(n, a, client) },
-    { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: (n, a) => handlePurchaseOrderTool(n, a, client) },
-    { prefix: 'issues_', tools: issuesTools, handle: (n, a) => handleIssuesTool(n, a, client) },
-    { prefix: 'customfield_', tools: customFieldTools, handle: (n, a) => handleCustomFieldTool(n, a, client) },
-    { prefix: 'sla_', tools: slaTools.getTools(), handle: wrapped((n, a) => slaTools.handleToolCall(n, a)) },
-    { prefix: 'view_', tools: viewTools.getTools(), handle: wrapped((n, a) => viewTools.handleToolCall(n, a)) },
-    {
-      prefix: 'notification_',
-      tools: notificationTools.getTools(),
-      handle: wrapped((n, a) => notificationTools.handleToolCall(n, a)),
-    },
-    { prefix: 'analytics_', tools: analyticsTools, handle: (n, a) => handleAnalyticsTool(n, a, client) },
+    { prefix: 'ticket_', tools: ticketTools, handle: wrapped((n, a) => handleTicketTool(n, a, client)) },
+    { prefix: 'user_', tools: userTools, handle: wrapped((n, a) => handleUserTool(n, a, client)) },
+    { prefix: 'asset_', tools: assetTools, handle: wrapped((n, a) => handleAssetTool(n, a, client)) },
+    { prefix: 'location_', tools: locationTools, handle: wrapped((n, a) => handleLocationTool(n, a, client)) },
+    { prefix: 'team_', tools: teamTools, handle: wrapped((n, a) => handleTeamTool(n, a, client)) },
+    { prefix: 'parts_', tools: partsTools, handle: wrapped((n, a) => handlePartsTool(n, a, client)) },
+    { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: wrapped((n, a) => handlePurchaseOrderTool(n, a, client)) },
+    { prefix: 'issues_', tools: issuesTools, handle: wrapped((n, a) => handleIssuesTool(n, a, client)) },
+    { prefix: 'customfield_', tools: customFieldTools, handle: wrapped((n, a) => handleCustomFieldTool(n, a, client)) },
+    { prefix: 'sla_', tools: slaTools, handle: wrapped((n, a) => handleSlaTool(n, a, client)) },
+    { prefix: 'view_', tools: viewTools, handle: wrapped((n, a) => handleViewTool(n, a, client)) },
+    { prefix: 'notification_', tools: notificationTools, handle: wrapped((n, a) => handleNotificationTool(n, a, client)) },
+    { prefix: 'analytics_', tools: analyticsTools, handle: wrapped((n, a) => handleAnalyticsTool(n, a, client)) },
   ];
 
   async function testConnection(): Promise<ToolResult> {

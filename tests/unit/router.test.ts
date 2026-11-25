@@ -158,6 +158,9 @@ describe('tool router', () => {
     ['team_get', { teamId: '..' }],
     ['purchaseorder_get', { purchaseOrderId: '..' }],
     ['purchaseorder_get_all', { status: '..' }],
+    ['sla_get_ticket_status', { ticket_id: '..' }],
+    ['notification_get_ticket_emails', { ticket_id: '..' }],
+    ['notification_mark_read', { notification_id: '..' }],
   ])('%s rejects a dot-only path value %j without calling IIQ', async (name, args) => {
     const paths: string[] = [];
     server.use(http.all(`${BASE}/*`, ({ request }) => {
