@@ -3,8 +3,9 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleEnhancedCustomFieldTool } from '../../../src/tools/customfields';
 import { handleEnhancedIssuesTool } from '../../../src/tools/issues';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { handleLocationTool } from '../../../src/tools/locations';
 import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { withClient } from '../../helpers/client';
 
 /**
  * Exact-text output of the four client-side list searches (customfield_search,
@@ -98,7 +99,7 @@ describe('location_search_advanced output', () => {
     { LocationId: 'l2', Name: 'Central Annex' },
   ];
   const use = () => server.use(http.get(`${BASE}/locations/all`, paged(locations)));
-  const run = (args: object) => textOf(handleEnhancedLocationTool as Handler, 'location_search_advanced', args);
+  const run = (args: object) => textOf(withClient(handleLocationTool), 'location_search_advanced', args);
 
   it('renders a page exactly', async () => {
     use();
@@ -171,7 +172,7 @@ const TOOLS: Array<{
     bullet: (i) => `• Match ${i}\n`,
   },
   {
-    tool: 'location_search_advanced', noun: 'locations', handler: handleEnhancedLocationTool as Handler,
+    tool: 'location_search_advanced', noun: 'locations', handler: withClient(handleLocationTool),
     use: (rows) => server.use(http.get(`${BASE}/locations/all`, paged(rows))),
     row: (i) => ({ LocationId: `l${i}`, Name: `Match ${i}` }),
     bullet: (i) => `• Match ${i}\n`,
@@ -221,7 +222,7 @@ describe('location_search_advanced truncation note', () => {
     // 10 full pages of 1000 with more remaining hits the iiqListAll cap.
     const rows = Array.from({ length: 10_500 }, (_, i) => ({ LocationId: `l${i}`, Name: `Site ${i}` }));
     server.use(http.get(`${BASE}/locations/all`, paged(rows)));
-    const text = await textOf(handleEnhancedLocationTool as Handler, 'location_search_advanced', { searchText: 'site 1' , pageSize: 1 });
+    const text = await textOf(withClient(handleLocationTool), 'location_search_advanced', { searchText: 'site 1' , pageSize: 1 });
     expect(text.endsWith('\n\nNote: the full list was too large to read completely; results may be incomplete.')).toBe(true);
   });
 });

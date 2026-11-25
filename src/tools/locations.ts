@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import { ASSET_TYPES, resolveIds } from '../api/lookups.js';
 import { formatListPage, iiqListAll, iiqServerTotal, matchesText, withTruncationNote } from '../api/paging.js';
@@ -54,17 +55,7 @@ export interface LocationType {
   IsRoom?: boolean;
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const enhancedLocationTools = [
+export const locationTools: ToolDefinition[] = [
   // Core Operations
   {
     name: 'location_get_all',
@@ -280,8 +271,7 @@ export const enhancedLocationTools = [
   },
 ];
 
-export async function handleEnhancedLocationTool(name: string, args: any) {
-  const client = getClient();
+export async function handleLocationTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -616,7 +606,3 @@ ID: ${location.LocationId}`,
     };
   }
 }
-
-// Export for backward compatibility
-export const locationTools = enhancedLocationTools;
-export const handleLocationTool = handleEnhancedLocationTool;

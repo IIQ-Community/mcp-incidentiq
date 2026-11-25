@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { handleLocationTool } from '../../../src/tools/locations';
 import { handleEnhancedPartsTool } from '../../../src/tools/parts';
 import { withClient } from '../../helpers/client';
 
@@ -73,7 +73,7 @@ describe('capped tools: nothing-found texts unchanged', () => {
       () => server.use(http.get(`${BASE}/assets/:id/activities`, empty))],
     ['user_get_all_agents', withClient(handleUserTool), 'No IT support agents found.', {},
       () => server.use(http.get(`${BASE}/users/agents`, empty))],
-    ['location_get_all_rooms', handleEnhancedLocationTool as Handler, 'No rooms found.', {},
+    ['location_get_all_rooms', withClient(handleLocationTool), 'No rooms found.', {},
       () => server.use(http.get(`${BASE}/locations/rooms`, empty))],
     ['parts_get_orders', handleEnhancedPartsTool as Handler, 'No purchase orders found.', {},
       () => server.use(http.get(`${BASE}/purchaseorders`, empty))],

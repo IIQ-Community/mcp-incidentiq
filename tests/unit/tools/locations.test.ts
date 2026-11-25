@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from
 import { handleLocationTool, locationTools } from '../../../src/tools/locations';
 import { server } from '../../mocks/server';
 import { http, HttpResponse } from 'msw';
+import { testClient } from '../../helpers/client';
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -32,7 +33,7 @@ describe('Location Tools', () => {
   describe('handleLocationTool', () => {
     describe('location_get_all', () => {
       it('should list all district locations', async () => {
-        const result = await handleLocationTool('location_get_all', {});
+        const result = await handleLocationTool('location_get_all', {}, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('District Locations');
@@ -42,14 +43,14 @@ describe('Location Tools', () => {
       });
 
       it('should group locations by type', async () => {
-        const result = await handleLocationTool('location_get_all', {});
+        const result = await handleLocationTool('location_get_all', {}, testClient());
 
         expect(result.content[0].text).toContain('Building (');
         // Each type is shown separately
       });
 
       it('should show location counts', async () => {
-        const result = await handleLocationTool('location_get_all', {});
+        const result = await handleLocationTool('location_get_all', {}, testClient());
 
         expect(result.content[0].text).toMatch(/District Locations \(\d+ total\)/);
         expect(result.content[0].text).toMatch(/Building \(\d+\)/);
@@ -61,7 +62,7 @@ describe('Location Tools', () => {
       it('should search locations by text', async () => {
         const result = await handleLocationTool('location_search_advanced', {
           searchText: 'Main',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('Found');
         expect(result.content[0].text).toContain('Main Building');
@@ -70,7 +71,7 @@ describe('Location Tools', () => {
       it('should filter by location type', async () => {
         const result = await handleLocationTool('location_search_advanced', {
           locationType: 'Room',
-        });
+        }, testClient());
 
         // Search might return no results with our mock data
         expect(result.content[0].text).toBeDefined();
@@ -83,7 +84,7 @@ describe('Location Tools', () => {
       it('should handle empty search results', async () => {
         const result = await handleLocationTool('location_search_advanced', {
           searchText: 'nonexistent',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('No locations found');
       });
@@ -92,7 +93,7 @@ describe('Location Tools', () => {
         const result = await handleLocationTool('location_search_advanced', {
           searchText: 'Room',
           locationType: 'Room',
-        });
+        }, testClient());
 
         // Search might return no results with our mock data
         expect(result.content[0].text).toBeDefined();
@@ -109,7 +110,7 @@ describe('Location Tools', () => {
       it('should retrieve location details by ID', async () => {
         const result = await handleLocationTool('location_get_details', {
           locationId: 'loc-1',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('Location Details');
         // The response format may not include all details
@@ -120,7 +121,7 @@ describe('Location Tools', () => {
       it('should handle non-existent location ID', async () => {
         const result = await handleLocationTool('location_get_details', {
           locationId: 'invalid-id',
-        });
+        }, testClient());
 
         // Should either show location details or not found
         expect(result.content[0].text).toBeDefined();
@@ -129,7 +130,7 @@ describe('Location Tools', () => {
       it('should show parent location when available', async () => {
         const result = await handleLocationTool('location_get_details', {
           locationId: 'loc-3', // IT Office
-        });
+        }, testClient());
 
         // Response format may vary
         expect(result.content[0].text).toContain('Location Details');
@@ -139,7 +140,7 @@ describe('Location Tools', () => {
 
     describe('Error Handling', () => {
       it('should handle unknown tool gracefully', async () => {
-        const result = await handleLocationTool('invalid_tool', {});
+        const result = await handleLocationTool('invalid_tool', {}, testClient());
 
         expect(result.content[0].text).toContain('Error');
         expect(result.content[0].text).toContain('Unknown');
@@ -148,14 +149,14 @@ describe('Location Tools', () => {
       it('should handle missing required parameters', async () => {
         const result = await handleLocationTool('location_get_details', {
           // Missing required locationId
-        });
+        }, testClient());
 
         // Missing parameters should show location details or error
         expect(result.content[0].text).toBeDefined();
       });
 
       it('should handle API errors gracefully', async () => {
-        const result = await handleLocationTool('location_get_all', {});
+        const result = await handleLocationTool('location_get_all', {}, testClient());
 
         // Should still return a result even if API fails
         expect(result.content).toBeDefined();
@@ -182,19 +183,19 @@ describe('location lookups against live IIQ endpoints', () => {
 
   it('location_search_advanced filters the location list by name/code and type', async () => {
     server.use(listHandler);
-    const byText = (await handleLocationTool('location_search_advanced', { searchText: 'pms' })).content[0].text as string;
+    const byText = (await handleLocationTool('location_search_advanced', { searchText: 'pms' }, testClient())).content[0].text as string;
     expect(byText).toContain('Found 1 locations');
     expect(byText).toContain('Pine Middle School (PMS)');
     expect(byText).toContain('Type: Middle School');
 
-    const byType = (await handleLocationTool('location_search_advanced', { locationType: 'elementary school' })).content[0].text as string;
+    const byType = (await handleLocationTool('location_search_advanced', { locationType: 'elementary school' }, testClient())).content[0].text as string;
     expect(byType).toContain('Highland Elementary');
     expect(byType).not.toContain('Central Office');
   });
 
   it('location_search_advanced pages the filtered list', async () => {
     server.use(listHandler);
-    const text = (await handleLocationTool('location_search_advanced', { pageSize: 2, pageIndex: 1 })).content[0].text as string;
+    const text = (await handleLocationTool('location_search_advanced', { pageSize: 2, pageIndex: 1 }, testClient())).content[0].text as string;
     expect(text).toContain('Found 3 locations (showing 1)');
     expect(text).toContain('Pine Middle School');
     expect(text).toContain('Page 2 of 2');
@@ -202,7 +203,7 @@ describe('location lookups against live IIQ endpoints', () => {
 
   it('location_find_by_code matches the abbreviation case-insensitively', async () => {
     server.use(listHandler);
-    const text = (await handleLocationTool('location_find_by_code', { code: 'hes' })).content[0].text as string;
+    const text = (await handleLocationTool('location_find_by_code', { code: 'hes' }, testClient())).content[0].text as string;
     expect(text).toContain('Name: Highland Elementary');
     expect(text).toContain('Code: HES');
     expect(text).toContain('ID: loc-1');
@@ -210,7 +211,7 @@ describe('location lookups against live IIQ endpoints', () => {
 
   it('location_find_by_code reports a missing code', async () => {
     server.use(listHandler);
-    const text = (await handleLocationTool('location_find_by_code', { code: 'ZZZ' })).content[0].text as string;
+    const text = (await handleLocationTool('location_find_by_code', { code: 'ZZZ' }, testClient())).content[0].text as string;
     expect(text).toBe('No location found with code: ZZZ');
   });
 
@@ -229,7 +230,7 @@ describe('location lookups against live IIQ endpoints', () => {
         });
       })
     );
-    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Nurse', buildingId: 'loc-1' })).content[0].text as string;
+    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Nurse', buildingId: 'loc-1' }, testClient())).content[0].text as string;
     expect(roomsUrl).toBe('/api/v1.0/locations/loc-1/rooms');
     expect(text).toContain('Nurse Rooms (1)');
     expect(text).toContain('Nurse Office - Highland Elementary');
@@ -246,7 +247,7 @@ describe('location lookups against live IIQ endpoints', () => {
         })
       )
     );
-    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Library' })).content[0].text as string;
+    const text = (await handleLocationTool('location_find_special_rooms', { roomType: 'Library' }, testClient())).content[0].text as string;
     expect(text).toContain('Library - Pine Middle School');
   });
 });

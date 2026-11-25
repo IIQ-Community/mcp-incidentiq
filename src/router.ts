@@ -63,7 +63,7 @@ export function createToolRouter(client: IncidentIQClient = new IncidentIQClient
     { prefix: 'ticket_', tools: ticketTools, handle: (n, a) => handleTicketTool(n, a, client) },
     { prefix: 'user_', tools: userTools, handle: (n, a) => handleUserTool(n, a, client) },
     { prefix: 'asset_', tools: assetTools, handle: (n, a) => handleAssetTool(n, a, client) },
-    { prefix: 'location_', tools: locationTools, handle: handleLocationTool },
+    { prefix: 'location_', tools: locationTools, handle: (n, a) => handleLocationTool(n, a, client) },
     { prefix: 'team_', tools: teamTools, handle: handleTeamTool },
     { prefix: 'parts_', tools: partsTools.getTools(), handle: wrapped((n, a) => partsTools.handleToolCall(n, a)) },
     { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: handlePurchaseOrderTool },

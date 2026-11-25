@@ -3,9 +3,9 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { handleLocationTool } from '../../../src/tools/locations';
 import { handleEnhancedPartsTool, enhancedPartsTools } from '../../../src/tools/parts';
-import { enhancedLocationTools } from '../../../src/tools/locations';
+import { locationTools } from '../../../src/tools/locations';
 import { withClient } from '../../helpers/client';
 
 /**
@@ -35,7 +35,7 @@ const paged = (rows: object[]) => ({ request }: { request: Request }) => {
 const many = <T,>(n: number, row: (i: number) => T) => Array.from({ length: n }, (_, i) => row(i));
 
 describe('location_get_all_rooms', () => {
-  const run = (args: object) => textOf(handleEnhancedLocationTool as Handler, 'location_get_all_rooms', args);
+  const run = (args: object) => textOf(withClient(handleLocationTool), 'location_get_all_rooms', args);
   const room = (i: number, type = 'Classroom') => ({ LocationRoomId: `r${i}`, Name: `Room ${i}`, LocationName: 'Central High', LocationRoomTypeName: type });
 
   it('counts and pages every room, not just the 20-row default page', async () => {
@@ -54,7 +54,7 @@ describe('location_get_all_rooms', () => {
   });
 
   it('no longer offers minCapacity (IIQ rooms have no capacity)', () => {
-    const schema = enhancedLocationTools.find((t) => t.name === 'location_get_all_rooms')!.inputSchema.properties as Record<string, unknown>;
+    const schema = locationTools.find((t) => t.name === 'location_get_all_rooms')!.inputSchema.properties as Record<string, unknown>;
     expect(schema).not.toHaveProperty('minCapacity');
     expect(schema).toHaveProperty('pageIndex');
   });
@@ -124,7 +124,7 @@ describe('asset_get_history', () => {
 });
 
 describe('location_get_assets', () => {
-  const run = (args: object) => textOf(handleEnhancedLocationTool as Handler, 'location_get_assets', args);
+  const run = (args: object) => textOf(withClient(handleLocationTool), 'location_get_assets', args);
 
   it('searches POST /assets with a location filter and pages on the server', async () => {
     const bodies: any[] = [];
@@ -207,7 +207,7 @@ describe('location_get_assets past the end', () => {
       const items = Paging.PageIndex === 0 ? [{ AssetId: 'a1', AssetTag: 'T-1' }] : [];
       return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { TotalRows: items.length ? 40 : 0 } });
     }));
-    expect(await textOf(handleEnhancedLocationTool as Handler, 'location_get_assets', { locationId: 'l1', pageIndex: 9 })).toBe(
+    expect(await textOf(withClient(handleLocationTool), 'location_get_assets', { locationId: 'l1', pageIndex: 9 })).toBe(
       'Page 10 is past the end: 40 assets match (2 pages).'
     );
   });

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { enhancedLocationTools, handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { locationTools, handleLocationTool } from '../../../src/tools/locations';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 sweep, locations (L1-L5). Response shapes are the ones production IIQ returns (verified
@@ -16,9 +17,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object) => (await (handleEnhancedLocationTool as Handler)(name, args)).content[0].text;
-const toolNames = () => enhancedLocationTools.map((t) => t.name);
-const propsOf = (name: string) => enhancedLocationTools.find((t) => t.name === name)!.inputSchema.properties as Record<string, unknown>;
+const run = async (name: string, args: object) => (await withClient(handleLocationTool)(name, args)).content[0].text;
+const toolNames = () => locationTools.map((t) => t.name);
+const propsOf = (name: string) => locationTools.find((t) => t.name === name)!.inputSchema.properties as Record<string, unknown>;
 
 /** Live IIQ GET list: pages by $p/$s with a 20-row default, reports Paging.TotalRows. */
 const paged = (rows: object[]) => ({ request }: { request: Request }) => {

@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
+import { handleLocationTool } from '../../../src/tools/locations';
 import { withClient } from '../../helpers/client';
 
 /**
@@ -146,7 +146,7 @@ describe('asset type and status filters', () => {
   });
 
   it('location_get_assets resolves an asset type name', async () => {
-    await (handleEnhancedLocationTool as Handler)('location_get_assets', { locationId: 'l1', assetType: 'Networking' });
+    await withClient(handleLocationTool)('location_get_assets', { locationId: 'l1', assetType: 'Networking' });
     expect(bodies[0].Filters).toEqual([{ Facet: 'location', Id: 'l1' }, { Facet: 'AssetType', Id: 'type-net' }]);
   });
 });
