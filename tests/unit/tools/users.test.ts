@@ -206,3 +206,18 @@ describe('user_search_advanced text search', () => {
     expect(seen[0].searchParams.get('$s')).toBe('25');
   });
 });
+
+describe('user_quick_search query values', () => {
+  it('sends q and limit as encoded query params, so a value cannot add a parameter', async () => {
+    const urls: URL[] = [];
+    server.use(http.get('https://test.incidentiq.com/api/v1.0/users/quick', ({ request }) => {
+      urls.push(new URL(request.url));
+      return HttpResponse.json({ Items: [] });
+    }));
+    await handleUserTool('user_quick_search', { query: 'a&b', limit: '5&admin=1' }, testClient());
+    expect(urls).toHaveLength(1);
+    expect(urls[0].searchParams.get('q')).toBe('a&b');
+    expect(urls[0].searchParams.get('limit')).toBe('5&admin=1');
+    expect(urls[0].searchParams.has('admin')).toBe(false);
+  });
+});

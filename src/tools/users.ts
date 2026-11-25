@@ -713,7 +713,8 @@ export async function handleUserTool(name: string, args: any, client: IncidentIQ
       case 'user_quick_search': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/users/quick?q=${encodeURIComponent(args.query)}&limit=${args.limit || 10}`,
+          url: '/users/quick',
+          params: { q: args.query, limit: args.limit || 10 },
         });
         
         const users = response?.Items || response || [];
