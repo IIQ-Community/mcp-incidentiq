@@ -60,7 +60,7 @@ export function createToolRouter(client: IncidentIQClient = new IncidentIQClient
 
   // Each prefix must match the tool names its module advertises (e.g. `parts_*`, `issues_*`).
   const routes: Route[] = [
-    { prefix: 'ticket_', tools: ticketTools, handle: handleTicketTool },
+    { prefix: 'ticket_', tools: ticketTools, handle: (n, a) => handleTicketTool(n, a, client) },
     { prefix: 'user_', tools: userTools, handle: handleUserTool },
     { prefix: 'asset_', tools: assetTools, handle: handleAssetTool },
     { prefix: 'location_', tools: locationTools, handle: handleLocationTool },

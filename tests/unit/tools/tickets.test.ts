@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { handleTicketTool, ticketTools } from '../../../src/tools/tickets';
+import { testClient } from '../../helpers/client';
 import { server } from '../../mocks/server';
 import { http, HttpResponse } from 'msw';
 
@@ -32,7 +33,7 @@ describe('Ticket Tools', () => {
   describe('handleTicketTool', () => {
     describe('ticket_get_wizards', () => {
       it('should retrieve available ticket wizards', async () => {
-        const result = await handleTicketTool('ticket_get_wizards', {});
+        const result = await handleTicketTool('ticket_get_wizards', {}, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Available Ticket Wizards');
@@ -42,7 +43,7 @@ describe('Ticket Tools', () => {
 
       it('should handle empty wizard list', async () => {
         // Mock handler will return empty array if specific query param is passed
-        const result = await handleTicketTool('ticket_get_wizards', { empty: true });
+        const result = await handleTicketTool('ticket_get_wizards', { empty: true }, testClient());
         
         // The actual result depends on the mock handler
         expect(result.content[0].type).toBe('text');
@@ -53,7 +54,7 @@ describe('Ticket Tools', () => {
       it('should retrieve wizards for a specific site', async () => {
         const result = await handleTicketTool('ticket_get_wizards_by_site', {
           siteId: 'site-1'
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Ticket Wizards for Site');
@@ -63,7 +64,7 @@ describe('Ticket Tools', () => {
       it('should handle invalid site ID', async () => {
         const result = await handleTicketTool('ticket_get_wizards_by_site', {
           siteId: 'invalid-site'
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         // Either shows no wizards or error message
@@ -73,12 +74,12 @@ describe('Ticket Tools', () => {
 
     describe('Other Ticket Tools', () => {
       it('should handle ticket_search', async () => {
-        const result = await handleTicketTool('ticket_search', { searchText: 'test' });
+        const result = await handleTicketTool('ticket_search', { searchText: 'test' }, testClient());
         expect(result.content[0].text).toBeDefined();
       });
 
       it('should handle ticket_get_statuses', async () => {
-        const result = await handleTicketTool('ticket_get_statuses', {});
+        const result = await handleTicketTool('ticket_get_statuses', {}, testClient());
         expect(result.content[0].text).toBeDefined();
         // Either shows statuses or "No ticket statuses found"
       });
@@ -92,20 +93,20 @@ describe('Ticket Tools', () => {
             })
           )
         );
-        const text = (await handleTicketTool('ticket_get_statuses', {})).content[0].text as string;
+        const text = (await handleTicketTool('ticket_get_statuses', {}, testClient())).content[0].text as string;
         expect(text).toContain('Awaiting Agent (Open)');
         expect(text).toContain('ID: st-guid-1');
         expect(text).not.toContain('undefined');
       });
 
       it('should handle ticket_get_priorities', async () => {
-        const result = await handleTicketTool('ticket_get_priorities', {});
+        const result = await handleTicketTool('ticket_get_priorities', {}, testClient());
         expect(result.content[0].text).toBeDefined();
         // Either shows priorities or "No ticket priorities found"
       });
 
       it('should handle ticket_get_categories gracefully', async () => {
-        const result = await handleTicketTool('ticket_get_categories', {});
+        const result = await handleTicketTool('ticket_get_categories', {}, testClient());
         expect(result.content[0].text).toContain('Unknown ticket tool');
       });
     });
@@ -144,7 +145,7 @@ describe('Ticket Tools', () => {
             HttpResponse.json(realEnvelope)),
         );
 
-        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+        const text = (await handleTicketTool('ticket_get', { ticketId }, testClient())).content[0].text;
 
         expect(text).not.toContain('undefined');
         expect(text).toContain('Ticket #104233');
@@ -169,7 +170,7 @@ describe('Ticket Tools', () => {
             })),
         );
 
-        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+        const text = (await handleTicketTool('ticket_get', { ticketId }, testClient())).content[0].text;
 
         expect(text).not.toContain('undefined');
         expect(text).toContain('Status: Unknown');
@@ -185,7 +186,7 @@ describe('Ticket Tools', () => {
             HttpResponse.json({ StatusCode: 200, Item: null })),
         );
 
-        const text = (await handleTicketTool('ticket_get', { ticketId })).content[0].text;
+        const text = (await handleTicketTool('ticket_get', { ticketId }, testClient())).content[0].text;
 
         expect(text).toBe('Ticket not found.');
       });
@@ -193,7 +194,7 @@ describe('Ticket Tools', () => {
 
     describe('Error Handling', () => {
       it('should handle unknown tool gracefully', async () => {
-        const result = await handleTicketTool('invalid_tool', {});
+        const result = await handleTicketTool('invalid_tool', {}, testClient());
 
         expect(result.content[0].text).toContain('Error');
         expect(result.content[0].text).toContain('Unknown ticket tool');
@@ -204,7 +205,7 @@ describe('Ticket Tools', () => {
         // The implementation should catch and return a friendly error message
         const result = await handleTicketTool('ticket_get_wizards', {
           triggerError: true // Special flag for mock to trigger error
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         // Should handle error gracefully
@@ -245,7 +246,7 @@ describe('ticket_search facet filtering', () => {
       })
     );
 
-    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'], agentIds: ['agent-1'] });
+    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'], agentIds: ['agent-1'] }, testClient());
     const text = result.content[0].text as string;
     expect(text).toContain('ID: tk-1');
     expect(text).not.toContain('ID: tk-2');
@@ -260,7 +261,7 @@ describe('ticket_search facet filtering', () => {
         HttpResponse.json({ Items: dataset, ItemCount: dataset.length, Paging: { PageIndex: 0, PageCount: 1, PageSize: 100 } })
       )
     );
-    const result = await handleTicketTool('ticket_search', { statusIds: ['s1', 's3'] });
+    const result = await handleTicketTool('ticket_search', { statusIds: ['s1', 's3'] }, testClient());
     const text = result.content[0].text as string;
     expect(text).toContain('ID: tk-1');
     expect(text).not.toContain('ID: tk-2');
@@ -299,7 +300,7 @@ describe('ticket_search facet filtering', () => {
     const seen: Array<{ url: URL; body: any }> = [];
     server.use(iiqTicketsHandler(dataset, seen));
 
-    const text = (await handleTicketTool('ticket_search', { pageIndex: 1, pageSize: 50 })).content[0].text as string;
+    const text = (await handleTicketTool('ticket_search', { pageIndex: 1, pageSize: 50 }, testClient())).content[0].text as string;
 
     expect(text.match(/ID: tk-\d+/g)).toHaveLength(50);
     expect(text).toMatch(/ID: tk-50\b/);
@@ -313,7 +314,7 @@ describe('ticket_search facet filtering', () => {
     const dataset = Array.from({ length: 120 }, (_, i) => mkTicket(String(i), 's1', 'a'));
     server.use(iiqTicketsHandler(dataset));
 
-    const text = (await handleTicketTool('ticket_search', { pageSize: 5 })).content[0].text as string;
+    const text = (await handleTicketTool('ticket_search', { pageSize: 5 }, testClient())).content[0].text as string;
 
     expect(text).toContain('Found 120 tickets (showing 5)');
   });
@@ -321,7 +322,7 @@ describe('ticket_search facet filtering', () => {
   it('shows each ticket status from WorkflowStep', async () => {
     server.use(iiqTicketsHandler([mkTicket('1', 's1', 'a')]));
 
-    const text = (await handleTicketTool('ticket_search', {})).content[0].text as string;
+    const text = (await handleTicketTool('ticket_search', {}, testClient())).content[0].text as string;
 
     expect(text).toContain('Status: Step s1 (Status s1)');
     expect(text).not.toContain('Status: Unknown');
@@ -332,7 +333,7 @@ describe('ticket_search facet filtering', () => {
     const seen: Array<{ url: URL; body: any }> = [];
     server.use(iiqTicketsHandler(dataset, seen));
 
-    const text = (await handleTicketTool('ticket_search', { statusIds: ['s1'] })).content[0].text as string;
+    const text = (await handleTicketTool('ticket_search', { statusIds: ['s1'] }, testClient())).content[0].text as string;
 
     expect(text).toMatch(/ID: tk-230\b/);
     expect(seen.map((r) => r.url.searchParams.get('$p'))).toEqual(['0', '1', '2']);
@@ -348,7 +349,7 @@ describe('ticket_search facet filtering', () => {
     const seen: Array<{ url: URL; body: any }> = [];
     server.use(iiqTicketsHandler(dataset, seen));
 
-    const text = (await handleTicketTool('ticket_search', { searchText: 'projector', agentIds: ['a1'] })).content[0].text as string;
+    const text = (await handleTicketTool('ticket_search', { searchText: 'projector', agentIds: ['a1'] }, testClient())).content[0].text as string;
 
     expect(text).toMatch(/ID: tk-1\b/);
     expect(text).not.toMatch(/ID: tk-2\b/);
@@ -379,7 +380,7 @@ describe('ticket_search facet filtering', () => {
         return HttpResponse.json({ Items: [mkTicket('1', 's1', 'agent-42')], ItemCount: 1, Paging: { PageIndex: 0, PageCount: 1, PageSize: 20 } });
       })
     );
-    const result = await handleTicketTool('ticket_search', { agentEmails: ['Agent@Example.org'] });
+    const result = await handleTicketTool('ticket_search', { agentEmails: ['Agent@Example.org'] }, testClient());
     const text = result.content[0].text as string;
     expect(text).toContain('ID: tk-1');
     expect(capturedFilters).toEqual([{ Facet: 'agent', Id: 'agent-42' }]);
@@ -393,7 +394,7 @@ describe('ticket_search facet filtering', () => {
         return HttpResponse.json({ Items: [], ItemCount: 0 });
       })
     );
-    const result = await handleTicketTool('ticket_search', { agentEmails: ['notanemail'] });
+    const result = await handleTicketTool('ticket_search', { agentEmails: ['notanemail'] }, testClient());
     expect(result.content[0].text as string).toContain('Invalid email');
     expect(postTicketsCalled).toBe(false);
   });
@@ -409,7 +410,7 @@ describe('ticket_search facet filtering', () => {
         return HttpResponse.json({ Items: [], ItemCount: 0 });
       })
     );
-    const result = await handleTicketTool('ticket_search', { agentEmails: ['ghost@example.org'] });
+    const result = await handleTicketTool('ticket_search', { agentEmails: ['ghost@example.org'] }, testClient());
     expect(result.content[0].text as string).toContain('No user found for');
     expect(postTicketsCalled).toBe(false);
   });
@@ -427,7 +428,7 @@ describe('ticket_search facet filtering', () => {
         return HttpResponse.json({ Success: true, Data: {} });
       })
     );
-    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] });
+    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] }, testClient());
     const text = result.content[0].text as string;
     expect(text).toContain('Note: results may be incomplete');
     expect(text).toContain('scanned 5 of 10 pages');
@@ -439,7 +440,7 @@ describe('ticket_search facet filtering', () => {
     server.use(
       http.post(`${BASE}/tickets`, () => new HttpResponse(null, { status: 500 }))
     );
-    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] });
+    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] }, testClient());
     expect(result.content[0].text as string).toContain('Error');
   });
 
@@ -450,7 +451,7 @@ describe('ticket_search facet filtering', () => {
         HttpResponse.json({ Items: [mkTicket('1', 's2', 'a')], ItemCount: 1, Paging: { PageIndex: 0, PageCount: 10, PageSize: 100 } })
       )
     );
-    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] });
+    const result = await handleTicketTool('ticket_search', { statusIds: ['s1'] }, testClient());
     const text = result.content[0].text as string;
     expect(text).toContain('Note: results may be incomplete');
     expect(text).toContain('scanned 5 of 10 pages');
