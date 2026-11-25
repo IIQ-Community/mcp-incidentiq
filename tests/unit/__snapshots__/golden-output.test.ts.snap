@@ -1,0 +1,3252 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden tool output > analytics_asset_audit_coverage {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/assets/by-audit-policy-coverage",
+  ],
+  "text": "Asset Audit Policy Coverage (3 assets):
+
+• Golden Row: 3 assets (100.0%)",
+}
+`;
+
+exports[`golden tool output > analytics_asset_audit_status {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/assets/by-audit-status",
+  ],
+  "text": "Asset Audit Status (3 assets):
+
+• Golden Row: 3 assets (100.0%)",
+}
+`;
+
+exports[`golden tool output > analytics_asset_verification_location {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/assets/by-verification-location",
+  ],
+  "text": "Found 1 locations (showing 1):
+
+Total assets verified: 3
+
+• Golden Row: 3 assets (100.0%)
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > analytics_asset_verification_type {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/assets/by-verification-type",
+  ],
+  "text": "Asset Verification by Type (3 assets):
+
+• Golden Row: 3 assets (100.0%)",
+}
+`;
+
+exports[`golden tool output > analytics_get_report {"reportId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/reports/0f8fad5b-d9cb-469f-a165-70867728950e",
+    "GET /api/v1.0/analytics/reports/elements/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Report: Golden Row
+Key: N/A | Display Order: undefined | Sidebar Visible: No
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Elements (1):
+• Golden Row",
+}
+`;
+
+exports[`golden tool output > analytics_list_reports {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/analytics/reports",
+  ],
+  "text": "Analytics Reports (1):
+
+• Golden Row
+  Key: N/A | ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > asset_find_by_serial {"serialNumber":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/serial/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Asset Found by Serial: SN-1
+Tag: TAG-1
+Type: Unknown
+Model: N/A
+Manufacturer: N/A
+Serial: SN-1
+Status: Unknown
+Location: N/A
+Room: N/A
+Assigned To: Unassigned
+Purchase Date: N/A
+Warranty: N/A
+Funding: N/A
+Notes: None",
+}
+`;
+
+exports[`golden tool output > asset_find_by_tag {"assetTag":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/assettag/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Asset Found: TAG-1
+Type: Unknown
+Model: N/A
+Manufacturer: N/A
+Serial: SN-1
+Status: Unknown
+Location: N/A
+Room: N/A
+Assigned To: Unassigned
+Purchase Date: N/A
+Warranty: N/A
+Funding: N/A
+Notes: None",
+}
+`;
+
+exports[`golden tool output > asset_get_by_room {"roomId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/rooms/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 assets in this room (showing 1):
+
+Unknown (1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_get_by_storage {"locationId":"0f8fad5b-d9cb-469f-a165-70867728950e","unitNumber":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/storageunit/0f8fad5b-d9cb-469f-a165-70867728950e/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 assets in storage unit 0f8fad5b-d9cb-469f-a165-70867728950e (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_get_favorites {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/favorites/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 favorite assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_get_funding_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/funding/types",
+  ],
+  "text": "Available Funding Types (1):
+
+• Golden Row
+
+💡 Use funding types to track grant compliance and budget sources",
+}
+`;
+
+exports[`golden tool output > asset_get_history {"assetId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/0f8fad5b-d9cb-469f-a165-70867728950e/activities",
+  ],
+  "text": "Found 1 activities (showing 1):
+
+• undefined - undefined
+  N/A
+  By: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_get_inventory_counts {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/assets/count",
+  ],
+  "text": "Asset Inventory Counts:
+
+Total Assets: 1",
+}
+`;
+
+exports[`golden tool output > asset_get_spares {"assetTag":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/spares/assettag/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Spare Parts for 0f8fad5b-d9cb-469f-a165-70867728950e (1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned",
+}
+`;
+
+exports[`golden tool output > asset_get_status_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/status/types",
+  ],
+  "text": "Available Asset Status Types (1):
+
+• Golden Row",
+}
+`;
+
+exports[`golden tool output > asset_get_user_devices {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/for/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 assigned devices (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_search_advanced {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/assets",
+  ],
+  "text": "Found 1 assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_search_by_serial {"serialPattern":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/serial/search/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > asset_search_by_tag {"tagPattern":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/assets/assettag/search/0f8fad5b-d9cb-469f-a165-70867728950e?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > customfield_find_by_name {"fieldName":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/custom-fields",
+  ],
+  "text": "No custom field found with name: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > customfield_get_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields",
+  ],
+  "text": "Found 1 custom fields (showing 1):
+
+Unknown (1 on this page):
+  • Golden Row
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > customfield_get_asset_values {"assetId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/values/for/asset/0f8fad5b-d9cb-469f-a165-70867728950e",
+    "GET /api/v1.0/custom-fields/types?%24p=0&%24s=1000",
+  ],
+  "text": "Asset Custom Field Values:
+
+• Golden Row: 3",
+}
+`;
+
+exports[`golden tool output > customfield_get_details {"fieldId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Custom Field Details:
+Name: Golden Row
+Entity Type: Unknown
+Required: No
+Hidden: No
+Read-only: No
+System field: No
+Type ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > customfield_get_options {"fieldId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/0f8fad5b-d9cb-469f-a165-70867728950e",
+    "GET /api/v1.0/custom-fields/types/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Custom field Golden Row has no options (its type Golden Row defines none).",
+}
+`;
+
+exports[`golden tool output > customfield_get_required {"entityType":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/custom-fields",
+  ],
+  "text": "No required fields for 0f8fad5b-d9cb-469f-a165-70867728950e.",
+}
+`;
+
+exports[`golden tool output > customfield_get_student_fields {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/custom-fields",
+  ],
+  "text": "No student-specific custom fields found.",
+}
+`;
+
+exports[`golden tool output > customfield_get_ticket_values {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/values/for/ticket/0f8fad5b-d9cb-469f-a165-70867728950e",
+    "GET /api/v1.0/custom-fields/types?%24p=0&%24s=1000",
+  ],
+  "text": "Ticket Custom Field Values:
+
+• Golden Row: 3",
+}
+`;
+
+exports[`golden tool output > customfield_get_type_details {"typeId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/types/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Custom Field Type Details:
+Name: Golden Row
+Description: N/A
+Editor type: N/A
+Scope: N/A
+Required: No
+Has options: No
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > customfield_get_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/types?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 custom field types (showing 1):
+
+• Golden Row
+  Editor type: N/A | Scope: N/A | ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > customfield_get_user_values {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/custom-fields/values/for/user/0f8fad5b-d9cb-469f-a165-70867728950e",
+    "GET /api/v1.0/custom-fields/types?%24p=0&%24s=1000",
+  ],
+  "text": "User Custom Field Values:
+
+• Golden Row: 3",
+}
+`;
+
+exports[`golden tool output > customfield_search {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/custom-fields",
+  ],
+  "text": "Found 1 custom fields (showing 1):
+
+• Golden Row
+  Entity: Unknown | Type ID: 0f8fad5b-d9cb-469f-a165-70867728950e | ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > issues_get_classroom_tech {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/issues/types?%24p=0&%24s=2000",
+  ],
+  "text": "No classroom technology issues found.",
+}
+`;
+
+exports[`golden tool output > issues_get_site_issues {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/issues/site",
+  ],
+  "text": "Found 1 site issues (showing 1):
+
+• undefined
+
+Page 1 of 1
+
+Note: 1 of 1 issue names could not be read; those rows show the IssueId.",
+}
+`;
+
+exports[`golden tool output > issues_get_student_devices {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/issues/types?%24p=0&%24s=2000",
+  ],
+  "text": "No student device issues found.",
+}
+`;
+
+exports[`golden tool output > issues_get_type_details {"typeId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/issues/types/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Issue Type Details:
+Name: Golden Row
+Scope: N/A
+Product ID: N/A
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > issues_get_types {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/issues/types?%24p=0&%24s=2000",
+  ],
+  "text": "Found 1 issue types (showing 1):
+
+• Golden Row
+  Scope: N/A | ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > issues_search_types {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/issues/types?%24p=0&%24s=2000",
+  ],
+  "text": "Found 1 issue types (showing 1):
+
+• Golden Row
+  Scope: N/A | ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > location_find_by_code {"code":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/all?%24p=0&%24s=1000",
+  ],
+  "text": "No location found with code: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > location_find_special_rooms {"roomType":"Nurse"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/rooms?%24p=0&%24s=5000",
+  ],
+  "text": "No Nurse rooms found.",
+}
+`;
+
+exports[`golden tool output > location_get_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/all?%24p=0&%24s=1000",
+  ],
+  "text": "District Locations (1 total):
+
+Unknown (1):
+  • Golden Row",
+}
+`;
+
+exports[`golden tool output > location_get_all_rooms {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/rooms?%24p=0&%24s=5000",
+  ],
+  "text": "Found 1 rooms (showing 1):
+
+• Golden Row - Golden School
+  Type: N/A
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > location_get_assets {"locationId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/assets",
+  ],
+  "text": "Found 1 assets (showing 1):
+
+• TAG-1 - Unknown Type
+  Model: N/A | Serial: SN-1
+  Status: Unknown | Location: N/A
+  User: Unassigned
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > location_get_building_rooms {"buildingId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/0f8fad5b-d9cb-469f-a165-70867728950e/rooms?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 rooms (showing 1):
+
+Unspecified (1):
+  • Golden Row
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > location_get_buildings {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/all?%24p=0&%24s=1000",
+  ],
+  "text": "District Buildings (1):
+
+• Golden Row - Unknown",
+}
+`;
+
+exports[`golden tool output > location_get_details {"locationId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Location Details:
+Name: Golden School
+Type: Unknown
+Status: Inactive
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > location_get_room_details {"roomId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/rooms/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Room Details:
+Name: Golden Row
+Building: Golden School
+Type: N/A
+ID: undefined",
+}
+`;
+
+exports[`golden tool output > location_get_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/types",
+  ],
+  "text": "Location Types (1):
+
+• Golden Row",
+}
+`;
+
+exports[`golden tool output > location_search_advanced {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/all?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 locations (showing 1):
+
+• Golden Row
+  Type: Unknown | ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > notification_get_ticket_emails {"ticket_id":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/notifications/emails/for/ticket/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "{
+  "ticket_id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "count": 1,
+  "emails": [
+    {
+      "subject": "Golden ticket"
+    }
+  ],
+  "message": "Retrieved ticket emails"
+}",
+}
+`;
+
+exports[`golden tool output > notification_get_unarchived {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/notifications/unarchived",
+  ],
+  "text": "{
+  "count": 1,
+  "notifications": [
+    {
+      "subject": "Golden ticket"
+    }
+  ],
+  "message": "Found 1 unarchived notifications"
+}",
+}
+`;
+
+exports[`golden tool output > notification_get_unread {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/notifications/unread",
+  ],
+  "text": "{
+  "count": 1,
+  "notifications": [
+    {
+      "subject": "Golden ticket"
+    }
+  ],
+  "message": "You have 1 unread notifications"
+}",
+}
+`;
+
+exports[`golden tool output > notification_mark_all_read {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/notifications/all-read",
+  ],
+  "text": "{
+  "success": false,
+  "message": "Failed to mark notifications as read"
+}",
+}
+`;
+
+exports[`golden tool output > notification_mark_read {"notification_id":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/notifications/0f8fad5b-d9cb-469f-a165-70867728950e/read",
+  ],
+  "text": "{
+  "notification_id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "success": false,
+  "message": "Failed to mark notification as read"
+}",
+}
+`;
+
+exports[`golden tool output > notification_query {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/notifications",
+  ],
+  "text": "{
+  "count": 1,
+  "notifications": [
+    {
+      "subject": "Golden ticket"
+    }
+  ],
+  "filters": {
+    "IncludeRead": true,
+    "IncludeArchived": false,
+    "IncludeUnarchived": true
+  },
+  "message": "Found 1 notifications"
+}",
+}
+`;
+
+exports[`golden tool output > parts_check_stock {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 parts (showing 1):
+
+• Golden Row: 0 on hand
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > parts_find_by_number {"partNumber":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "No part found with number: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > parts_get_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 parts (showing 1):
+
+• Golden Row
+  Stock: 0 | Cost: $N/A | Supplier: N/A
+  ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > parts_get_chromebook_parts {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "No Chromebook parts found.",
+}
+`;
+
+exports[`golden tool output > parts_get_details {"partId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Part Details:
+Name: Golden Row
+Stock: 0
+Cost: $N/A
+Supplier: N/A
+Created: N/A
+Modified: N/A
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > parts_get_ipad_parts {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "No iPad parts found.",
+}
+`;
+
+exports[`golden tool output > parts_get_low_stock {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "No parts are currently low on stock.",
+}
+`;
+
+exports[`golden tool output > parts_get_orders {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 purchase orders (showing 1):
+
+• PO 0f8fad5b
+  Status: Open | Created: N/A
+  Total: $0 | Items: 0
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > parts_get_supplier_details {"supplierId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts/suppliers/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Supplier Details:
+Name: Golden Row
+Created: N/A
+Modified: N/A
+ID: undefined",
+}
+`;
+
+exports[`golden tool output > parts_get_suppliers {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts/suppliers",
+  ],
+  "text": "Suppliers (1):
+
+• Golden Row
+  ID: undefined",
+}
+`;
+
+exports[`golden tool output > parts_search {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/parts?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 parts (showing 1):
+
+• Golden Row
+  Stock: 0 | Cost: $N/A | Supplier: N/A
+  ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_all {"status":"pending"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/pending?%24d=Descending&%24p=0&%24s=100",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders?%24d=Descending&%24p=0&%24s=100",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_approved {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/approved?%24d=Descending&%24p=0&%24s=50",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_attachments {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e/attachments",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_completed {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/completed?%24d=Descending&%24p=0&%24s=50",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_history {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e/history",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_items {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e/items",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_parts {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e/parts",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_pending {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/pending?%24d=Descending&%24p=0&%24s=50",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_statuses {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/statuses",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_summary {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/summary",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_supplier {"purchaseOrderId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/0f8fad5b-d9cb-469f-a165-70867728950e/supplier",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_get_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders/types",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > purchaseorder_search {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/purchaseorders?%24p=0&%24s=1000",
+  ],
+  "text": "{
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "PageIndex": 0,
+    "PageSize": 20,
+    "PageCount": 1,
+    "TotalRows": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > sla_get_metric_types {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/metrics/types",
+  ],
+  "text": "{
+  "count": 1,
+  "types": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "available_types": [
+    "Golden Row"
+  ],
+  "message": "Retrieved SLA metric types"
+}",
+}
+`;
+
+exports[`golden tool output > sla_get_metrics {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/metrics",
+  ],
+  "text": "{
+  "count": 1,
+  "metrics": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "message": "Retrieved SLA metrics"
+}",
+}
+`;
+
+exports[`golden tool output > sla_get_ticket_status {"ticket_id":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/sla",
+  ],
+  "text": "{
+  "ticket_id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "has_sla": true,
+  "sla_status": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "message": "Retrieved ticket SLA status"
+}",
+}
+`;
+
+exports[`golden tool output > sla_list {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/slas",
+  ],
+  "text": "{
+  "count": 1,
+  "slas": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "message": "Retrieved configured SLAs"
+}",
+}
+`;
+
+exports[`golden tool output > team_get {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_agents {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/agents",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/all?%24d=Descending&%24p=0&%24s=100",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_categories {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/categories",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_locations {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/locations",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_members {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/members",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_stats {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/stats",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_get_tickets {"teamId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/0f8fad5b-d9cb-469f-a165-70867728950e/tickets?%24p=0&%24s=20&includeResolved=false",
+  ],
+  "text": "{
+  "Item": {
+    "Name": "Golden Row",
+    "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TeamName": "Golden Team",
+    "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "FirstName": "Gold",
+    "LastName": "Row",
+    "Email": "gold.row@example.org",
+    "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "AssetTag": "TAG-1",
+    "SerialNumber": "SN-1",
+    "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "LocationName": "Golden School",
+    "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "TicketNumber": 1001,
+    "Subject": "Golden ticket",
+    "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PartName": "Golden Part",
+    "Quantity": 2,
+    "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "PurchaseOrderNumber": "PO-1",
+    "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+    "Value": 3
+  },
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "TotalRows": 1,
+    "PageIndex": 0,
+    "PageSize": 1,
+    "PageCount": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > team_search {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/teams/all?%24p=0&%24s=1000",
+  ],
+  "text": "{
+  "Items": [
+    {
+      "Name": "Golden Row",
+      "TeamId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TeamName": "Golden Team",
+      "UserId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "FirstName": "Gold",
+      "LastName": "Row",
+      "Email": "gold.row@example.org",
+      "AssetId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "AssetTag": "TAG-1",
+      "SerialNumber": "SN-1",
+      "LocationId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "LocationName": "Golden School",
+      "TicketId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "TicketNumber": 1001,
+      "Subject": "Golden ticket",
+      "PartId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PartName": "Golden Part",
+      "Quantity": 2,
+      "PurchaseOrderId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "PurchaseOrderNumber": "PO-1",
+      "CustomFieldId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "CustomFieldTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "IssueTypeId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "ReportId": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "Value": 3
+    }
+  ],
+  "ItemCount": 1,
+  "Paging": {
+    "PageIndex": 0,
+    "PageSize": 20,
+    "PageCount": 1,
+    "TotalRows": 1
+  }
+}",
+}
+`;
+
+exports[`golden tool output > test_connection {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/statuses",
+  ],
+  "text": "✅ Connected to IncidentIQ
+District: test
+API Base URL: https://test.incidentiq.com/api/v1.0",
+}
+`;
+
+exports[`golden tool output > ticket_cancel {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/cancel",
+  ],
+  "text": "Successfully cancelled the ticket.",
+}
+`;
+
+exports[`golden tool output > ticket_confirm_issue {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isConfirmed":false} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/unconfirm-issue",
+  ],
+  "text": "Successfully unconfirmed the issue.",
+}
+`;
+
+exports[`golden tool output > ticket_get {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Ticket #1001:
+Subject: Golden ticket
+Status: Unknown
+Priority: Normal
+Created: Unknown
+Description: No description
+Requestor: Unknown
+Assigned To: Unassigned
+Location: Not specified
+Urgent: No
+Sensitive: No
+ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > ticket_get_assets {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/assets",
+  ],
+  "text": "Assets Linked to Ticket (1):
+
+- Golden Row
+  Type: undefined
+  Serial: SN-1
+  ID: 0f8fad5b-d9cb-469f-a165-70867728950e",
+}
+`;
+
+exports[`golden tool output > ticket_get_priorities {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/priorities",
+  ],
+  "text": "Available Ticket Priorities (1):
+
+- Golden Row (Level: undefined)
+  ID: undefined",
+}
+`;
+
+exports[`golden tool output > ticket_get_sla {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/sla",
+  ],
+  "text": "SLA Information:
+Name: Not specified
+Response Time: N/A
+Resolution Time: N/A
+Status: Active
+Breached: No",
+}
+`;
+
+exports[`golden tool output > ticket_get_statuses {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/statuses",
+  ],
+  "text": "Available Ticket Statuses (1):
+
+- undefined
+  ID: undefined",
+}
+`;
+
+exports[`golden tool output > ticket_get_wizards {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/wizards",
+  ],
+  "text": "Available Ticket Wizards (1):
+
+- Golden Row
+  ID: undefined
+  Product: undefined
+  No description",
+}
+`;
+
+exports[`golden tool output > ticket_get_wizards_by_site {"siteId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/tickets/wizards/site/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Ticket Wizards for Site 0f8fad5b-d9cb-469f-a165-70867728950e (1):
+
+- Golden Row
+  ID: undefined
+  No description",
+}
+`;
+
+exports[`golden tool output > ticket_mark_duplicate {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","originalTicketId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-as-duplicate/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Successfully marked ticket as duplicate of 0f8fad5b-d9cb-469f-a165-70867728950e.",
+}
+`;
+
+exports[`golden tool output > ticket_search {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets?%24p=0&%24s=20",
+  ],
+  "text": "Found 1 tickets (showing 1):
+
+- #1001: Golden ticket
+  Status: Unknown
+  Created: undefined
+  ID: 0f8fad5b-d9cb-469f-a165-70867728950e
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > ticket_set_sensitivity {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isSensitive":false} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-not-sensitive",
+  ],
+  "text": "Successfully marked ticket as not sensitive.",
+}
+`;
+
+exports[`golden tool output > ticket_set_urgency {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","isUrgent":false} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/mark-not-urgent",
+  ],
+  "text": "Successfully marked ticket as not urgent.",
+}
+`;
+
+exports[`golden tool output > ticket_unassign {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","unassignFrom":"sla"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/unassign-sla",
+  ],
+  "text": "Successfully unassigned ticket from sla.",
+}
+`;
+
+exports[`golden tool output > ticket_unassign {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","unassignFrom":"team"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/unassign/team",
+  ],
+  "text": "Successfully unassigned ticket from team.",
+}
+`;
+
+exports[`golden tool output > ticket_unassign {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","unassignFrom":"user"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/unassign/user",
+  ],
+  "text": "Successfully unassigned ticket from user.",
+}
+`;
+
+exports[`golden tool output > ticket_update_status {"ticketId":"0f8fad5b-d9cb-469f-a165-70867728950e","status":"waiting-on-requestor"} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/tickets/0f8fad5b-d9cb-469f-a165-70867728950e/status/waiting-on-requestor",
+  ],
+  "text": "Successfully updated ticket status to "waiting-on-requestor".",
+}
+`;
+
+exports[`golden tool output > user_get_all_agents {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/users/agents?%24p=0&%24s=1000",
+  ],
+  "text": "Found 1 IT support agents (showing 1):
+
+• Golden Row
+  Email: gold.row@example.org | Phone: N/A
+  Location: Golden School
+
+Page 1 of 1
+
+💡 These agents can be assigned to tickets and have elevated permissions",
+}
+`;
+
+exports[`golden tool output > user_get_by_location {"locationId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/sites/roles",
+    "POST /api/v1.0/users?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 users (showing 1):
+
+• Golden Row (Unknown)
+  Email: gold.row@example.org | Location: Golden School
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > user_get_current {} 1`] = `
+{
+  "requests": [],
+  "text": "This API key does not identify a user (its token carries no user id), so there is no current user to look up.",
+}
+`;
+
+exports[`golden tool output > user_get_details {"userId":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/users/0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "User Details:
+Name: Golden Row
+Username: N/A
+Email: gold.row@example.org
+Type: Unknown
+Role: N/A
+Location: Golden School
+Phone: N/A
+Status: Inactive
+Created: N/A",
+}
+`;
+
+exports[`golden tool output > user_get_staff {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/sites/roles",
+    "POST /api/v1.0/users?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 staff members (showing 1):
+
+• Golden Row
+  Role: N/A | Email: gold.row@example.org
+  Location: Golden School
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > user_get_students {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/sites/roles",
+    "POST /api/v1.0/users?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 students (showing 1):
+
+Grade Unassigned (1):
+  • Golden Row
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > user_quick_search {"query":"0f8fad5b-d9cb-469f-a165-70867728950e"} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/users/quick?limit=10&q=0f8fad5b-d9cb-469f-a165-70867728950e",
+  ],
+  "text": "Quick Search Results for "0f8fad5b-d9cb-469f-a165-70867728950e":
+
+• Golden Row (Unknown)",
+}
+`;
+
+exports[`golden tool output > user_search_advanced {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/users?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 users (showing 1):
+
+• Golden Row
+  Type: Unknown | Email: gold.row@example.org
+  Location: Golden School
+  Username: N/A | Status: Inactive
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > user_search_agents {} 1`] = `
+{
+  "requests": [
+    "POST /api/v1.0/users/agents?%24p=0&%24s=25",
+  ],
+  "text": "Found 1 IT support agents (showing 1):
+
+• Golden Row
+  Email: gold.row@example.org | Phone: N/A
+  Location: Golden School
+
+Page 1 of 1",
+}
+`;
+
+exports[`golden tool output > user_statistics_grades {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/sites/roles",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+  ],
+  "text": "Student Distribution by Grade:
+
+  Grade PK: 1 students
+  Grade KG: 1 students
+  Grade 01: 1 students
+  Grade 02: 1 students
+  Grade 03: 1 students
+  Grade 04: 1 students
+  Grade 05: 1 students
+  Grade 06: 1 students
+  Grade 07: 1 students
+  Grade 08: 1 students
+  Grade 09: 1 students
+  Grade 10: 1 students
+  Grade 11: 1 students
+  Grade 12: 1 students
+
+Total Students: 1",
+}
+`;
+
+exports[`golden tool output > user_statistics_locations {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/locations/all?%24p=0&%24s=1000",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+    "POST /api/v1.0/users?%24p=0&%24s=1",
+  ],
+  "text": "User Distribution by Location:
+
+  Golden Row: 1 users
+
+Total Users: 1",
+}
+`;
+
+exports[`golden tool output > view_list_all {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/views",
+  ],
+  "text": "{
+  "count": 1,
+  "views": [
+    {
+      "name": "Golden Row"
+    }
+  ],
+  "message": "Retrieved all views"
+}",
+}
+`;
+
+exports[`golden tool output > view_list_assets {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/views/assets",
+  ],
+  "text": "{
+  "count": 1,
+  "views": [
+    {
+      "name": "Golden Row"
+    }
+  ],
+  "common_views": [
+    "Chromebook Inventory",
+    "iPad Inventory",
+    "Warranty Expiring",
+    "Devices for Repair",
+    "Available Loaners"
+  ],
+  "message": "Retrieved asset views"
+}",
+}
+`;
+
+exports[`golden tool output > view_list_tickets {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/views/tickets",
+  ],
+  "text": "{
+  "count": 1,
+  "views": [
+    {
+      "name": "Golden Row"
+    }
+  ],
+  "common_views": [
+    "My Open Tickets",
+    "Unassigned Tickets",
+    "Urgent Tickets",
+    "Overdue Tickets",
+    "Building Tickets"
+  ],
+  "message": "Retrieved ticket views"
+}",
+}
+`;
+
+exports[`golden tool output > view_list_user {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/users/views",
+  ],
+  "text": "{
+  "count": 1,
+  "views": [
+    {
+      "name": "Golden Row"
+    }
+  ],
+  "message": "Retrieved user views"
+}",
+}
+`;
+
+exports[`golden tool output > view_list_users {} 1`] = `
+{
+  "requests": [
+    "GET /api/v1.0/views/users",
+  ],
+  "text": "{
+  "count": 1,
+  "views": [
+    {
+      "name": "Golden Row"
+    }
+  ],
+  "common_views": [
+    "Student Directory",
+    "Staff Directory",
+    "IT Agents",
+    "New Users",
+    "Inactive Users"
+  ],
+  "message": "Retrieved user directory views"
+}",
+}
+`;

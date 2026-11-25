@@ -12,21 +12,9 @@ import { SLATools } from './tools/slas.js';
 import { ViewTools } from './tools/views.js';
 import { NotificationTools } from './tools/notifications.js';
 import { analyticsTools, handleAnalyticsTool } from './tools/analytics.js';
+import type { ToolDefinition, ToolHandler, ToolResult } from './tools/result.js';
 
-/** MCP tool-call result shape returned to the client. */
-export interface ToolResult {
-  [key: string]: unknown;
-  content: { type: 'text'; text: string }[];
-}
-
-/** Tool definition as advertised by ListTools (the modules declare `inputSchema.type` as a plain string). */
-export interface ToolDefinition {
-  name: string;
-  description?: string;
-  inputSchema: Record<string, unknown>;
-}
-
-type ToolHandler = (name: string, args: any) => Promise<unknown>;
+export type { ToolDefinition, ToolResult } from './tools/result.js';
 
 interface Route {
   prefix: string;
