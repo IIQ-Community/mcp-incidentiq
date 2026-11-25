@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool } from '../../../src/tools/assets';
+import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
 import { handleEnhancedLocationTool } from '../../../src/tools/locations';
 import { handleEnhancedPartsTool, enhancedPartsTools } from '../../../src/tools/parts';
@@ -111,7 +111,7 @@ describe('parts_get_orders', () => {
 });
 
 describe('asset_get_history', () => {
-  const run = (args: object) => textOf(handleEnhancedAssetTool as Handler, 'asset_get_history', args);
+  const run = (args: object) => textOf(withClient(handleAssetTool), 'asset_get_history', args);
   const activity = (i: number) => ({ ActivityDate: `2026-01-${String(i + 1).padStart(2, '0')}`, ActivityType: 3, Details: `Change ${i}`, UserId: 'u-1' });
 
   it('pages through every activity instead of the first 10', async () => {

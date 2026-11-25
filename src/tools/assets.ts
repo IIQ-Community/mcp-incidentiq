@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import { ASSET_STATUSES, ASSET_TYPES, resolveIds } from '../api/lookups.js';
 import {
@@ -78,7 +79,7 @@ function singleAsset(response: { Items?: IIQAsset[]; Item?: IIQAsset } | null | 
 }
 
 /** Text result for an unpaged asset list endpoint: heading with the total, then one row per asset. */
-function assetListText(response: PaginatedResponse<IIQAsset> | null | undefined, heading: (total: number) => string, emptyText: string) {
+function assetListText(response: PaginatedResponse<IIQAsset> | null | undefined, heading: (total: number) => string, emptyText: string): ToolResult {
   const rows = response?.Items ?? [];
   if (rows.length === 0) return { content: [{ type: 'text', text: emptyText }] };
   const total = iiqTotalRows(response);
@@ -127,17 +128,7 @@ async function pagedAssetList(
   });
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const enhancedAssetTools = [
+export const assetTools: ToolDefinition[] = [
   // Core Search & List
   {
     name: 'asset_search_advanced',
@@ -450,8 +441,7 @@ export const enhancedAssetTools = [
   },
 ];
 
-export async function handleEnhancedAssetTool(name: string, args: any) {
-  const client = getClient();
+export async function handleAssetTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -767,7 +757,3 @@ ${fundingList}
     };
   }
 }
-
-// Export for backward compatibility
-export const assetTools = enhancedAssetTools;
-export const handleAssetTool = handleEnhancedAssetTool;

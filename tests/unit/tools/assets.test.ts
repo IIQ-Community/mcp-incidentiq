@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from
 import { handleAssetTool, assetTools } from '../../../src/tools/assets';
 import { server } from '../../mocks/server';
 import { http, HttpResponse } from 'msw';
+import { testClient } from '../../helpers/client';
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -33,7 +34,7 @@ describe('Asset Tools', () => {
       it('should search assets with text filter', async () => {
         const result = await handleAssetTool('asset_search_advanced', {
           searchText: 'CHR',
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Found');
@@ -44,7 +45,7 @@ describe('Asset Tools', () => {
       it('should handle empty search results', async () => {
         const result = await handleAssetTool('asset_search_advanced', {
           searchText: 'nonexistent',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('No assets found');
       });
@@ -55,7 +56,7 @@ describe('Asset Tools', () => {
           assetType: 'Devices',
           locationId: 'loc-1',
           status: 'In Service',
-        });
+        }, testClient());
 
         expect(result.content[0].type).toBe('text');
         expect(result.content[0].text).toContain('Found');
@@ -67,7 +68,7 @@ describe('Asset Tools', () => {
         // The default mock answers in the live shape: { Items: [asset] } with nested names.
         const result = await handleAssetTool('asset_find_by_tag', {
           assetTag: 'CHR-12345',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('Asset Found');
         expect(result.content[0].text).toContain('CHR-12345');
@@ -78,7 +79,7 @@ describe('Asset Tools', () => {
       it('should handle non-existent asset tag', async () => {
         const result = await handleAssetTool('asset_find_by_tag', {
           assetTag: 'INVALID-TAG',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toContain('No asset found');
       });
@@ -88,7 +89,7 @@ describe('Asset Tools', () => {
       it('should search asset by tag', async () => {
         const result = await handleAssetTool('asset_search_by_tag', {
           tagPattern: 'CHR-12345',
-        });
+        }, testClient());
 
         // Should find assets or show no results
         expect(result.content[0].text).toBeDefined();
@@ -97,7 +98,7 @@ describe('Asset Tools', () => {
       it('should handle non-existent asset tag in search', async () => {
         const result = await handleAssetTool('asset_search_by_tag', {
           assetTag: 'invalid-id',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toBeDefined();
       });
@@ -105,7 +106,7 @@ describe('Asset Tools', () => {
       it('should display asset information', async () => {
         const result = await handleAssetTool('asset_find_by_tag', {
           assetTag: 'CHR-12345',
-        });
+        }, testClient());
 
         expect(result.content[0].text).toBeDefined();
       });
@@ -114,7 +115,7 @@ describe('Asset Tools', () => {
     describe('asset_get_inventory_counts', () => {
       it('should retrieve asset inventory counts', async () => {
         // The default mock answers in the live shape: only Paging.TotalRows.
-        const result = await handleAssetTool('asset_get_inventory_counts', {});
+        const result = await handleAssetTool('asset_get_inventory_counts', {}, testClient());
 
         expect(result.content[0].text).toBe('Asset Inventory Counts:\n\nTotal Assets: 2000');
       });
@@ -122,7 +123,7 @@ describe('Asset Tools', () => {
 
     describe('Error Handling', () => {
       it('should handle unknown tool gracefully', async () => {
-        const result = await handleAssetTool('invalid_tool', {});
+        const result = await handleAssetTool('invalid_tool', {}, testClient());
 
         expect(result.content[0].text).toContain('Error');
         expect(result.content[0].text).toContain('Unknown');
@@ -142,7 +143,7 @@ describe('asset_search_advanced against live IIQ semantics', () => {
       })
     );
 
-    await handleAssetTool('asset_search_advanced', { searchText: ' CHR-12345 ' });
+    await handleAssetTool('asset_search_advanced', { searchText: ' CHR-12345 ' }, testClient());
 
     expect(body.Filters).toContainEqual({ Facet: 'keyword', Value: 'CHR-12345' });
     expect(body).not.toHaveProperty('SearchText');
@@ -156,7 +157,7 @@ describe('asset_search_advanced against live IIQ semantics', () => {
       )
     );
 
-    const text = (await handleAssetTool('asset_search_advanced', { pageSize: 5 })).content[0].text as string;
+    const text = (await handleAssetTool('asset_search_advanced', { pageSize: 5 }, testClient())).content[0].text as string;
 
     expect(text).toContain('Found 1000 assets');
     expect(text).toContain('Page 1 of 200');

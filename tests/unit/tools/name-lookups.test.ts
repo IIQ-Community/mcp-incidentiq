@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool } from '../../../src/tools/assets';
+import { handleAssetTool } from '../../../src/tools/assets';
 import { handleUserTool } from '../../../src/tools/users';
 import { handleEnhancedLocationTool } from '../../../src/tools/locations';
 import { withClient } from '../../helpers/client';
@@ -20,7 +20,7 @@ afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
 const userText = async (name: string, args: object) => (await withClient(handleUserTool)(name, args)).content[0].text;
-const assetText = async (name: string, args: object) => (await (handleEnhancedAssetTool as Handler)(name, args)).content[0].text;
+const assetText = async (name: string, args: object) => (await withClient(handleAssetTool)(name, args)).content[0].text;
 
 const ROLES = ['Agent', 'Faculty', 'Guest', 'No Access', 'Parent / Guardian', 'Staff', 'Student'].map((Name) => ({ RoleId: `role-${Name}`, Name }));
 const lookups = { roles: 0, types: 0, statuses: 0 };
