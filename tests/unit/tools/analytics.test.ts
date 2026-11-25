@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { analyticsTools, handleAnalyticsTool } from '../../../src/tools/analytics';
+import { testClient } from '../../helpers/client';
 
 /**
  * Analytics tools (#112). Live IIQ analytics responses are `{ ItemCount, Items }` with no
@@ -26,7 +27,7 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 const textOf = async (name: string, args: object = {}) =>
-  (await handleAnalyticsTool(name, args)).content[0].text;
+  (await handleAnalyticsTool(name, args, testClient())).content[0].text;
 
 const ADVERTISED = [
   'analytics_asset_audit_coverage',
