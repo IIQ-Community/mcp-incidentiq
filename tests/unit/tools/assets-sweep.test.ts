@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool, enhancedAssetTools } from '../../../src/tools/assets';
+import { handleAssetTool, assetTools } from '../../../src/tools/assets';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 assets sweep (A1-A7). Response shapes are the ones production IIQ returns (verified
@@ -16,9 +17,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object) => (await (handleEnhancedAssetTool as Handler)(name, args)).content[0].text;
+const run = async (name: string, args: object) => (await withClient(handleAssetTool)(name, args)).content[0].text;
 const bullets = (text: string) => text.split('\n').filter((line) => line.trimStart().startsWith('• '));
-const schemaOf = (name: string) => enhancedAssetTools.find((tool) => tool.name === name)?.inputSchema.properties as Record<string, any> | undefined;
+const schemaOf = (name: string) => assetTools.find((tool) => tool.name === name)?.inputSchema.properties as Record<string, any> | undefined;
 
 /** One asset as production sends it: nested names only, AssetTypeName flat. */
 const liveAsset = (i = 0) => ({
@@ -386,6 +387,6 @@ describe('A6 asset_get_inventory_counts', () => {
 
 describe('A7 asset_toggle_favorite', () => {
   it('is no longer advertised', () => {
-    expect(enhancedAssetTools.map((tool) => tool.name)).not.toContain('asset_toggle_favorite');
+    expect(assetTools.map((tool) => tool.name)).not.toContain('asset_toggle_favorite');
   });
 });

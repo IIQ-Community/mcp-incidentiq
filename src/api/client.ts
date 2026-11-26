@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import { iiqListAll, matchesText } from './paging.js';
 import { apiKeyUserId } from './token.js';
+import { pathSegment } from './path.js';
 import { assertNoProductWidening, assertNotServicesPath } from './request-guard.js';
 import {
   IIQApiResponse,
@@ -157,7 +158,7 @@ export class IncidentIQClient {
   async getTicket(ticketId: string): Promise<IIQTicket | null> {
     const response = await this.request<IIQItemResponse<IIQTicket>>({
       method: 'GET',
-      url: `/tickets/${ticketId}`
+      url: `/tickets/${pathSegment(ticketId)}`
     });
     return response?.Item || null;
   }
@@ -174,7 +175,7 @@ export class IncidentIQClient {
   async updateTicket(ticketId: string, data: IIQTicketUpdate): Promise<IIQTicket | null> {
     const response = await this.request<IIQApiResponse<IIQTicket>>({
       method: 'PUT',
-      url: `/tickets/${ticketId}`,
+      url: `/tickets/${pathSegment(ticketId)}`,
       data
     });
     return response.Data || null;
@@ -183,7 +184,7 @@ export class IncidentIQClient {
   async closeTicket(ticketId: string, resolution?: string): Promise<boolean> {
     const response = await this.request<IIQApiResponse<any>>({
       method: 'PUT',
-      url: `/tickets/${ticketId}/close`,
+      url: `/tickets/${pathSegment(ticketId)}/close`,
       data: { Resolution: resolution }
     });
     return response.Success;
@@ -238,7 +239,7 @@ export class IncidentIQClient {
   async getUser(userId: string): Promise<IIQUser | null> {
     const response = await this.request<IIQApiResponse<IIQUser>>({
       method: 'GET',
-      url: `/users/${userId}`
+      url: `/users/${pathSegment(userId)}`
     });
     return response.Data || null;
   }
@@ -274,7 +275,7 @@ export class IncidentIQClient {
   async getAsset(assetId: string): Promise<IIQAsset | null> {
     const response = await this.request<IIQApiResponse<IIQAsset>>({
       method: 'GET',
-      url: `/assets/${assetId}`
+      url: `/assets/${pathSegment(assetId)}`
     });
     return response.Data || null;
   }
@@ -321,7 +322,7 @@ export class IncidentIQClient {
   async getLocation(locationId: string): Promise<IIQLocation | null> {
     const response = await this.request<IIQApiResponse<IIQLocation>>({
       method: 'GET',
-      url: `/locations/${locationId}`
+      url: `/locations/${pathSegment(locationId)}`
     });
     return response.Data || null;
   }
@@ -360,7 +361,7 @@ export class IncidentIQClient {
   async getPart(partId: string): Promise<IIQPart | null> {
     const response = await this.request<IIQApiResponse<IIQPart>>({
       method: 'GET',
-      url: `/parts/${partId}`
+      url: `/parts/${pathSegment(partId)}`
     });
     return response.Data || null;
   }
@@ -482,7 +483,7 @@ export class IncidentIQClient {
   async getAnalyticsReport(reportType: string, params?: Record<string, any>): Promise<IIQAnalyticsReport | null> {
     const response = await this.request<IIQApiResponse<IIQAnalyticsReport>>({
       method: 'GET',
-      url: `/analytics/${reportType}`,
+      url: `/analytics/${pathSegment(reportType)}`,
       params
     });
     return response.Data || null;
@@ -521,7 +522,7 @@ export class IncidentIQClient {
   async getTicketSLA(ticketId: string): Promise<any | null> {
     const response = await this.request<any>({
       method: 'GET',
-      url: `/tickets/${ticketId}/sla`
+      url: `/tickets/${pathSegment(ticketId)}/sla`
     });
     return response.Item || response || null;
   }
@@ -579,7 +580,7 @@ export class IncidentIQClient {
   async getTicketEmails(ticketId: string): Promise<any[]> {
     const response = await this.request<IIQPagedResult<any>>({
       method: 'GET',
-      url: `/notifications/emails/for/ticket/${ticketId}`
+      url: `/notifications/emails/for/ticket/${pathSegment(ticketId)}`
     });
     return response.Items || [];
   }
@@ -625,11 +626,8 @@ export class IncidentIQClient {
   async markNotificationRead(notificationId: string): Promise<boolean> {
     const response = await this.request<any>({
       method: 'POST',
-      url: `/notifications/${notificationId}/read`
+      url: `/notifications/${pathSegment(notificationId)}/read`
     });
     return response.StatusCode === 200;
   }
 }
-
-// Export alias for tools
-export { IncidentIQClient as ApiClient };

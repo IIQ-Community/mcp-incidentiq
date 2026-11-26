@@ -441,3 +441,41 @@ describe('IncidentIQClient', () => {
     });
   });
 });
+
+// #116: every client method that puts a caller value into a URL path sends it as one encoded segment.
+describe('IncidentIQClient path values', () => {
+  const BASE = 'https://test.incidentiq.com/api/v1.0';
+  const client = new IncidentIQClient(BASE, 'test-api-key');
+  const calls: [string, (value: string) => Promise<unknown>][] = [
+    ['getTicket', (v) => client.getTicket(v)],
+    ['updateTicket', (v) => client.updateTicket(v, {})],
+    ['closeTicket', (v) => client.closeTicket(v, 'done')],
+    ['getUser', (v) => client.getUser(v)],
+    ['getAsset', (v) => client.getAsset(v)],
+    ['getLocation', (v) => client.getLocation(v)],
+    ['getPart', (v) => client.getPart(v)],
+    ['getAnalyticsReport', (v) => client.getAnalyticsReport(v)],
+  ];
+
+  function recordPaths(): string[] {
+    const paths: string[] = [];
+    server.use(http.all(`${BASE}/*`, ({ request }) => {
+      paths.push(new URL(request.url).pathname);
+      return HttpResponse.json({ Item: {}, Items: [], StatusCode: 200 });
+    }));
+    return paths;
+  }
+
+  it.each(calls)('%s rejects a dot-only value without calling IIQ', async (_name, call) => {
+    const paths = recordPaths();
+    await expect(call('..')).rejects.toThrow(/path segment/);
+    expect(paths).toEqual([]);
+  });
+
+  it.each(calls)('%s encodes a slash as part of one segment', async (_name, call) => {
+    const paths = recordPaths();
+    await call('a/b').catch(() => undefined);
+    expect(paths.length).toBeGreaterThan(0);
+    expect(paths.every((p) => p.includes('/a%2Fb'))).toBe(true);
+  });
+});

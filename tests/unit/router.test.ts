@@ -146,6 +146,32 @@ describe('tool router', () => {
     expect(text).not.toContain('leaked');
   });
 
+  // #116: each value a ticket tool interpolates into a URL path is its own segment, so each is
+  // checked alone while the other args stay valid.
+  const TICKET = '0f8fad5b-d9cb-469f-a165-70867728950e';
+  it.each([
+    ['ticket_get', { ticketId: '..' }],
+    ['ticket_update_status', { ticketId: TICKET, status: '..' }],
+    ['ticket_unassign', { ticketId: TICKET, unassignFrom: '..' }],
+    ['ticket_mark_duplicate', { ticketId: TICKET, originalTicketId: '..' }],
+    ['ticket_get_wizards_by_site', { siteId: '..' }],
+    ['team_get', { teamId: '..' }],
+    ['purchaseorder_get', { purchaseOrderId: '..' }],
+    ['purchaseorder_get_all', { status: '..' }],
+    ['sla_get_ticket_status', { ticket_id: '..' }],
+    ['notification_get_ticket_emails', { ticket_id: '..' }],
+    ['notification_mark_read', { notification_id: '..' }],
+  ])('%s rejects a dot-only path value %j without calling IIQ', async (name, args) => {
+    const paths: string[] = [];
+    server.use(http.all(`${BASE}/*`, ({ request }) => {
+      paths.push(new URL(request.url).pathname);
+      return HttpResponse.json({ Item: { Name: 'leaked' }, Items: [] });
+    }));
+    const text = (await router.callTool(name, args)).content[0]?.text ?? '';
+    expect(paths).toEqual([]);
+    expect(text).toMatch(/^Error: .*path segment/);
+  });
+
   it('advertises each tool name once', () => {
     const names = router.listTools().map((tool) => tool.name);
     expect(new Set(names).size).toBe(names.length);

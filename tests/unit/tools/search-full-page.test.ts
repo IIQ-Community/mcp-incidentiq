@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool } from '../../../src/tools/assets';
-import { handleEnhancedUserTool } from '../../../src/tools/users';
+import { handleAssetTool } from '../../../src/tools/assets';
+import { handleUserTool } from '../../../src/tools/users';
+import { withClient } from '../../helpers/client';
 
 /**
  * #96: asset_search_advanced and user_search_advanced page on the IIQ server, so every row of the
@@ -17,8 +18,8 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const assetText = async (args: object) => (await (handleEnhancedAssetTool as Handler)('asset_search_advanced', args)).content[0].text;
-const userText = async (args: object) => (await (handleEnhancedUserTool as Handler)('user_search_advanced', args)).content[0].text;
+const assetText = async (args: object) => (await withClient(handleAssetTool)('asset_search_advanced', args)).content[0].text;
+const userText = async (args: object) => (await withClient(handleUserTool)('user_search_advanced', args)).content[0].text;
 const bullets = (text: string) => text.split('\n').filter((line) => line.startsWith('• '));
 
 /** POST /assets honouring body Paging, as live IIQ does. Records each request body. */

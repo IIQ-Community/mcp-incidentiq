@@ -11,6 +11,8 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import { pathSegment } from '../api/path.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { iiqPagingParams, iiqTotalRows } from '../api/paging.js';
 import {
   Ticket,
@@ -30,15 +32,6 @@ import {
   resolveMaxPages,
 } from './ticket-search.js';
 
-// Initialize client lazily to ensure environment variables are loaded
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
 
 /** "Agent (Team)", whichever parts are set, or "Unassigned". */
 function formatAssignee(ticket: TicketDetail): string {
@@ -48,7 +41,7 @@ function formatAssignee(ticket: TicketDetail): string {
   return agent || team || 'Unassigned';
 }
 
-export const ticketTools = [
+export const ticketTools: ToolDefinition[] = [
   // Search and List Operations
   {
     name: 'ticket_search',
@@ -322,8 +315,7 @@ export const ticketTools = [
   },
 ];
 
-export async function handleTicketTool(name: string, args: any) {
-  const client = getClient();
+export async function handleTicketTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   try {
     switch (name) {
       // Search and List Operations
@@ -460,7 +452,7 @@ export async function handleTicketTool(name: string, args: any) {
       case 'ticket_get': {
         const response = await client.request<IIQItemResponse<TicketDetail>>({
           method: 'GET',
-          url: `/tickets/${args.ticketId}`,
+          url: `/tickets/${pathSegment(args.ticketId)}`,
         });
         const ticket = response?.Item;
 
@@ -562,7 +554,7 @@ ID: ${ticket.TicketId}`,
       case 'ticket_get_assets': {
         const response = await client.request<PaginatedResponse<any>>({
           method: 'GET',
-          url: `/tickets/${args.ticketId}/assets`,
+          url: `/tickets/${pathSegment(args.ticketId)}/assets`,
         });
         
         if (!response?.Items || response.Items.length === 0) {
@@ -593,7 +585,7 @@ ID: ${ticket.TicketId}`,
       case 'ticket_get_sla': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/tickets/${args.ticketId}/sla`,
+          url: `/tickets/${pathSegment(args.ticketId)}/sla`,
         });
         
         if (!response) {
@@ -624,7 +616,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       
       // Status Updates
       case 'ticket_update_status': {
-        const endpoint = `/tickets/${args.ticketId}/status/${args.status}`;
+        const endpoint = `/tickets/${pathSegment(args.ticketId)}/status/${pathSegment(args.status)}`;
         await client.request<Ticket>({
           method: 'POST',
           url: endpoint,
@@ -643,8 +635,8 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       // Priority and Sensitivity
       case 'ticket_set_urgency': {
         const endpoint = args.isUrgent 
-          ? `/tickets/${args.ticketId}/mark-urgent`
-          : `/tickets/${args.ticketId}/mark-not-urgent`;
+          ? `/tickets/${pathSegment(args.ticketId)}/mark-urgent`
+          : `/tickets/${pathSegment(args.ticketId)}/mark-not-urgent`;
         
         await client.request<Ticket>({
           method: 'POST',
@@ -663,8 +655,8 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       
       case 'ticket_set_sensitivity': {
         const endpoint = args.isSensitive 
-          ? `/tickets/${args.ticketId}/mark-sensitive`
-          : `/tickets/${args.ticketId}/mark-not-sensitive`;
+          ? `/tickets/${pathSegment(args.ticketId)}/mark-sensitive`
+          : `/tickets/${pathSegment(args.ticketId)}/mark-not-sensitive`;
         
         await client.request<Ticket>({
           method: 'POST',
@@ -684,8 +676,8 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       // Issue Management
       case 'ticket_confirm_issue': {
         const endpoint = args.isConfirmed 
-          ? `/tickets/${args.ticketId}/confirm-issue`
-          : `/tickets/${args.ticketId}/unconfirm-issue`;
+          ? `/tickets/${pathSegment(args.ticketId)}/confirm-issue`
+          : `/tickets/${pathSegment(args.ticketId)}/unconfirm-issue`;
         
         await client.request<Ticket>({
           method: 'POST',
@@ -706,7 +698,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       case 'ticket_cancel': {
         await client.request<Ticket>({
           method: 'POST',
-          url: `/tickets/${args.ticketId}/cancel`,
+          url: `/tickets/${pathSegment(args.ticketId)}/cancel`,
         });
         
         return {
@@ -721,8 +713,8 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       
       case 'ticket_unassign': {
         const endpoint = args.unassignFrom === 'sla' 
-          ? `/tickets/${args.ticketId}/unassign-sla`
-          : `/tickets/${args.ticketId}/unassign/${args.unassignFrom}`;
+          ? `/tickets/${pathSegment(args.ticketId)}/unassign-sla`
+          : `/tickets/${pathSegment(args.ticketId)}/unassign/${pathSegment(args.unassignFrom)}`;
         
         await client.request<Ticket>({
           method: 'POST',
@@ -742,7 +734,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       case 'ticket_mark_duplicate': {
         await client.request<Ticket>({
           method: 'POST',
-          url: `/tickets/${args.ticketId}/mark-as-duplicate/${args.originalTicketId}`,
+          url: `/tickets/${pathSegment(args.ticketId)}/mark-as-duplicate/${pathSegment(args.originalTicketId)}`,
         });
         
         return {
@@ -790,7 +782,7 @@ Breached: ${response.IsBreached ? 'Yes' : 'No'}`,
       case 'ticket_get_wizards_by_site': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/tickets/wizards/site/${args.siteId}`
+          url: `/tickets/wizards/site/${pathSegment(args.siteId)}`
         });
         
         if (!response?.Items || response.Items.length === 0) {

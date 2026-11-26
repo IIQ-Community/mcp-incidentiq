@@ -369,10 +369,12 @@ This tool is designed with student privacy in mind:
 ```
 mcp-incidentiq/
 ├── src/
-│   ├── index.ts             # Main MCP server entry point (registers all tool modules)
+│   ├── index.ts             # Main MCP server entry point
+│   ├── router.ts            # Registers all tool modules; passes each one the server's API client
 │   ├── api/
 │   │   └── client.ts        # IncidentIQ API client
 │   ├── tools/               # MCP tool implementations (one module per domain)
+│   │   ├── result.ts        # Shared ToolDefinition/ToolResult types and result helpers
 │   │   ├── tickets.ts       # Ticket management tools
 │   │   ├── assets.ts        # Asset management tools
 │   │   ├── users.ts         # User management tools

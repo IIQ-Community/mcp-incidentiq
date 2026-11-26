@@ -7,11 +7,12 @@
  * documented source, so those tools are not offered (#112).
  */
 
-import { IncidentIQClient } from '../api/client.js';
+import type { IncidentIQClient } from '../api/client.js';
 import { GUID } from '../api/lookups.js';
 import { formatListPage } from '../api/paging.js';
 import { pathSegment } from '../api/path.js';
 import { PaginatedResponse } from '../types/common.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 
 // Analytics-specific types
 export interface AnalyticsDataPoint {
@@ -129,17 +130,7 @@ function renderElements(result: PromiseSettledResult<PaginatedResponse<ReportEle
   return `Elements (${elements.length}):\n${rows.join('\n')}`;
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const analyticsTools = [
+export const analyticsTools: ToolDefinition[] = [
   // Asset Auditing Analytics
   {
     name: 'analytics_asset_audit_coverage',
@@ -206,9 +197,7 @@ export const analyticsTools = [
   },
 ];
 
-/** `client` defaults to an environment-configured client; the router passes the one it was built with. */
-export async function handleAnalyticsTool(name: string, args: any, client: IncidentIQClient = getClient()) {
-  
+export async function handleAnalyticsTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   try {
     switch (name) {
       // Asset-verification breakdowns (N7): count, share and total, largest first.

@@ -5,6 +5,8 @@
  * IIQ ignores a body `Paging` object on POST /tickets and POST /users (always page 0, 20 rows)
  * and ignores its PageIndex on POST /issues/types, so paging must travel in the query string.
  */
+import type { ToolResult } from '../tools/result.js';
+
 export function iiqPagingParams(pageIndex: number, pageSize: number): { $p: number; $s: number } {
   return { $p: normalizePageIndex(pageIndex), $s: normalizePageSize(pageSize) };
 }
@@ -70,7 +72,7 @@ export async function iiqListAll<T>(
 export const TRUNCATION_NOTE = '\n\nNote: the full list was too large to read completely; results may be incomplete.';
 
 /** Appends TRUNCATION_NOTE to an MCP text result when the underlying list was truncated. */
-export function withTruncationNote<R extends { content: Array<{ text: string }> }>(truncated: boolean, result: R): R {
+export function withTruncationNote(truncated: boolean, result: ToolResult): ToolResult {
   if (truncated && result.content[0]) result.content[0].text += TRUNCATION_NOTE;
   return result;
 }

@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import { ROLES, resolveIds } from '../api/lookups.js';
 import {
@@ -87,17 +88,7 @@ export interface UserStatistics {
   Percentage?: number;
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const enhancedUserTools = [
+export const userTools: ToolDefinition[] = [
   // Core Search & List
   {
     name: 'user_search_advanced',
@@ -356,8 +347,7 @@ export const enhancedUserTools = [
   },
 ];
 
-export async function handleEnhancedUserTool(name: string, args: any) {
-  const client = getClient();
+export async function handleUserTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -723,7 +713,8 @@ export async function handleEnhancedUserTool(name: string, args: any) {
       case 'user_quick_search': {
         const response = await client.request<any>({
           method: 'GET',
-          url: `/users/quick?q=${encodeURIComponent(args.query)}&limit=${args.limit || 10}`,
+          url: '/users/quick',
+          params: { q: args.query, limit: args.limit || 10 },
         });
         
         const users = response?.Items || response || [];
@@ -788,7 +779,3 @@ ${userList}`,
     };
   }
 }
-
-// Export for backward compatibility
-export const userTools = enhancedUserTools;
-export const handleUserTool = handleEnhancedUserTool;

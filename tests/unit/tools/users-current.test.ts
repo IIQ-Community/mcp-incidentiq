@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
+import { testClient } from '../../helpers/client';
 
 /**
  * user_get_current. IIQ has no GET /users/me (404 live, 2026-11-08); the API key is a JWT whose
@@ -18,8 +19,8 @@ const claims = (extra: object) => JSON.stringify({ iss: 'issuer', scope: 'api', 
 async function runWithKey(apiKey: string): Promise<string> {
   vi.resetModules();
   process.env.IIQ_API_KEY = apiKey;
-  const { handleEnhancedUserTool } = await import('../../../src/tools/users');
-  const result = (await handleEnhancedUserTool('user_get_current', {})) as { content: Array<{ text: string }> };
+  const { handleUserTool } = await import('../../../src/tools/users');
+  const result = (await handleUserTool('user_get_current', {}, testClient())) as { content: Array<{ text: string }> };
   return result.content[0].text;
 }
 

@@ -23,7 +23,7 @@ This project creates a functional MCP (Model Context Protocol) server for Incide
 - **Unit Tests**: Comprehensive unit tests for API client and tool handlers
 - **E2E Tests**: MCP test client for end-to-end testing (currently disabled due to ES module issues)
 - **Mock Service Worker**: Realistic API mocking with K-12 specific test data
-- **Test Coverage**: 487 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
+- **Test Coverage**: 725 unit tests (Vitest, v8 coverage; gates lines ≥ 57 %, functions ≥ 70 %)
 - **K-12 Test Data**: Authentic educational scenarios with Chromebooks, student accounts, and classroom support
 - **Package Manager**: npm (`package-lock.json`); Node ≥ 22 (CI and release run Node 24)
 
@@ -206,6 +206,22 @@ When implementing MCP tools:
 2. Use clear, descriptive tool names that reflect IncidentIQ domain concepts
 3. Implement proper error handling for API responses
 4. Consider rate limiting and pagination for bulk operations
+
+### Tool Module Standard
+
+Every module in `src/tools/` (13 domains) follows one contract (#116):
+
+- **Exports**: `export const <domain>Tools: ToolDefinition[]` and
+  `export async function handle<Domain>Tool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult>`.
+  Types and the `textResult`/`jsonResult` helpers live in `src/tools/result.ts`.
+- **Client is injected and required**: the router (`src/router.ts`) builds one `IncidentIQClient` and passes it to
+  every handler. A module never creates a client (no `getClient`, `let client` or `new IncidentIQClient`), so it
+  imports without an API key. Tests pass `testClient()` or `withClient(handler)` from `tests/helpers/client.ts`.
+- **Path IDs**: every value interpolated into a URL path goes through `pathSegment()` (`src/api/path.ts`), which
+  encodes it and rejects empty, `.` and `..`. Query values use axios `params`.
+- **Errors** are returned as text (`Error: <message>`), not thrown; the router's `wrapped()` is only a safety net.
+- **Guards**: `tests/unit/tool-module-standard.test.ts` pins the injected client and key-free import;
+  `tests/unit/golden-output.test.ts` snapshots every tool's text and requests, so an output change is deliberate.
 
 ## MCP Implementation Reference
 

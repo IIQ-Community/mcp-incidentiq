@@ -3,7 +3,8 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { handleTeamTool } from '../../../src/tools/teams';
 import { handlePurchaseOrderTool } from '../../../src/tools/purchaseorders';
-import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { handlePartsTool } from '../../../src/tools/parts';
+import { testClient } from '../../helpers/client';
 
 const BASE = 'https://test.incidentiq.com/api/v1.0';
 
@@ -40,13 +41,13 @@ describe('team_search', () => {
   );
 
   it('filters the team list by name or description', async () => {
-    const result = json(await handleTeamTool('team_search', { searchText: 'chromebook' }));
+    const result = json(await handleTeamTool('team_search', { searchText: 'chromebook' }, testClient()));
     expect(result.Items.map((t: any) => t.TeamId)).toEqual(['t2']);
     expect(result.Paging.TotalRows).toBe(1);
   });
 
   it('pages the filtered list', async () => {
-    const result = json(await handleTeamTool('team_search', { pageSize: 2, pageIndex: 1 }));
+    const result = json(await handleTeamTool('team_search', { pageSize: 2, pageIndex: 1 }, testClient()));
     expect(result.Items.map((t: any) => t.TeamId)).toEqual(['t3']);
     expect(result.Paging).toMatchObject({ PageIndex: 1, PageSize: 2, PageCount: 2, TotalRows: 3 });
   });
@@ -65,20 +66,20 @@ describe('purchaseorder_search', () => {
   );
 
   it('filters by text in the PO number or notes', async () => {
-    expect(json(await handlePurchaseOrderTool('purchaseorder_search', { searchText: 'projector' })).Items.map((p: any) => p.PurchaseOrderId)).toEqual(['po2']);
-    expect(json(await handlePurchaseOrderTool('purchaseorder_search', { searchText: '2026-001' })).Items.map((p: any) => p.PurchaseOrderId)).toEqual(['po1']);
+    expect(json(await handlePurchaseOrderTool('purchaseorder_search', { searchText: 'projector' }, testClient())).Items.map((p: any) => p.PurchaseOrderId)).toEqual(['po2']);
+    expect(json(await handlePurchaseOrderTool('purchaseorder_search', { searchText: '2026-001' }, testClient())).Items.map((p: any) => p.PurchaseOrderId)).toEqual(['po1']);
   });
 
   it('maps status onto IsApproved/IsClosed', async () => {
     const ids = async (status: string) =>
-      json(await handlePurchaseOrderTool('purchaseorder_search', { status })).Items.map((p: any) => p.PurchaseOrderId);
+      json(await handlePurchaseOrderTool('purchaseorder_search', { status }, testClient())).Items.map((p: any) => p.PurchaseOrderId);
     expect(await ids('pending')).toEqual(['po1']);
     expect(await ids('approved')).toEqual(['po2']);
     expect(await ids('completed')).toEqual(['po3']);
   });
 
   it('filters by creation date range', async () => {
-    const result = json(await handlePurchaseOrderTool('purchaseorder_search', { dateFrom: '2026-01-01', dateTo: '2026-02-01' }));
+    const result = json(await handlePurchaseOrderTool('purchaseorder_search', { dateFrom: '2026-01-01', dateTo: '2026-02-01' }, testClient()));
     expect(result.Items.map((p: any) => p.PurchaseOrderId)).toEqual(['po1']);
   });
 
@@ -90,7 +91,7 @@ describe('purchaseorder_search', () => {
         { PurchaseOrderId: 'after', PoNumber: 'PO-3', CreatedDate: '2026-02-02T00:01:00' },
       ])
     );
-    const result = json(await handlePurchaseOrderTool('purchaseorder_search', { dateFrom: '2026-01-01', dateTo: '2026-02-01' }));
+    const result = json(await handlePurchaseOrderTool('purchaseorder_search', { dateFrom: '2026-01-01', dateTo: '2026-02-01' }, testClient()));
     expect(result.Items.map((p: any) => p.PurchaseOrderId)).toEqual(['late', 'early']);
   });
 
@@ -98,7 +99,7 @@ describe('purchaseorder_search', () => {
     // 10 full pages of 1000 with more remaining hits the iiqListAll cap.
     const rows = Array.from({ length: 10_500 }, (_, i) => ({ PurchaseOrderId: `po${i}`, PoNumber: `PO-${i}` }));
     server.use(listHandler('/purchaseorders', rows));
-    const result = json(await handlePurchaseOrderTool('purchaseorder_search', {}));
+    const result = json(await handlePurchaseOrderTool('purchaseorder_search', {}, testClient()));
     expect(result.Truncated).toBe(true);
     expect(result.Paging.TotalRows).toBe(10_000);
   });
@@ -118,7 +119,7 @@ describe('parts searches', () => {
   );
 
   it('parts_search filters the parts list by text and supplier', async () => {
-    const text = (await handleEnhancedPartsTool('parts_search', { searchText: 'chromebook', supplierId: 's1' })).content[0].text;
+    const text = (await handlePartsTool('parts_search', { searchText: 'chromebook', supplierId: 's1' }, testClient())).content[0].text;
     expect(text).toContain('Found 1 parts');
     expect(text).toContain('Chromebook 3100 Screen');
     expect(text).not.toContain('Keyboard');
@@ -126,20 +127,20 @@ describe('parts searches', () => {
   });
 
   it('parts_get_chromebook_parts lists only Chromebook parts', async () => {
-    const text = (await handleEnhancedPartsTool('parts_get_chromebook_parts', { model: '3100' })).content[0].text;
+    const text = (await handlePartsTool('parts_get_chromebook_parts', { model: '3100' }, testClient())).content[0].text;
     expect(text).toContain('Chromebook 3100 Screen');
     expect(text).toContain('Chromebook 3100 Keyboard');
     expect(text).not.toContain('iPad');
   });
 
   it('parts_find_by_number matches the part name/number case-insensitively', async () => {
-    const text = (await handleEnhancedPartsTool('parts_find_by_number', { partNumber: 'ipad charger' })).content[0].text;
+    const text = (await handlePartsTool('parts_find_by_number', { partNumber: 'ipad charger' }, testClient())).content[0].text;
     expect(text).toContain('Name: iPad Charger');
     expect(text).toContain('ID: p3');
   });
 
   it('parts_find_by_number reports a missing part', async () => {
-    const text = (await handleEnhancedPartsTool('parts_find_by_number', { partNumber: 'NOPE-1' })).content[0].text;
+    const text = (await handlePartsTool('parts_find_by_number', { partNumber: 'NOPE-1' }, testClient())).content[0].text;
     expect(text).toBe('No part found with number: NOPE-1');
   });
 });

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse, delay } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedUserTool, enhancedUserTools } from '../../../src/tools/users';
+import { handleUserTool, userTools } from '../../../src/tools/users';
+import { withClient } from '../../helpers/client';
 
 /**
  * Grades: IIQ filters by `{ Facet: 'grade', Value }` with the SIS code ('01'-'12', 'KG', 'PK');
@@ -15,7 +16,7 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object) => (await (handleEnhancedUserTool as Handler)(name, args)).content[0].text;
+const run = async (name: string, args: object) => (await withClient(handleUserTool)(name, args)).content[0].text;
 
 /** Synthetic district: [role, grade, locationId] per user; the mock counts matches for the filters. */
 const USERS: Array<[string, string | undefined, string]> = [
@@ -74,7 +75,7 @@ describe('grade filter', () => {
 
 describe('homeroom', () => {
   it('user_search_advanced no longer offers the unusable homeroom argument', () => {
-    const schema = enhancedUserTools.find((t) => t.name === 'user_search_advanced')!.inputSchema.properties as Record<string, unknown>;
+    const schema = userTools.find((t) => t.name === 'user_search_advanced')!.inputSchema.properties as Record<string, unknown>;
     expect(schema).not.toHaveProperty('homeroom');
   });
 

@@ -8,6 +8,7 @@
  */
 
 import { IncidentIQClient } from '../api/client.js';
+import type { ToolDefinition, ToolResult } from './result.js';
 import { pathSegment } from '../api/path.js';
 import {
   IIQ_LIST_BODY, formatListPage, iiqListAll, mapLimit, matchesText, normalizePageIndex, normalizePageSize, withTruncationNote,
@@ -126,17 +127,7 @@ async function siteIssueLine(client: IncidentIQClient, issueId: string): Promise
   return { line: `• ${issueId}`, named: false };
 }
 
-// Initialize client lazily
-let client: IncidentIQClient | null = null;
-
-function getClient(): IncidentIQClient {
-  if (!client) {
-    client = new IncidentIQClient();
-  }
-  return client;
-}
-
-export const enhancedIssuesTools = [
+export const issuesTools: ToolDefinition[] = [
   // Core Operations
   {
     name: 'issues_get_site_issues',
@@ -281,8 +272,7 @@ export const enhancedIssuesTools = [
   },
 ];
 
-export async function handleEnhancedIssuesTool(name: string, args: any) {
-  const client = getClient();
+export async function handleIssuesTool(name: string, args: any, client: IncidentIQClient): Promise<ToolResult> {
   
   try {
     switch (name) {
@@ -451,20 +441,5 @@ ID: ${type.IssueTypeId}`,
         text: `Error: ${error.message}`,
       }],
     };
-  }
-}
-
-// Export for class compatibility
-export class IssueTools {
-  constructor(_client: any) {
-    // Client is passed but not needed as we use getClient() internally
-  }
-  
-  getTools() {
-    return enhancedIssuesTools;
-  }
-  
-  async handleToolCall(name: string, args: any) {
-    return handleEnhancedIssuesTool(name, args);
   }
 }

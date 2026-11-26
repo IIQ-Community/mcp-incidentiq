@@ -4,29 +4,17 @@ import { userTools, handleUserTool } from './tools/users.js';
 import { assetTools, handleAssetTool } from './tools/assets.js';
 import { locationTools, handleLocationTool } from './tools/locations.js';
 import { teamTools, handleTeamTool } from './tools/teams.js';
-import { PartsTools } from './tools/parts.js';
+import { partsTools, handlePartsTool } from './tools/parts.js';
 import { purchaseOrderTools, handlePurchaseOrderTool } from './tools/purchaseorders.js';
-import { IssueTools } from './tools/issues.js';
-import { CustomFieldTools } from './tools/customfields.js';
-import { SLATools } from './tools/slas.js';
-import { ViewTools } from './tools/views.js';
-import { NotificationTools } from './tools/notifications.js';
+import { issuesTools, handleIssuesTool } from './tools/issues.js';
+import { customFieldTools, handleCustomFieldTool } from './tools/customfields.js';
+import { slaTools, handleSlaTool } from './tools/slas.js';
+import { viewTools, handleViewTool } from './tools/views.js';
+import { notificationTools, handleNotificationTool } from './tools/notifications.js';
 import { analyticsTools, handleAnalyticsTool } from './tools/analytics.js';
+import type { ToolDefinition, ToolHandler, ToolResult } from './tools/result.js';
 
-/** MCP tool-call result shape returned to the client. */
-export interface ToolResult {
-  [key: string]: unknown;
-  content: { type: 'text'; text: string }[];
-}
-
-/** Tool definition as advertised by ListTools (the modules declare `inputSchema.type` as a plain string). */
-export interface ToolDefinition {
-  name: string;
-  description?: string;
-  inputSchema: Record<string, unknown>;
-}
-
-type ToolHandler = (name: string, args: any) => Promise<unknown>;
+export type { ToolDefinition, ToolResult } from './tools/result.js';
 
 interface Route {
   prefix: string;
@@ -63,36 +51,21 @@ function wrapped(handle: ToolHandler): ToolHandler {
 
 /** Builds the tool list and the name -> handler dispatch for the MCP server. */
 export function createToolRouter(client: IncidentIQClient = new IncidentIQClient()) {
-  const partsTools = new PartsTools(client);
-  const issueTools = new IssueTools(client);
-  const customFieldTools = new CustomFieldTools(client);
-  const slaTools = new SLATools(client);
-  const viewTools = new ViewTools(client);
-  const notificationTools = new NotificationTools(client);
-
   // Each prefix must match the tool names its module advertises (e.g. `parts_*`, `issues_*`).
   const routes: Route[] = [
-    { prefix: 'ticket_', tools: ticketTools, handle: handleTicketTool },
-    { prefix: 'user_', tools: userTools, handle: handleUserTool },
-    { prefix: 'asset_', tools: assetTools, handle: handleAssetTool },
-    { prefix: 'location_', tools: locationTools, handle: handleLocationTool },
-    { prefix: 'team_', tools: teamTools, handle: handleTeamTool },
-    { prefix: 'parts_', tools: partsTools.getTools(), handle: wrapped((n, a) => partsTools.handleToolCall(n, a)) },
-    { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: handlePurchaseOrderTool },
-    { prefix: 'issues_', tools: issueTools.getTools(), handle: wrapped((n, a) => issueTools.handleToolCall(n, a)) },
-    {
-      prefix: 'customfield_',
-      tools: customFieldTools.getTools(),
-      handle: wrapped((n, a) => customFieldTools.handleToolCall(n, a)),
-    },
-    { prefix: 'sla_', tools: slaTools.getTools(), handle: wrapped((n, a) => slaTools.handleToolCall(n, a)) },
-    { prefix: 'view_', tools: viewTools.getTools(), handle: wrapped((n, a) => viewTools.handleToolCall(n, a)) },
-    {
-      prefix: 'notification_',
-      tools: notificationTools.getTools(),
-      handle: wrapped((n, a) => notificationTools.handleToolCall(n, a)),
-    },
-    { prefix: 'analytics_', tools: analyticsTools, handle: (n, a) => handleAnalyticsTool(n, a, client) },
+    { prefix: 'ticket_', tools: ticketTools, handle: wrapped((n, a) => handleTicketTool(n, a, client)) },
+    { prefix: 'user_', tools: userTools, handle: wrapped((n, a) => handleUserTool(n, a, client)) },
+    { prefix: 'asset_', tools: assetTools, handle: wrapped((n, a) => handleAssetTool(n, a, client)) },
+    { prefix: 'location_', tools: locationTools, handle: wrapped((n, a) => handleLocationTool(n, a, client)) },
+    { prefix: 'team_', tools: teamTools, handle: wrapped((n, a) => handleTeamTool(n, a, client)) },
+    { prefix: 'parts_', tools: partsTools, handle: wrapped((n, a) => handlePartsTool(n, a, client)) },
+    { prefix: 'purchaseorder_', tools: purchaseOrderTools, handle: wrapped((n, a) => handlePurchaseOrderTool(n, a, client)) },
+    { prefix: 'issues_', tools: issuesTools, handle: wrapped((n, a) => handleIssuesTool(n, a, client)) },
+    { prefix: 'customfield_', tools: customFieldTools, handle: wrapped((n, a) => handleCustomFieldTool(n, a, client)) },
+    { prefix: 'sla_', tools: slaTools, handle: wrapped((n, a) => handleSlaTool(n, a, client)) },
+    { prefix: 'view_', tools: viewTools, handle: wrapped((n, a) => handleViewTool(n, a, client)) },
+    { prefix: 'notification_', tools: notificationTools, handle: wrapped((n, a) => handleNotificationTool(n, a, client)) },
+    { prefix: 'analytics_', tools: analyticsTools, handle: wrapped((n, a) => handleAnalyticsTool(n, a, client)) },
   ];
 
   async function testConnection(): Promise<ToolResult> {

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool } from '../../../src/tools/assets';
-import { handleEnhancedUserTool } from '../../../src/tools/users';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
-import { handleEnhancedPartsTool } from '../../../src/tools/parts';
+import { handleAssetTool } from '../../../src/tools/assets';
+import { handleUserTool } from '../../../src/tools/users';
+import { handleLocationTool } from '../../../src/tools/locations';
+import { handlePartsTool } from '../../../src/tools/parts';
+import { withClient } from '../../helpers/client';
 
 /**
  * Exact-text output that the #96 paging/filter fixes must leave unchanged: rows with only the
@@ -21,7 +22,7 @@ const textOf = async (handler: Handler, name: string, args: object) => (await ha
 const page = (items: object[], total = items.length) => HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { TotalRows: total } });
 
 describe('asset_search_advanced unchanged output', () => {
-  const run = (args: object) => textOf(handleEnhancedAssetTool as Handler, 'asset_search_advanced', args);
+  const run = (args: object) => textOf(withClient(handleAssetTool), 'asset_search_advanced', args);
 
   it('renders a short page exactly', async () => {
     server.use(http.post(`${BASE}/assets`, () => page([
@@ -43,7 +44,7 @@ describe('asset_search_advanced unchanged output', () => {
 });
 
 describe('user_search_advanced unchanged output', () => {
-  const run = (args: object) => textOf(handleEnhancedUserTool as Handler, 'user_search_advanced', args);
+  const run = (args: object) => textOf(withClient(handleUserTool), 'user_search_advanced', args);
   const user = { UserId: 'u1', FirstName: 'Ann', LastName: 'Lee', Email: 'a@x.test', Username: 'alee', LocationName: 'Central', IsActive: true };
   const row = '• Ann Lee\n  Type: Unknown | Email: a@x.test\n  Location: Central\n  Username: alee | Status: Active';
 
@@ -68,13 +69,13 @@ describe('user_search_advanced unchanged output', () => {
 describe('capped tools: nothing-found texts unchanged', () => {
   const empty = () => page([], 0);
   const cases: Array<[string, Handler, string, object, () => void]> = [
-    ['asset_get_history', handleEnhancedAssetTool as Handler, 'No history available for this asset.', { assetId: 'a1' },
+    ['asset_get_history', withClient(handleAssetTool), 'No history available for this asset.', { assetId: 'a1' },
       () => server.use(http.get(`${BASE}/assets/:id/activities`, empty))],
-    ['user_get_all_agents', handleEnhancedUserTool as Handler, 'No IT support agents found.', {},
+    ['user_get_all_agents', withClient(handleUserTool), 'No IT support agents found.', {},
       () => server.use(http.get(`${BASE}/users/agents`, empty))],
-    ['location_get_all_rooms', handleEnhancedLocationTool as Handler, 'No rooms found.', {},
+    ['location_get_all_rooms', withClient(handleLocationTool), 'No rooms found.', {},
       () => server.use(http.get(`${BASE}/locations/rooms`, empty))],
-    ['parts_get_orders', handleEnhancedPartsTool as Handler, 'No purchase orders found.', {},
+    ['parts_get_orders', withClient(handlePartsTool), 'No purchase orders found.', {},
       () => server.use(http.get(`${BASE}/purchaseorders`, empty))],
   ];
 

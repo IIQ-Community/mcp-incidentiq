@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedPartsTool, enhancedPartsTools } from '../../../src/tools/parts';
+import { handlePartsTool, partsTools } from '../../../src/tools/parts';
+import { withClient } from '../../helpers/client';
 
 /**
  * #98 sweep, parts & purchase orders (P1-P6). Shapes are the live IIQ ones (verified 2026-11-07):
@@ -15,9 +16,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 type Handler = (name: string, args: object) => Promise<{ content: Array<{ text: string }> }>;
-const run = async (name: string, args: object = {}) => (await (handleEnhancedPartsTool as Handler)(name, args)).content[0].text;
+const run = async (name: string, args: object = {}) => (await withClient(handlePartsTool)(name, args)).content[0].text;
 const bullets = (text: string) => text.split('\n').filter((line) => line.trimStart().startsWith('• '));
-const schemaOf = (name: string) => enhancedPartsTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
+const schemaOf = (name: string) => partsTools.find((t) => t.name === name)?.inputSchema.properties as Record<string, unknown>;
 
 let seen: URL[] = [];
 const paged = (rows: object[]) => ({ request }: { request: Request }) => {
@@ -163,7 +164,7 @@ describe('P5 parts_search lowStock and parts_get_low_stock', () => {
 
 describe('P6 removed parts tools', () => {
   it('no longer advertises tools IIQ cannot back', () => {
-    const names = enhancedPartsTools.map((t) => t.name);
+    const names = partsTools.map((t) => t.name);
     const removed = ['parts_get_order_details', 'parts_get_pending_orders', 'parts_get_compatible', 'parts_get_ticket_parts',
       'parts_get_common_repairs', 'parts_get_repair_costs', 'parts_get_by_location', 'parts_record_usage', 'parts_transfer'];
     expect(removed.filter((name) => names.includes(name))).toEqual([]);

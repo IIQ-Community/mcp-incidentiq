@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { handleEnhancedAssetTool } from '../../../src/tools/assets';
-import { handleEnhancedUserTool } from '../../../src/tools/users';
-import { handleEnhancedLocationTool } from '../../../src/tools/locations';
-import { handleEnhancedPartsTool, enhancedPartsTools } from '../../../src/tools/parts';
-import { enhancedLocationTools } from '../../../src/tools/locations';
+import { handleAssetTool } from '../../../src/tools/assets';
+import { handleUserTool } from '../../../src/tools/users';
+import { handleLocationTool } from '../../../src/tools/locations';
+import { handlePartsTool, partsTools } from '../../../src/tools/parts';
+import { locationTools } from '../../../src/tools/locations';
+import { withClient } from '../../helpers/client';
 
 /**
  * The seven tools that showed only the first N rows with no way to reach the rest now page
@@ -34,7 +35,7 @@ const paged = (rows: object[]) => ({ request }: { request: Request }) => {
 const many = <T,>(n: number, row: (i: number) => T) => Array.from({ length: n }, (_, i) => row(i));
 
 describe('location_get_all_rooms', () => {
-  const run = (args: object) => textOf(handleEnhancedLocationTool as Handler, 'location_get_all_rooms', args);
+  const run = (args: object) => textOf(withClient(handleLocationTool), 'location_get_all_rooms', args);
   const room = (i: number, type = 'Classroom') => ({ LocationRoomId: `r${i}`, Name: `Room ${i}`, LocationName: 'Central High', LocationRoomTypeName: type });
 
   it('counts and pages every room, not just the 20-row default page', async () => {
@@ -53,14 +54,14 @@ describe('location_get_all_rooms', () => {
   });
 
   it('no longer offers minCapacity (IIQ rooms have no capacity)', () => {
-    const schema = enhancedLocationTools.find((t) => t.name === 'location_get_all_rooms')!.inputSchema.properties as Record<string, unknown>;
+    const schema = locationTools.find((t) => t.name === 'location_get_all_rooms')!.inputSchema.properties as Record<string, unknown>;
     expect(schema).not.toHaveProperty('minCapacity');
     expect(schema).toHaveProperty('pageIndex');
   });
 });
 
 describe('user_get_all_agents', () => {
-  const run = (args: object) => textOf(handleEnhancedUserTool as Handler, 'user_get_all_agents', args);
+  const run = (args: object) => textOf(withClient(handleUserTool), 'user_get_all_agents', args);
   const agent = (i: number) => ({ UserId: `u${i}`, Name: `Agent ${i}`, Email: `a${i}@x.test`, Phone: '555-0100', LocationName: 'District Office' });
 
   it('counts every agent and pages them 25 at a time by default', async () => {
@@ -78,7 +79,7 @@ describe('user_get_all_agents', () => {
 });
 
 describe('parts_get_orders', () => {
-  const run = (args: object) => textOf(handleEnhancedPartsTool as Handler, 'parts_get_orders', args);
+  const run = (args: object) => textOf(withClient(handlePartsTool), 'parts_get_orders', args);
   const po = (i: number, flags: object = {}) => ({
     PurchaseOrderId: `po-${i}-0000`, PoNumber: `PO-${i}`, CreatedDate: '2026-10-01', PurchaseTotalCosts: 120, Purchases: [{}, {}], IsApproved: false, IsClosed: false, ...flags,
   });
@@ -98,7 +99,7 @@ describe('parts_get_orders', () => {
   });
 
   it('offers the statuses that can actually match', () => {
-    const schema = enhancedPartsTools.find((t) => t.name === 'parts_get_orders')!.inputSchema.properties as any;
+    const schema = partsTools.find((t) => t.name === 'parts_get_orders')!.inputSchema.properties as any;
     expect(schema.status.enum).toEqual(['Open', 'Approved', 'Closed']);
   });
 
@@ -110,7 +111,7 @@ describe('parts_get_orders', () => {
 });
 
 describe('asset_get_history', () => {
-  const run = (args: object) => textOf(handleEnhancedAssetTool as Handler, 'asset_get_history', args);
+  const run = (args: object) => textOf(withClient(handleAssetTool), 'asset_get_history', args);
   const activity = (i: number) => ({ ActivityDate: `2026-01-${String(i + 1).padStart(2, '0')}`, ActivityType: 3, Details: `Change ${i}`, UserId: 'u-1' });
 
   it('pages through every activity instead of the first 10', async () => {
@@ -123,7 +124,7 @@ describe('asset_get_history', () => {
 });
 
 describe('location_get_assets', () => {
-  const run = (args: object) => textOf(handleEnhancedLocationTool as Handler, 'location_get_assets', args);
+  const run = (args: object) => textOf(withClient(handleLocationTool), 'location_get_assets', args);
 
   it('searches POST /assets with a location filter and pages on the server', async () => {
     const bodies: any[] = [];
@@ -162,7 +163,7 @@ describe('user_get_staff and user_get_students page on the server', () => {
 
   it('user_get_staff renders every row of the requested page', async () => {
     use(60, (i) => ({ UserId: `s${i}`, Name: `Staff ${i}` }));
-    const text = await textOf(handleEnhancedUserTool as Handler, 'user_get_staff', { pageIndex: 1 });
+    const text = await textOf(withClient(handleUserTool), 'user_get_staff', { pageIndex: 1 });
     expect(urls[0].searchParams.get('$p')).toBe('1');
     expect(urls[0].searchParams.get('$s')).toBe('25');
     expect(text.startsWith('Found 60 staff members (showing 25):')).toBe(true);
@@ -173,7 +174,7 @@ describe('user_get_staff and user_get_students page on the server', () => {
 
   it('user_get_students lists every student on the page, grouped by grade', async () => {
     use(9, (i) => ({ UserId: `k${i}`, Name: `Kid ${i}`, Grade: i < 7 ? '09' : '10' }));
-    const text = await textOf(handleEnhancedUserTool as Handler, 'user_get_students', { pageSize: 9 });
+    const text = await textOf(withClient(handleUserTool), 'user_get_students', { pageSize: 9 });
     expect(text).toBe(
       'Found 9 students (showing 9):\n\n' +
       'Grade 09 (7):\n' + many(7, (i) => `  • Kid ${i}`).join('\n') + '\n\n' +
@@ -184,7 +185,7 @@ describe('user_get_staff and user_get_students page on the server', () => {
 
   it('user_get_students reaches a later page', async () => {
     use(60, (i) => ({ UserId: `k${i}`, Name: `Kid ${i}`, Grade: '09' }));
-    const text = await textOf(handleEnhancedUserTool as Handler, 'user_get_students', { pageIndex: 2 });
+    const text = await textOf(withClient(handleUserTool), 'user_get_students', { pageIndex: 2 });
     expect(urls[0].searchParams.get('$p')).toBe('2');
     expect(text.startsWith('Found 60 students (showing 10):')).toBe(true);
     expect(text.endsWith('Page 3 of 3')).toBe(true);
@@ -195,7 +196,7 @@ describe('user_get_staff and user_get_students page on the server', () => {
     ['user_get_students', 'students'],
   ])('%s says a page past the end is past the end', async (tool, noun) => {
     use(30, (i) => ({ UserId: `x${i}`, Name: `X ${i}`, Grade: '09' }));
-    expect(await textOf(handleEnhancedUserTool as Handler, tool, { pageIndex: 7 })).toBe(`Page 8 is past the end: 30 ${noun} match (2 pages).`);
+    expect(await textOf(withClient(handleUserTool), tool, { pageIndex: 7 })).toBe(`Page 8 is past the end: 30 ${noun} match (2 pages).`);
   });
 });
 
@@ -206,7 +207,7 @@ describe('location_get_assets past the end', () => {
       const items = Paging.PageIndex === 0 ? [{ AssetId: 'a1', AssetTag: 'T-1' }] : [];
       return HttpResponse.json({ Items: items, ItemCount: items.length, Paging: { TotalRows: items.length ? 40 : 0 } });
     }));
-    expect(await textOf(handleEnhancedLocationTool as Handler, 'location_get_assets', { locationId: 'l1', pageIndex: 9 })).toBe(
+    expect(await textOf(withClient(handleLocationTool), 'location_get_assets', { locationId: 'l1', pageIndex: 9 })).toBe(
       'Page 10 is past the end: 40 assets match (2 pages).'
     );
   });
