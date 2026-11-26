@@ -5,6 +5,14 @@ All notable changes to MCP IncidentIQ will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.6.0...v0.6.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **api:** encode every client path value; send quick-search terms as params ([32ad9fe](https://github.com/IIQ-Community/mcp-incidentiq/commit/32ad9fe609b6baf8920f29b9ac4c2800b305d260)), closes [#116](https://github.com/IIQ-Community/mcp-incidentiq/issues/116)
+* **tools:** tickets use the router's client; guard every ticket path value ([32c8179](https://github.com/IIQ-Community/mcp-incidentiq/commit/32c8179f181471bdcb7daed042af5060876856d2)), closes [#116](https://github.com/IIQ-Community/mcp-incidentiq/issues/116)
+
 # [0.6.0](https://github.com/IIQ-Community/mcp-incidentiq/compare/v0.5.5...v0.6.0) (2026-11-25)
 
 
